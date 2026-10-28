@@ -66,3 +66,7 @@ Tabel berikut menyalin skenario dan kriteria dari dokumen dasar agar pelaksana d
 | T054 | File preview, template CSV/XLSX, Google Forms adapter tanpa koneksi | Pesan kegagalan dapat dimengerti, no data corruption |
 | T055 | Pergantian halaman cepat dan buka/tutup dialog/polling berulang | Tidak ada listener ganda, loading macet, leak, menu tak responsif |
 | T056 | `optCount=6`, kunci F legacy, data BS tanpa statements, Jodoh duplikat | Ditentukan secara eksplisit dan tercakup regression test |
+
+## Bukti baru — 29 Oktober 2026
+
+Pernyataan BELUM DIUJI pada tabel baseline di atas adalah snapshot historis. Sebagian assertion T006/T009/T041/T043/T049/T050 sudah dijalankan dan lulus pada SQL/HTTP/Storage; skenario lengkap/UAT tetap belum disahkan. Lihat docs/stages-1-1-to-1-4.md untuk perintah, batas dan hasil. T001–T003 menunggu mesin attempt; tidak ditandai selesai.
