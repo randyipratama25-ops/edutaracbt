@@ -8,9 +8,8 @@ Supabase: cwklpfplqoofvehlyfvd, organisasi womoisnyxjrmzfhodjgk, region ap-south
 Tahap 0.1 BERJALAN: commit/blob terikat dan repositori/lingkungan sudah diverifikasi; inventaris statis tersedia, semua entry point dinamis belum dibuktikan.
 Tahap 0.2 TERHAMBAT untuk dataset lama: mapping/ERD awal tersedia; header aktual, sampel tersamarkan, counts dan file belum tersedia. Skema aplikasi baru tidak dianggap bukti data legacy.
 Tahap 0.3 BERJALAN: 18 ADR terbuka, rulebook/kontrak/threat model dan 12 fixture sintetis; differential tests, keputusan ambigu serta target SLO belum final.
-Tahap 1.1 fondasi App Router dan deployment tersedia; CI, komponen, domain dan pemeriksaan tambahan dikerjakan berikutnya.
-Tahap 1.2–1.4: belum diimplementasikan pada snapshot ini.
+Tahap 1.1–1.4: implementasi fondasi tersedia pada branch feat/stages-1-1-to-1-4; rincian bukti dan batas di docs/stages-1-1-to-1-4.md. Build/lint/typecheck/unit, SQL/RLS, HTTP Auth/CRUD dan Storage sudah lulus. PR/merge/deployment akhir dicatat setelah verifikasi remote. Admin operasional, email dan UAT belum diselesaikan.
 
-Tidak ada fitur ujian dinyatakan setara atau siap produksi. Belum ada dataset legacy dimigrasi atau UAT disahkan. Dokumen perencanaan yang diarsipkan mempertahankan status historis; status aktual ada di file ini dan worklog.
+Dua migrasi dan identity-gateway sudah diterapkan pada proyek Supabase baru. Akun uji sementara telah dibersihkan. Tidak ada fitur ujian dinyatakan setara atau siap produksi. Belum ada dataset legacy dimigrasi atau UAT disahkan. Dokumen perencanaan yang diarsipkan mempertahankan status historis; status aktual ada di file ini dan worklog.
 
 Tindakan berikutnya: fondasi CI/komponen, skema minimal terisolasi dengan RLS, autentikasi internal, pengguna/master; keputusan yang memblokir modul tetap dilacak. Tidak mengaktifkan SSO, regrading, atau impor produksi.
