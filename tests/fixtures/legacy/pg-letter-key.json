@@ -1,0 +1,19 @@
+{
+  "id": "pg-letter-key",
+  "status": "PROPOSED_NOT_EXECUTED",
+  "input": {
+    "type": "PG",
+    "options": [
+      "satu",
+      "dua",
+      "tiga"
+    ],
+    "key": "B",
+    "answer": "dua",
+    "weight": 10
+  },
+  "expected": {
+    "earned_points": 10
+  },
+  "provenance": "Kontrak dokumen dasar §5.4, dikonfirmasi secara statis pada submitExam bila berlaku; belum diuji runtime"
+}

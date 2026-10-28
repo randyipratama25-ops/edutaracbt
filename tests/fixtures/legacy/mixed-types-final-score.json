@@ -1,0 +1,26 @@
+{
+  "id": "mixed-types-final-score",
+  "status": "PROPOSED_NOT_EXECUTED",
+  "input": {
+    "items": [
+      {
+        "earned": 10,
+        "max": 10
+      },
+      {
+        "earned": 5,
+        "max": 10
+      },
+      {
+        "earned": 0,
+        "max": 10
+      }
+    ]
+  },
+  "expected": {
+    "earned_points": 15,
+    "max_points": 30,
+    "score_percent": 50
+  },
+  "provenance": "Kontrak dokumen dasar §5.4, dikonfirmasi secara statis pada submitExam bila berlaku; belum diuji runtime"
+}
