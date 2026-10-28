@@ -36,3 +36,5 @@ Rollback aplikasi dengan deployment READY sebelumnya. Jangan menghapus tabel ata
 ## Smoke tests yang dapat diulang
 
 Pada proyek pra-produksi kosong dengan persetujuan pemilik, set `EDUTARA_ALLOW_TEST_FIXTURES=1` dan kunci server pada lingkungan privat. `node scripts/test-identities.mjs seed` membuat empat akun sintetis dengan password acak dan email `.invalid`, tanpa mengirim email. Setelah build, jalankan `node scripts/auth-smoke.mjs` dan `node --env-file=.env.local scripts/media-smoke.mjs`. Selalu jalankan `node scripts/test-identities.mjs cleanup` dalam langkah finally. Tidak menjalankan seed ini pada proyek berisi profil nyata. Tidak menyimpan fixture rahasia ke repository. `scripts/smoke.mjs` memeriksa akses anonim dan CSRF tanpa akun; service gateway dan variabel Supabase harus tersedia.
+
+Jika undangan berhasil tetapi penyimpanan profil gagal, identitas pending tidak dihapus otomatis; ia tidak memiliki akses aplikasi tanpa profil/RLS. Pemilik meninjau identitas pending sebelum retry. Email yang sudah ada diperiksa sebelum pengiriman undangan agar tidak mengubah akun lama.

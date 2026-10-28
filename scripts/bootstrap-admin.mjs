@@ -21,6 +21,19 @@ if (count)
   throw Error(
     "An active administrator already exists. Use the application to manage accounts.",
   );
+for (let page = 1; ; page++) {
+  const { data: existing, error: listError } = await admin.auth.admin.listUsers(
+    { page, perPage: 1000 },
+  );
+  if (listError) throw Error("Cannot inspect identity state.");
+  if (
+    existing.users.some((u) => u.email?.toLowerCase() === email.toLowerCase())
+  )
+    throw Error(
+      "Email already exists; review the existing identity instead of recreating it.",
+    );
+  if (existing.users.length < 1000) break;
+}
 const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
   redirectTo: "https://edutara-cbt-randyipratama25-2274.vercel.app/auth/reset",
 });
@@ -28,18 +41,17 @@ if (error || !data.user)
   throw Error(
     "Invitation failed. Verify Auth URL configuration and email delivery.",
   );
-const { error: profileError } = await admin
-  .from("profiles")
-  .insert({
-    id: data.user.id,
-    organization_id: "6e143c55-7be5-4e6e-9f1a-8f8db429956a",
-    username,
-    full_name: fullName,
-    role: "admin",
-  });
+const { error: profileError } = await admin.from("profiles").insert({
+  id: data.user.id,
+  organization_id: "6e143c55-7be5-4e6e-9f1a-8f8db429956a",
+  username,
+  full_name: fullName,
+  role: "admin",
+});
 if (profileError) {
-  await admin.auth.admin.deleteUser(data.user.id);
-  throw Error("Profile creation failed; newly invited identity removed.");
+  throw Error(
+    "Profile creation failed; review the pending identity in Supabase before retrying.",
+  );
 }
 console.log(
   "Administrator invitation created. Complete activation using the delivered email. No password or token is printed.",

@@ -200,6 +200,18 @@ Deno.serve(async (request) => {
         .eq("username", input.username)
         .maybeSingle();
       if (existing) throw new Error("USERNAME_EXISTS");
+      for (let page = 1; ; page++) {
+        const { data: existingAuth, error: listError } =
+          await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (listError) throw new Error("PROFILE_FAILED");
+        if (
+          existingAuth.users.some(
+            (u) => u.email?.toLowerCase() === input.email.toLowerCase(),
+          )
+        )
+          throw new Error("USER_ALREADY_EXISTS");
+        if (existingAuth.users.length < 1000) break;
+      }
       const { data, error } = await admin.auth.admin.inviteUserByEmail(
         input.email,
         { redirectTo: `${site}/auth/reset` },
@@ -221,7 +233,6 @@ Deno.serve(async (request) => {
         role: input.role,
       });
       if (profileError) {
-        await admin.auth.admin.deleteUser(id);
         throw new Error("PROFILE_FAILED");
       }
       if (input.role === "student" && input.class_id) {
@@ -232,7 +243,6 @@ Deno.serve(async (request) => {
         });
         if (e) {
           await admin.from("profiles").delete().eq("id", id);
-          await admin.auth.admin.deleteUser(id);
           throw new Error("ENROLLMENT_FAILED");
         }
       }
