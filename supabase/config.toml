@@ -1,4 +1,0 @@
-project_id = "edutara-cbt"
-[functions.identity-gateway]
-# Login verifies username/password; management verifies the user's JWT and live RLS actor inside the function.
-verify_jwt = false

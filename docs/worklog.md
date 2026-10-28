@@ -11,3 +11,5 @@ Baseline runtime db18656 READY; repo tujuan dan organisasi Supabase terverifikas
 ## 29 Oktober 2026 — implementasi fondasi 1.1–1.4
 
 Dokumentasi 0.1–0.3 commit 500518b093aa2359e645bba38fb4a425c5a754ef masuk main. Branch fitur feat/stages-1-1-to-1-4 dibuat. Dua migrasi diterapkan pada Supabase cwklpfplqoofvehlyfvd dan identity-gateway dideploy. Uji lint/typecheck/unit/build, SQL/RLS, Auth/CRUD HTTP dan Storage lulus. Fixture Auth sintetis sementara diperbaiki setelah metadata timestamp kosong menyebabkan error Auth; ini kesalahan provisioning fixture SQL, bukan password aplikasi. Fixture dan file sementara dibersihkan. Request Origin lokal diperbaiki; TypeScript6 dipakai untuk kompatibilitas ESLint. Scope dan pekerjaan penerimaan tersisa ada pada stages-1-1-to-1-4.md.
+
+PR #1 digabungkan ke main pada afddefb8929d7111e1c58dfb61b869303209595c. Workflow CI tersimpan; API belum menampilkan run CI, jadi CI remote belum diklaim lulus. Pemeriksaan lokal telah lulus.
