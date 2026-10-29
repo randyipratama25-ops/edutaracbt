@@ -7,6 +7,11 @@ const config: NextConfig = {
     "exceljs",
   ],
   outputFileTracingIncludes: {
+    "/api/cards{,/**}": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+      "./public/fonts/**",
+      "./node_modules/katex/dist/**",
+    ],
     "/api/reports/**": [
       "./node_modules/@sparticuz/chromium/bin/**",
       "./public/fonts/**",
