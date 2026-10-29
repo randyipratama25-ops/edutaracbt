@@ -284,6 +284,11 @@ Deno.serve(async (request: Request) => {
     } else if (job.kind === "retention") {
       const old = await rpc("retention");
       for (const backup of old) {
+        const reserved = await client.rpc("retention_reserve", {
+          input: { id, lease, backup_id: backup.id },
+        });
+        if (reserved.error) throw Error("Pemesanan retensi gagal.");
+        if (reserved.data !== true) continue;
         const paths: string[] = [];
         const list = async (prefix: string) => {
           for (let offset = 0; ; offset += 100) {
