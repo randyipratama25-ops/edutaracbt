@@ -28,3 +28,5 @@ Gerbang terbuka: sumber data legacy belum tersedia, migrasi staging penuh belum 
 
 ## Penerapan disetujui dan terverifikasi
 Pemilik memberikan izin eksplisit. Migrasi 20261029133618 diterapkan; backup-worker versi 2 ACTIVE dengan verify_jwt=true, full_worker_approved=false. SMTP dan retensi tetap nonaktif. Job smoke backup produksi 9e895868-859d-4e66-9074-572bafd7d924 succeeded 100%, checksum manifest 812a08ede79d09307b395159fa9403d43b1f495c74d2da7aec8af4032df61300. Anon dan authenticated tidak memiliki izin worker_command. Advisor hanya melaporkan tabel deny-by-default tanpa policy (INFO) dan perlindungan password bocor belum aktif (WARN). Catatan blokir sebelumnya adalah riwayat; penerapan ini telah diizinkan. Gerbang UAT/migrasi legacy/beban tetap terbuka.
+
+Regresi skema lengkap menemukan policy backup yang membaca tabel privat dari konteks pengguna. Migrasi koreksi 20261029133921 memindahkan pemeriksaan ke helper terikat Admin/organisasi. Integrasi Tahap 4/5/6 diulang dengan kedua migrasi dan lulus; akses Storage tanpa sesi tidak error dan tidak menampilkan backup.
