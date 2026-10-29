@@ -17,3 +17,5 @@ Implementasi modul authoring; pengujian unit, SQL/RLS/kuota konkuren dan HTTP. K
 
 ### 29 Oktober 2026 — Tahap 3.1–3.3
 Implementasi attempt/player/save/submit/integrity dan dependensi inti grading 4.1. Kebijakan D07/D08 serta adaptor OCR dipilih pemilik. Tes dan keterbatasan dicatat di docs/stages-3-1-to-3-3.md; UAT perangkat tetap terbuka.
+
+- 2026-10-29: Tahap 4.1–4.3: halaman hasil/analisis, RPC koreksi atomik/ledger/publikasi, adaptor AI nonaktif, laporan PDF/XLSX dan job privat. Migrasi 20261029102717 diterapkan setelah backup terarah, PostgreSQL staging lokal dan rollback teruji. Detail validasi dan batas: docs/stages-4-1-to-4-3.md.

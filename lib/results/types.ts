@@ -1,0 +1,81 @@
+import type { Question } from "../authoring/schema";
+export type ResultRow = {
+  id: string;
+  exam_id: string;
+  student_id: string;
+  student: string;
+  username: string;
+  title: string;
+  subject: string;
+  class_name: string | null;
+  status: string;
+  pending: number;
+  score: number | null;
+  passed: boolean | null;
+  revision: number;
+  started_at: string;
+  finalized_at: string;
+  published: boolean;
+};
+export type ResultQuestion = {
+  id: string;
+  version: number;
+  position: number;
+  payload: Question;
+  answer: unknown;
+  earned: number | null;
+  comment: string | null;
+  source: string | null;
+};
+export type ResultDetail = {
+  attempt: {
+    id: string;
+    exam_id: string;
+    student_id: string;
+    student: string;
+    title: string;
+    status: string;
+    revision: number;
+    score: number | null;
+    passed: boolean | null;
+    pending: number;
+    class_ids: string[];
+    class_name?: string;
+    started_at: string;
+    finalized_at: string;
+  };
+  questions: ResultQuestion[];
+  ledger: {
+    revision: number;
+    engine_version: string;
+    actor_id: string;
+    reason: string;
+    score: number | null;
+    earned: number;
+    max_points: number;
+    pending: number;
+    items: unknown;
+    created_at: string;
+  }[];
+  history: {
+    id: string;
+    question_id: string;
+    action: string;
+    points: number | null;
+    comment: string | null;
+    source: string;
+    created_at: string;
+    grade_revision: number;
+  }[];
+  suggestions: {
+    id: string;
+    question_id: string;
+    basis_revision: number;
+    provider: string;
+    model: string;
+    prompt_version: string;
+    status: string;
+    points: number | null;
+    reason: string;
+  }[];
+};

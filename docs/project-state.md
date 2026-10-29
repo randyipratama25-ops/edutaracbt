@@ -25,3 +25,6 @@ Implementasi jadwal, bank soal, versi immutable, impor/copy/progres tersedia pad
 
 ## Tahap 3.1–3.3 — implementasi teknis 29 Oktober 2026
 Mesin start/resume/snapshot/player, autosave berversi, finalisasi dan inti grading, canvas privat, integritas review-only, serta peninjauan scoped sudah diimplementasikan. Rincian: docs/stages-3-1-to-3-3.md. OCR belum aktif sesuai keputusan pemilik. UAT perangkat nyata dan alur operasional belum disahkan; gerbang 3.3 belum dinyatakan selesai.
+
+## Tahap 4.1–4.3 — implementasi teknis 29 Oktober 2026
+Hasil/koreksi manual atomik, ledger revisi, publikasi Admin, analisis lima tipe, dan ekspor PDF/XLSX privat berprogres diimplementasikan. Migrasi Supabase 20261029102717 diterapkan setelah backup/staged tests/rollback/preflight. AI tetap adaptor nonaktif sesuai keputusan pemilik. Validasi serta batas operasional: docs/stages-4-1-to-4-3.md. UAT perangkat fisik dan provider AI nyata belum disahkan.
