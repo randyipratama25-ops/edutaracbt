@@ -125,7 +125,7 @@ try {
     [exam],
   );
   await db.exec(
-    "insert into public.authoring_periods values('6e143c55-7be5-4e6e-9f1a-8f8db429956a',true,now()-interval '1 day',now()+interval '2 hours') on conflict(organization_id) do update set enabled=true,starts_at=excluded.starts_at,ends_at=excluded.ends_at;update auth.users set email='teacher-fixture@example.invalid',email_confirmed_at=now() where id='03000000-0000-4000-8000-000000000005';update private.app_settings set reminders_enabled=true where organization_id='6e143c55-7be5-4e6e-9f1a-8f8db429956a';",
+    "insert into public.authoring_periods values('6e143c55-7be5-4e6e-9f1a-8f8db429956a',true,now()-interval '1 day',greatest(now()+interval '2 hours',(date_trunc('day',now() at time zone 'Asia/Jakarta')+interval '17 hours') at time zone 'Asia/Jakarta')) on conflict(organization_id) do update set enabled=true,starts_at=excluded.starts_at,ends_at=excluded.ends_at;update auth.users set email='teacher-fixture@example.invalid',email_confirmed_at=now() where id='03000000-0000-4000-8000-000000000005';update private.app_settings set reminders_enabled=true where organization_id='6e143c55-7be5-4e6e-9f1a-8f8db429956a';",
   );
   await db.exec(
     "select private.scheduler_tick((date_trunc('day',now() at time zone 'Asia/Jakarta')+interval '11 hours') at time zone 'Asia/Jakarta');select private.scheduler_tick((date_trunc('day',now() at time zone 'Asia/Jakarta')+interval '11 hours') at time zone 'Asia/Jakarta');",
