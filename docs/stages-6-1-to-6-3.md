@@ -13,18 +13,9 @@ Pipeline legacy: export-template.gs, transformasi/dry-run/karantina, load-stagin
 - Pembatasan Admin, secret tanpa readback, audit immutable, deduplikasi, batas semester/zona waktu, nonce, checksum serta penolakan artefak rusak lulus.
 
 ## Produksi dan penerimaan
-Migrasi supabase/proposals/stage6.sql BELUM diterapkan. Auto-review menolak perubahan produksi yang mencakup skema, RLS/grant, trigger, cron, dispatch worker dan fungsi akses data karena belum ada persetujuan eksplisit untuk dampak tersebut. Jangan menerapkan lewat jalur alternatif untuk menghindari penolakan.
+Migrasi 20261029133618 serta koreksi 20261029133921 telah diterapkan dengan izin eksplisit pemilik. PR #6 di-merge pada 3868c82. Backup-worker JWT aktif dan backup smoke produksi berhasil; identity-gateway versi 5 memakai domain utama. Domain utama sudah diarahkan ke deployment Tahap 6. SMTP/retensi tetap nonaktif, automation_enabled=false walaupun satu cron sudah terpasang.
 
-PR belum boleh di-merge sebelum migrasi dan worker terverifikasi: UI baru bergantung pada RPC/skema baru. Worker backup belum di-deploy; transport belum dikonfigurasi. Worker penuh tetap nonaktif. Rollback non-destruktif: supabase/proposals/stage6-disable.sql, untuk digunakan hanya setelah migrasi diterapkan; mempertahankan data/audit.
-
-Gerbang terbuka: sumber data legacy belum tersedia, migrasi staging penuh belum dilakukan, UAT semua peran/perangkat fisik belum disahkan, staging beban/akun/SLO belum tersedia, uji beban nyata belum dijalankan, SMTP/Drive nyata belum diverifikasi. Tidak ada klaim penyelesaian operasional 6.2/6.3 atau kesiapan cutover.
-
-## Urutan penerapan setelah persetujuan
-1. Verifikasi ulang backup pra-Tahap 6, attempt operasional, diff skema, dan hasil pengujian.
-2. Terapkan proposal secara transaksional, catat versi migrasi sebenarnya ke repositori.
-3. Deploy backup-worker dengan verify_jwt=true dan dependensi relatif; konfigurasikan transport JWT publik server-side. full_worker_approved harus tetap false.
-4. Verifikasi job backup dan manifest/checksum, RLS/RPC, cron tunggal serta advisor keamanan.
-5. Merge PR, verifikasi deployment dan HTTP. Jangan mengaktifkan SMTP/retensi sebelum persetujuan terpisah.
+Gerbang terbuka: dataset legacy/migrasi native penuh, UAT perangkat, staging beban dan SLO, pengiriman email, serta restore cloud/Auth/Vault. Tidak ada klaim penerimaan penuh 6.2/6.3. Prosedur disable non-destruktif ada pada supabase/proposals/stage6-disable.sql; harus dipasangkan dengan aplikasi kompatibel dan tidak dijalankan sebagai latihan produksi.
 
 ## Penerapan disetujui dan terverifikasi
 Pemilik memberikan izin eksplisit. Migrasi 20261029133618 diterapkan; backup-worker versi 2 ACTIVE dengan verify_jwt=true, full_worker_approved=false. SMTP dan retensi tetap nonaktif. Job smoke backup produksi 9e895868-859d-4e66-9074-572bafd7d924 succeeded 100%, checksum manifest 812a08ede79d09307b395159fa9403d43b1f495c74d2da7aec8af4032df61300. Anon dan authenticated tidak memiliki izin worker_command. Advisor hanya melaporkan tabel deny-by-default tanpa policy (INFO) dan perlindungan password bocor belum aktif (WARN). Catatan blokir sebelumnya adalah riwayat; penerapan ini telah diizinkan. Gerbang UAT/migrasi legacy/beban tetap terbuka.

@@ -70,3 +70,10 @@ Tabel berikut menyalin skenario dan kriteria dari dokumen dasar agar pelaksana d
 ## Bukti baru — 29 Oktober 2026
 
 Pernyataan BELUM DIUJI pada tabel baseline di atas adalah snapshot historis. Sebagian assertion T006/T009/T041/T043/T049/T050 sudah dijalankan dan lulus pada SQL/HTTP/Storage; skenario lengkap/UAT tetap belum disahkan. Lihat docs/stages-1-1-to-1-4.md untuk perintah, batas dan hasil. T001–T003 menunggu mesin attempt; tidak ditandai selesai.
+
+## Tahap 7.0 — paket persiapan rilis, 29 Oktober 2026
+- Lint, TypeScript, build produksi lokal lulus.
+- Vitest: 74 lulus, 2 dilewati, 9 berkas. Tujuh tes baru mencakup fail-closed manifest, bukti per-commit, attempt aktif, jadwal ganda, timestamp/backup kedaluwarsa, izin fresh-start dan preservasi revisi jawaban baru.
+- Integrasi database Tahap 4/5/6 lulus. Latihan rollback dengan SQL inventory yang sama seperti runbook melindungi 22 protected rows setelah disable lokal dan menolak kehilangan revisi.
+- Release gate pada manifest pending menghasilkan ready=false/exit 2 sesuai harapan.
+- Tidak ada migrasi/restore/freeze/aktivasi otomasi produksi pada paket ini. Smoke seluruh peran, perangkat fisik, SLO beban, rekonsiliasi legacy dan pengesahan cutover masih terbuka.
