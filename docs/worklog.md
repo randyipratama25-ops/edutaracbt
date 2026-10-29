@@ -14,3 +14,6 @@ Dokumentasi 0.1–0.3 commit 500518b093aa2359e645bba38fb4a425c5a754ef masuk main
 
 ### 29 Oktober 2026 — Tahap 2.1–2.3
 Implementasi modul authoring; pengujian unit, SQL/RLS/kuota konkuren dan HTTP. Keputusan pemilik serta batas verifikasi dicatat di docs/stages-2-1-to-2-3.md.
+
+### 29 Oktober 2026 — Tahap 3.1–3.3
+Implementasi attempt/player/save/submit/integrity dan dependensi inti grading 4.1. Kebijakan D07/D08 serta adaptor OCR dipilih pemilik. Tes dan keterbatasan dicatat di docs/stages-3-1-to-3-3.md; UAT perangkat tetap terbuka.

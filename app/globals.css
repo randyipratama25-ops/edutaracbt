@@ -335,3 +335,14 @@ td {
 fieldset { min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
 .table-wrap { max-width: 100%; overflow-x: auto; }
 .table-wrap input[type="checkbox"] { width: auto; }
+.student-shell { max-width: 1120px; margin-inline: auto; }
+.exam-top { position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.exam-top h1 { font-size: 1.35rem; margin-bottom: 6px; }
+.exam-top [role="timer"] { font-variant-numeric: tabular-nums; font-size: 1.4rem; margin: 0; }
+.question-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 16px; }
+.question-number { border: 1px solid var(--border); background: white; min-width: 44px; min-height: 44px; padding: 8px; border-radius: 8px; }
+.question-number.selected { background: var(--primary); color: white; }
+.answer-choice { padding: 12px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; }
+.essay-canvas { width: 100%; height: auto; border: 1px solid var(--border); touch-action: none; background: white; }
+.student-shell pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media(max-width:760px) { .student-shell { padding: 12px; } .exam-top { position: static; } .student-shell .panel { padding: 16px; } }

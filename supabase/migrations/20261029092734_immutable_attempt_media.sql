@@ -1,0 +1,6 @@
+-- Registered answer files are append-only; cleanup may only remove failed/unregistered uploads.
+alter policy canvas_own_delete on storage.objects using(bucket_id='attempt-canvas' and private.actor_org() is not null and (storage.foldername(name))[1]=auth.uid()::text and not exists(select 1 from public.answer_media m where m.object_path=name));
+-- Freeze shared source media once any immutable attempt snapshot references it.
+create or replace function private.attempt_media_frozen(path text) returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.media_assets m where m.object_path=path and m.organization_id=private.actor_org() and (m.uploader_id=auth.uid() or private.is_admin()) and exists(select 1 from private.attempt_questions q where q.student_payload->'attachments' ? m.id::text))$$;
+revoke all on function private.attempt_media_frozen(text) from public,anon;grant execute on function private.attempt_media_frozen(text) to authenticated;
+alter policy media_own_delete on storage.objects using(bucket_id='exam-media' and private.actor_org() is not null and (private.is_admin() or (storage.foldername(name))[1]=auth.uid()::text) and not private.attempt_media_frozen(name));

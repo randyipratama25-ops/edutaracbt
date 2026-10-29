@@ -22,3 +22,6 @@ Tindakan berikutnya: fondasi CI/komponen, skema minimal terisolasi dengan RLS, a
 
 ## Tahap 2.1–2.3 — 29 Oktober 2026
 Implementasi jadwal, bank soal, versi immutable, impor/copy/progres tersedia pada `/dashboard/exams`. Keputusan max=0 tanpa batas, lock setelah mulai, Forms melalui ekspor sudah diberikan pemilik. Rincian dan bukti: docs/stages-2-1-to-2-3.md. UAT browser seluruh alur dan perangkat fisik belum disahkan; tidak ada klaim kesetaraan penuh data legacy.
+
+## Tahap 3.1–3.3 — implementasi teknis 29 Oktober 2026
+Mesin start/resume/snapshot/player, autosave berversi, finalisasi dan inti grading, canvas privat, integritas review-only, serta peninjauan scoped sudah diimplementasikan. Rincian: docs/stages-3-1-to-3-3.md. OCR belum aktif sesuai keputusan pemilik. UAT perangkat nyata dan alur operasional belum disahkan; gerbang 3.3 belum dinyatakan selesai.

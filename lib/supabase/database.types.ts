@@ -14,6 +14,47 @@ export type Database = {
   };
   public: {
     Tables: {
+      answer_media: {
+        Row: {
+          attempt_id: string;
+          byte_size: number;
+          checksum: string;
+          created_at: string;
+          id: string;
+          object_path: string;
+          question_id: string;
+          student_id: string;
+        };
+        Insert: {
+          attempt_id: string;
+          byte_size: number;
+          checksum: string;
+          created_at?: string;
+          id?: string;
+          object_path: string;
+          question_id: string;
+          student_id: string;
+        };
+        Update: {
+          attempt_id?: string;
+          byte_size?: number;
+          checksum?: string;
+          created_at?: string;
+          id?: string;
+          object_path?: string;
+          question_id?: string;
+          student_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "answer_media_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       attempt_answers: {
         Row: {
           attempt_id: string;
@@ -160,37 +201,64 @@ export type Database = {
           attempt_number: number;
           deadline_at: string;
           exam_id: string;
+          finalized_at: string | null;
+          grading_pending: number;
           id: string;
+          objective_earned: number | null;
           organization_id: string;
+          policy_snapshot: Json;
+          review_reason: string | null;
           score_percent: number | null;
           started_at: string;
           status: string;
           student_id: string;
+          total_points: number | null;
           version: number;
+          writer_client: string | null;
+          writer_epoch: number;
+          writer_session: string | null;
         };
         Insert: {
           attempt_number?: number;
           deadline_at: string;
           exam_id: string;
+          finalized_at?: string | null;
+          grading_pending?: number;
           id?: string;
+          objective_earned?: number | null;
           organization_id: string;
+          policy_snapshot?: Json;
+          review_reason?: string | null;
           score_percent?: number | null;
           started_at?: string;
           status?: string;
           student_id: string;
+          total_points?: number | null;
           version?: number;
+          writer_client?: string | null;
+          writer_epoch?: number;
+          writer_session?: string | null;
         };
         Update: {
           attempt_number?: number;
           deadline_at?: string;
           exam_id?: string;
+          finalized_at?: string | null;
+          grading_pending?: number;
           id?: string;
+          objective_earned?: number | null;
           organization_id?: string;
+          policy_snapshot?: Json;
+          review_reason?: string | null;
           score_percent?: number | null;
           started_at?: string;
           status?: string;
           student_id?: string;
+          total_points?: number | null;
           version?: number;
+          writer_client?: string | null;
+          writer_epoch?: number;
+          writer_session?: string | null;
         };
         Relationships: [
           {
@@ -356,6 +424,7 @@ export type Database = {
           passing_grade: number;
           pin_hash: string;
           policy_version: number;
+          show_exam_result: boolean;
           shuffle_options: boolean;
           shuffle_questions: boolean;
           starts_at: string;
@@ -373,6 +442,7 @@ export type Database = {
           passing_grade?: number;
           pin_hash: string;
           policy_version?: number;
+          show_exam_result?: boolean;
           shuffle_options?: boolean;
           shuffle_questions?: boolean;
           starts_at: string;
@@ -390,6 +460,7 @@ export type Database = {
           passing_grade?: number;
           pin_hash?: string;
           policy_version?: number;
+          show_exam_result?: boolean;
           shuffle_options?: boolean;
           shuffle_questions?: boolean;
           starts_at?: string;
@@ -925,10 +996,12 @@ export type Database = {
     };
     Functions: {
       advance_exam_schedule: { Args: never; Returns: number };
+      attempt_command: { Args: { input: Json }; Returns: Json };
       authoring_command: { Args: { input: Json }; Returns: Json };
       authoring_status: { Args: { exam_id: string }; Returns: string };
       consume_login_budget: { Args: { budget_key: string }; Returns: boolean };
       has_supervisor_context: { Args: never; Returns: boolean };
+      review_attempt: { Args: { input: Json }; Returns: Json };
     };
     Enums: {
       [_ in never]: never;

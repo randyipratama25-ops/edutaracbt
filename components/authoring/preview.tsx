@@ -7,9 +7,11 @@ import { safeHtml, type Question } from "../../lib/authoring/schema";
 export function QuestionPreview({
   question: q,
   showKey = true,
+  attachmentBaseUrl = "/api/authoring/media",
 }: {
   question: Question;
   showKey?: boolean;
+  attachmentBaseUrl?: string;
 }) {
   const html = safeHtml(q.stem).replace(
     /\$\$([^$]+)\$\$|\$([^$]+)\$/g,
@@ -25,7 +27,7 @@ export function QuestionPreview({
     <section className="question-preview" dir={q.direction}>
       <div dangerouslySetInnerHTML={{ __html: html }} />
       {q.attachments.map((id) => (
-        <Attachment key={id} id={id} />
+        <Attachment key={id} id={id} baseUrl={attachmentBaseUrl} />
       ))}
       {q.options.map((o, i) => (
         <p key={o.id}>
@@ -52,13 +54,13 @@ export function QuestionPreview({
   );
 }
 
-function Attachment({ id }: { id: string }) {
+function Attachment({ id, baseUrl }: { id: string; baseUrl: string }) {
   const [media, setMedia] = useState<{ url: string; mime: string } | null>(
     null,
   );
   useEffect(() => {
     let active = true;
-    fetch("/api/authoring/media?id=" + encodeURIComponent(id))
+    fetch(baseUrl + "?id=" + encodeURIComponent(id))
       .then((r) => r.json())
       .then((j) => {
         if (active && j.success) setMedia(j.data);
@@ -67,7 +69,7 @@ function Attachment({ id }: { id: string }) {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, baseUrl]);
   if (!media) return <p>Memuat lampiran…</p>;
   return media.mime.startsWith("image/") ? (
     <Image

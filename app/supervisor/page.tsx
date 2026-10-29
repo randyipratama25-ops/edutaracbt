@@ -1,3 +1,4 @@
+import { ReviewPanel } from "../../components/attempts/review";
 import { redirect } from "next/navigation";
 import { actor } from "../../lib/auth/actor";
 import { LogoutButton } from "../../components/auth/logout-button";
@@ -9,10 +10,7 @@ export default async function Supervisor() {
     <main className="workspace">
       <p className="eyebrow">PENGAWAS UJIAN</p>
       <h1>Selamat datang, {a.full_name}</h1>
-      <p>
-        Penugasan efektif Anda sudah diverifikasi. Monitoring dan tindakan
-        peserta akan tersedia pada tahap pengawasan ujian.
-      </p>
+      <ReviewPanel />
       <LogoutButton />
     </main>
   );
