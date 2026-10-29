@@ -31,3 +31,8 @@ Hasil/koreksi manual atomik, ledger revisi, publikasi Admin, analisis lima tipe,
 
 ## Tahap 5.1–5.3 — implementasi teknis 29 Oktober 2026
 Ruang/sesi/roster/pengawas pengganti, monitor scoped dan reset berarsip, media privat, adaptor Drive opsional, kartu PDF/ZIP berprogres, serta notifikasi/receipt diimplementasikan. Migrasi Supabase 20261029120103 terpasang setelah backup dan validasi lokal. Detail, batas dan gerbang UAT yang belum disahkan: docs/stages-5-1-to-5-3.md.
+
+## Tahap 6.1–6.3 — belum dirilis
+Implementasi dan validasi lokal tersedia; migrasi produksi ditolak auto-review dan belum diterapkan. Worker belum di-deploy. PR menunggu penerapan database terverifikasi sebelum merge. Lihat docs/stages-6-1-to-6-3.md untuk bukti dan gerbang penerimaan.
+
+Pembaruan: izin eksplisit pemilik diterima. Migrasi 20261029133618 dan backup-worker JWT aktif terpasang; smoke backup succeeded 100%. SMTP/retensi nonaktif. Gerbang operasional 6.2/6.3 masih terbuka.

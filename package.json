@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "test:database": "node scripts/stage4-integration.mjs && node scripts/stage5-integration.mjs && node scripts/stage6-integration.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.3.1",

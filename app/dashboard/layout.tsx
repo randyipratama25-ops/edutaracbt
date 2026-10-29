@@ -30,7 +30,12 @@ export default async function DashboardLayout({
           <Link href="/dashboard/media">Media soal</Link>
           <Link href="/dashboard/cards">Kartu peserta</Link>
           {a.role === "admin" && (
-            <Link href="/dashboard/rooms">Ruang dan pengawas</Link>
+            <>
+              <Link href="/dashboard/rooms">Ruang dan pengawas</Link>
+              <Link href="/dashboard/settings">Pengaturan</Link>
+              <Link href="/dashboard/audit">Audit aktivitas</Link>
+              <Link href="/dashboard/jobs">Otomasi dan backup</Link>
+            </>
           )}
         </nav>
         <p className="muted">

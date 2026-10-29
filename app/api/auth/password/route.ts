@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       password: input.password,
     });
     if (error) throw error;
+    await client.rpc("session_audit", { event_name: "PASSWORD_CHANGED" });
     await client.auth.signOut({ scope: "global" });
     return json({ message: "Password diperbarui. Silakan masuk kembali." });
   } catch (error) {
