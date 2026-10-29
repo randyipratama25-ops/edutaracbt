@@ -1,0 +1,18 @@
+{
+  "id": "pg-shuffled-options",
+  "status": "PROPOSED_NOT_EXECUTED",
+  "input": {
+    "type": "PG",
+    "options": [
+      "dua",
+      "satu"
+    ],
+    "key_id": "b",
+    "answer_id": "b",
+    "weight": 10
+  },
+  "expected": {
+    "earned_points": 10
+  },
+  "provenance": "Kontrak dokumen dasar §5.4, dikonfirmasi secara statis pada submitExam bila berlaku; belum diuji runtime"
+}

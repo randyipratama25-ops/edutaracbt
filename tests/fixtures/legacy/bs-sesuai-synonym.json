@@ -1,0 +1,24 @@
+{
+  "id": "bs-sesuai-synonym",
+  "status": "PROPOSED_NOT_EXECUTED",
+  "input": {
+    "type": "BS",
+    "statements": [
+      "p",
+      "q"
+    ],
+    "key": {
+      "p": "Benar",
+      "q": "Salah"
+    },
+    "answer": {
+      "0": "Sesuai",
+      "1": "Tidak Sesuai"
+    },
+    "weight": 10
+  },
+  "expected": {
+    "earned_points": 10
+  },
+  "provenance": "Kontrak dokumen dasar §5.4, dikonfirmasi secara statis pada submitExam bila berlaku; belum diuji runtime"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "pg-complex-wrong-option",
+  "status": "PROPOSED_NOT_EXECUTED",
+  "input": {
+    "type": "PG_KOMPLEKS",
+    "correct": [
+      "a",
+      "b"
+    ],
+    "answer": [
+      "a",
+      "c"
+    ],
+    "weight": 10
+  },
+  "expected": {
+    "earned_points": 0
+  },
+  "provenance": "Kontrak dokumen dasar §5.4, dikonfirmasi secara statis pada submitExam bila berlaku; belum diuji runtime"
+}

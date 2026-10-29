@@ -13,3 +13,9 @@ Tahap 1.1–1.4: implementasi fondasi tersedia pada branch feat/stages-1-1-to-1-
 Dua migrasi dan identity-gateway sudah diterapkan pada proyek Supabase baru. Akun uji sementara telah dibersihkan. Tidak ada fitur ujian dinyatakan setara atau siap produksi. Belum ada dataset legacy dimigrasi atau UAT disahkan. Dokumen perencanaan yang diarsipkan mempertahankan status historis; status aktual ada di file ini dan worklog.
 
 Tindakan berikutnya: fondasi CI/komponen, skema minimal terisolasi dengan RLS, autentikasi internal, pengguna/master; keputusan yang memblokir modul tetap dilacak. Tidak mengaktifkan SSO, regrading, atau impor produksi.
+
+## Verifikasi operasional 29 Oktober 2026
+- Profil Admin pertama: username admin, email tumtsnurulfalah@gmail.com; undangan tercatat pada Auth, email belum dikonfirmasi. Pengguna harus mengatur password sendiri.
+- Site URL produksi dan redirect /auth/reset serta /auth/confirm tersimpan di dashboard Supabase. SMTP kustom belum aktif; pengiriman ke inbox belum diverifikasi.
+- UAT perangkat fisik belum diverifikasi. Browser aplikasi masih memerlukan autentikasi Vercel.
+- Memulihkan berkas aplikasi yang terhapus dalam commit status 7216a00 dari hasil merge afddefb; menambahkan penerusan fragment aktivasi dari root ke /auth/reset.
