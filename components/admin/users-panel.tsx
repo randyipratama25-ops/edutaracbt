@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { parseUserImport } from "../../lib/domain/validation";
@@ -30,6 +30,33 @@ export function UsersPanel() {
     [bulk, setBulk] = useState(""),
     [preview, setPreview] = useState<ReturnType<typeof parseUserImport>>([]),
     [chosenRole, setChosenRole] = useState("student");
+  const [invitation, setInvitation] = useState<Row | null>(null);
+  const [invitationInfo, setInvitationInfo] = useState<{ email: string; eligible: boolean; reason: string } | null>(null);
+  const [invitationMessage, setInvitationMessage] = useState("");
+  const [invitationLoading, setInvitationLoading] = useState(false);
+  const [invitationSending, setInvitationSending] = useState(false);
+  const invitationLock = useRef(false);
+  const invitationSequence = useRef(0);
+  async function openInvitation(row: Row) {
+    const seq = ++invitationSequence.current;
+    setInvitation(row); setInvitationInfo(null); setInvitationMessage(""); setInvitationLoading(true);
+    try {
+      const info = await mutate({ operation: "invitation_info", id: row.id });
+      if (seq === invitationSequence.current) setInvitationInfo(info);
+    } catch (e) {
+      if (seq === invitationSequence.current) setInvitationMessage(e instanceof Error ? e.message : "Status undangan gagal dimuat.");
+    } finally { if (seq === invitationSequence.current) setInvitationLoading(false); }
+  }
+  async function sendInvitation() {
+    if (!invitation || !invitationInfo?.eligible || invitationLock.current) return;
+    invitationLock.current = true; setInvitationSending(true); setInvitationMessage("");
+    try {
+      const result = await mutate({ operation: "resend_invitation", id: invitation.id });
+      setMessage(result.message); setInvitationMessage(result.message);
+      setInvitationInfo({ ...invitationInfo, eligible: false, reason: "Undangan baru dikirim. Tunggu setidaknya 60 detik sebelum mencoba lagi." });
+    } catch (e) { setInvitationMessage(e instanceof Error ? e.message : "Pengiriman gagal."); }
+    finally { invitationLock.current = false; setInvitationSending(false); }
+  }
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
@@ -276,6 +303,9 @@ export function UsersPanel() {
                       </Button>
                       {canManage ? (
                         <>
+                          <Button variant="outline" disabled={busy || invitationSending || !row.active} onClick={() => void openInvitation(row)}>
+                            Kirim ulang undangan
+                          </Button>
                           <Button
                             variant="outline"
                             disabled={busy}
@@ -394,6 +424,26 @@ export function UsersPanel() {
           </div>
         ) : null}
       </section>
+      <Dialog open={!!invitation} onOpenChange={(value) => {
+        if (invitationSending) return;
+        if (!value) { invitationSequence.current++; setInvitation(null); }
+      }} title="Kirim ulang undangan" description="Kirim tautan aktivasi baru ke email yang terdaftar pada akun pengguna.">
+        <div className="stack">
+          <p>Pengguna: <strong>{invitation?.full_name}</strong> ({invitation?.username})</p>
+          {invitationLoading ? <p role="status">Memeriksa status akun…</p> : null}
+          {invitationInfo ? <>
+            <p>Email tujuan: <strong>{invitationInfo.email || "Tidak tersedia"}</strong></p>
+            {!invitationInfo.eligible ? <p>{invitationInfo.reason}</p> : <p>Pastikan alamat email benar. Pengguna perlu membuka tautan dari email terbaru.</p>}
+          </> : null}
+          <p role="status" aria-live="polite">{invitationMessage}</p>
+          <div className="actions">
+            <Button variant="outline" disabled={invitationSending} onClick={() => { invitationSequence.current++; setInvitation(null); }}>Tutup</Button>
+            <Button disabled={invitationLoading || invitationSending || !invitationInfo?.eligible} onClick={() => void sendInvitation()}>
+              {invitationSending ? "Mengirim…" : "Kirim undangan"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
       <Dialog
         open={open}
         onOpenChange={setOpen}
