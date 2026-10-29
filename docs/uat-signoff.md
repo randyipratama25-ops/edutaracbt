@@ -6,7 +6,7 @@ Persetujuan mengerjakan Tahap 7/merge PR tidak berarti skenario UAT telah lulus.
 |---|---|---|
 | Admin/Guru/Pengawas/Siswa end-to-end | Belum lengkap | Belum ditetapkan |
 | Desktop/tablet/ponsel fisik | Belum disahkan | Belum tersedia |
-| Beban staging dan SLO | Belum dijalankan/disepakati | Belum tersedia |
+| Beban staging dan SLO | Target 150 disepakati; burst backend TIDAK LULUS | docs/acceptance/operational-report.md |
 | Audit keamanan SEC-01–SEC-26 final | Belum ditutup seluruhnya | Register dan bukti perlu rekonsiliasi |
 | Inbox dan pemulihan akun end-to-end | Belum diverifikasi | SMTP kustom nonaktif |
 | Dataset legacy/freeze/delta parity | Sumber belum tersedia | Tidak diasumsikan fresh start |

@@ -57,7 +57,9 @@ export async function run() {
   };
   let requests = 0,
     errors = 0,
-    lost = 0;
+    lost = 0,
+    completed = 0,
+    semanticErrors = 0;
   const failures = [];
   await Promise.all(
     users.map(async (user, index) => {
@@ -162,7 +164,11 @@ export async function run() {
           request_id: randomUUID(),
           mode: "manual",
         });
-      } catch {}
+        completed++;
+      } catch (e) {
+        semanticErrors++;
+        failures.push({ user_index: index, stage: "workflow", message: String(e.message).slice(0, 160) });
+      }
     }),
   );
   const report = {
@@ -170,6 +176,8 @@ export async function run() {
     logical_clients: users.length,
     requests,
     errors,
+    completed,
+    semantic_errors: semanticErrors,
     error_rate: requests ? errors / requests : 0,
     answer_mismatches: lost,
     metrics: Object.fromEntries(
@@ -195,6 +203,8 @@ export async function run() {
     }),
   );
   if (
+    completed !== users.length ||
+    semanticErrors ||
     errors ||
     lost ||
     (process.env.CBT_AUTOSAVE_P95_MS &&
