@@ -329,3 +329,9 @@ td {
     scroll-behavior: auto !important;
   }
 }
+.question-preview { border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow-wrap: anywhere; }
+.question-preview img, .question-preview audio { max-width: 100%; }
+.katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+fieldset { min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.table-wrap { max-width: 100%; overflow-x: auto; }
+.table-wrap input[type="checkbox"] { width: auto; }

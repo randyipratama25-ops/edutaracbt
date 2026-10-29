@@ -1,0 +1,6 @@
+import {spawn} from 'node:child_process';
+const base='http://127.0.0.1:3124';const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port','3124'],{stdio:'ignore'});
+try{let up=false;for(let i=0;i<40;i++){try{if((await fetch(base+'/api/health')).ok){up=true;break;}}catch{}await new Promise(r=>setTimeout(r,250));}if(!up)throw Error('Server did not start');
+for(const [path,method,origin,status] of [['/api/authoring','GET',base,401],['/api/authoring','POST',base,401],['/api/authoring','POST','https://invalid.example',403],['/api/authoring/media','POST',base,403],['/api/authoring/media?id=00000000-0000-0000-0000-000000000000','GET',base,401]]){const r=await fetch(base+path,{method,headers:{origin,'Content-Type':'application/json'},...(method==='POST'?{body:'{}'}:{})});if(r.status!==status)throw Error(`${method} ${path}: ${r.status} expected ${status}`);console.log(`PASS ${method} ${path} rejects unauthenticated or cross-origin request (${status})`);}
+const r=await fetch(base+'/dashboard/exams',{redirect:'manual'});if(r.status!==307||!r.headers.get('location')?.endsWith('/login'))throw Error('Protected page did not redirect');console.log('PASS protected exam UI redirects to login');
+}finally{server.kill();}

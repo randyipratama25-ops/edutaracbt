@@ -19,3 +19,6 @@ Tindakan berikutnya: fondasi CI/komponen, skema minimal terisolasi dengan RLS, a
 - Site URL produksi dan redirect /auth/reset serta /auth/confirm tersimpan di dashboard Supabase. SMTP kustom belum aktif; pengiriman ke inbox belum diverifikasi.
 - UAT perangkat fisik belum diverifikasi. Browser aplikasi masih memerlukan autentikasi Vercel.
 - Memulihkan berkas aplikasi yang terhapus dalam commit status 7216a00 dari hasil merge afddefb; menambahkan penerusan fragment aktivasi dari root ke /auth/reset.
+
+## Tahap 2.1–2.3 — 29 Oktober 2026
+Implementasi jadwal, bank soal, versi immutable, impor/copy/progres tersedia pada `/dashboard/exams`. Keputusan max=0 tanpa batas, lock setelah mulai, Forms melalui ekspor sudah diberikan pemilik. Rincian dan bukti: docs/stages-2-1-to-2-3.md. UAT browser seluruh alur dan perangkat fisik belum disahkan; tidak ada klaim kesetaraan penuh data legacy.

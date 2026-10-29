@@ -23,6 +23,7 @@ export default async function DashboardLayout({
           <Link href="/dashboard">Ringkasan</Link>
           <Link href="/dashboard/users">Pengguna</Link>
           <Link href="/dashboard/master-data">Data master</Link>
+          <Link href="/dashboard/exams">Ujian dan soal</Link>
         </nav>
         <p className="muted">
           {a.full_name}
