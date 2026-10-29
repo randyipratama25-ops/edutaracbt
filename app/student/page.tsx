@@ -9,7 +9,7 @@ export default async function Student() {
   return (
     <>
       <Inbox />
-      <StudentPortal />
+      <StudentPortal studentId={a.id} />
     </>
   );
 }
