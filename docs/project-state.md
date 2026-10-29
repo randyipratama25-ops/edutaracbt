@@ -36,3 +36,6 @@ Ruang/sesi/roster/pengawas pengganti, monitor scoped dan reset berarsip, media p
 Implementasi dan validasi lokal tersedia; migrasi produksi ditolak auto-review dan belum diterapkan. Worker belum di-deploy. PR menunggu penerapan database terverifikasi sebelum merge. Lihat docs/stages-6-1-to-6-3.md untuk bukti dan gerbang penerimaan.
 
 Pembaruan: izin eksplisit pemilik diterima. Migrasi 20261029133618 dan backup-worker JWT aktif terpasang; smoke backup succeeded 100%. SMTP/retensi nonaktif. Gerbang operasional 6.2/6.3 masih terbuka.
+
+## Tahap 7.0 — persiapan, belum cutover final
+Runbook operasi, panduan peran, manifest pending, release gate offline, preflight read-only dan latihan preservasi rollback disiapkan. Prasyarat UAT/perangkat, legacy parity, SLO/beban dan pengesahan observasi masih terbuka. Lihat docs/stage-7-release-report.md. Merge paket ini bukan bukti penerimaan operasional.

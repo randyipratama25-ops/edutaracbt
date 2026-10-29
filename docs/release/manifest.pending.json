@@ -1,0 +1,18 @@
+{
+  "format": "edutara-release-v1",
+  "candidate_sha": "3868c8275ce697c5241b7c302bfae99e60ce0af3",
+  "production_project": "cwklpfplqoofvehlyfvd",
+  "production_origin": "https://edutara-cbt-ashen.vercel.app",
+  "observed_at": "2026-10-29T13:58:36.876887Z",
+  "active_attempts": 0,
+  "scheduler_count": 1,
+  "backup": {
+    "id": "9e895868-859d-4e66-9074-572bafd7d924",
+    "completed_at": null,
+    "checksum": "812a08ede79d09307b395159fa9403d43b1f495c74d2da7aec8af4032df61300",
+    "status": "succeeded"
+  },
+  "data_mode": "legacy",
+  "observation_minutes": 60,
+  "proofs": {}
+}
