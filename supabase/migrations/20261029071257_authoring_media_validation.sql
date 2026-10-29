@@ -1,0 +1,13 @@
+alter function private.validate_question(jsonb) rename to validate_question_content;
+create function private.validate_question(v jsonb) returns void language plpgsql set search_path='' as $$begin
+ if jsonb_typeof(v) is distinct from 'object' or jsonb_typeof(v->'stem') is distinct from 'string' or jsonb_typeof(v->'points') is distinct from 'number' or jsonb_typeof(v->'required') is distinct from 'boolean' or jsonb_typeof(v->'options') is distinct from 'array' or jsonb_typeof(v->'key') is distinct from 'array' or jsonb_typeof(v->'attachments') is distinct from 'array' or jsonb_typeof(v->'minChars') is distinct from 'number' or jsonb_typeof(v->'canvas') is distinct from 'object' or v->>'direction' is null then raise exception 'Data soal tidak lengkap';end if;
+ if jsonb_typeof(v->'canvas'->'enabled') is distinct from 'boolean' or (v->'canvas'->>'width')::int not between 100 and 4096 or (v->'canvas'->>'height')::int not between 100 and 4096 or not(v->'canvas' ?& array['width','height']) then raise exception 'Metadata canvas tidak valid';end if;
+ perform private.validate_question_content(v);
+end $$;
+revoke all on function private.validate_question(jsonb),private.validate_question_content(jsonb) from public,anon,authenticated;
+grant insert on public.media_assets to authenticated;
+create policy author_media_insert on public.media_assets for insert to authenticated with check(organization_id=private.actor_org() and uploader_id=auth.uid() and object_path like auth.uid()::text||'/%' and exists(select 1 from public.profiles where id=auth.uid() and role in ('admin','teacher')));
+create function private.can_read_author_media(target uuid) returns boolean language sql stable security definer set search_path='' as $$select private.actor_org() is not null and exists(select 1 from public.media_assets m where m.id=target and m.organization_id=private.actor_org() and (private.is_admin() or m.uploader_id=auth.uid() or exists(select 1 from public.question_attachments a join public.questions q on q.id=a.question_id where a.media_id=m.id and private.can_author(q.exam_id))))$$;
+revoke all on function private.can_read_author_media(uuid) from public,anon;grant execute on function private.can_read_author_media(uuid) to authenticated;
+create policy media_author_read on public.media_assets for select to authenticated using(private.can_read_author_media(id));
+create policy media_author_storage_read on storage.objects for select to authenticated using(bucket_id='exam-media' and exists(select 1 from public.media_assets m where m.object_path=name and private.can_read_author_media(m.id)));

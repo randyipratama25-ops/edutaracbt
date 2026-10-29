@@ -97,6 +97,35 @@ export type Database = {
           },
         ];
       };
+      authoring_periods: {
+        Row: {
+          enabled: boolean;
+          ends_at: string | null;
+          organization_id: string;
+          starts_at: string | null;
+        };
+        Insert: {
+          enabled?: boolean;
+          ends_at?: string | null;
+          organization_id: string;
+          starts_at?: string | null;
+        };
+        Update: {
+          enabled?: boolean;
+          ends_at?: string | null;
+          organization_id?: string;
+          starts_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "authoring_periods_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: true;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       classes: {
         Row: {
           active: boolean;
@@ -318,6 +347,8 @@ export type Database = {
       };
       exams: {
         Row: {
+          bypass_period: boolean;
+          created_by: string | null;
           duration_minutes: number;
           ends_at: string;
           id: string;
@@ -325,12 +356,16 @@ export type Database = {
           passing_grade: number;
           pin_hash: string;
           policy_version: number;
+          shuffle_options: boolean;
+          shuffle_questions: boolean;
           starts_at: string;
           status: string;
           subject_id: string | null;
           title: string;
         };
         Insert: {
+          bypass_period?: boolean;
+          created_by?: string | null;
           duration_minutes: number;
           ends_at: string;
           id?: string;
@@ -338,12 +373,16 @@ export type Database = {
           passing_grade?: number;
           pin_hash: string;
           policy_version?: number;
+          shuffle_options?: boolean;
+          shuffle_questions?: boolean;
           starts_at: string;
           status?: string;
           subject_id?: string | null;
           title: string;
         };
         Update: {
+          bypass_period?: boolean;
+          created_by?: string | null;
           duration_minutes?: number;
           ends_at?: string;
           id?: string;
@@ -351,12 +390,21 @@ export type Database = {
           passing_grade?: number;
           pin_hash?: string;
           policy_version?: number;
+          shuffle_options?: boolean;
+          shuffle_questions?: boolean;
           starts_at?: string;
           status?: string;
           subject_id?: string | null;
           title?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "exams_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "exams_organization_id_fkey";
             columns: ["organization_id"];
@@ -563,6 +611,39 @@ export type Database = {
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      question_attachments: {
+        Row: {
+          id: string;
+          media_id: string;
+          question_id: string;
+        };
+        Insert: {
+          id?: string;
+          media_id: string;
+          question_id: string;
+        };
+        Update: {
+          id?: string;
+          media_id?: string;
+          question_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "question_attachments_media_id_fkey";
+            columns: ["media_id"];
+            isOneToOne: false;
+            referencedRelation: "media_assets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "question_attachments_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "questions";
             referencedColumns: ["id"];
           },
         ];
@@ -843,6 +924,9 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      advance_exam_schedule: { Args: never; Returns: number };
+      authoring_command: { Args: { input: Json }; Returns: Json };
+      authoring_status: { Args: { exam_id: string }; Returns: string };
       consume_login_budget: { Args: { budget_key: string }; Returns: boolean };
       has_supervisor_context: { Args: never; Returns: boolean };
     };
@@ -866,12 +950,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
@@ -893,12 +977,13 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
@@ -917,12 +1002,13 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
@@ -941,12 +1027,13 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
@@ -959,11 +1046,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
 }
