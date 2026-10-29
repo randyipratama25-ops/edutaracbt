@@ -112,13 +112,6 @@ Deno.serve(async (request) => {
         await auth.auth.signOut({ scope: "local" });
         return fail("Konteks login atau penugasan tidak diizinkan.", 403);
       }
-      if (input.context === "student") {
-        await auth.auth.signOut({ scope: "local" });
-        return fail(
-          "Layanan ujian belum dibuka. PIN dan attempt tersedia pada tahap mesin ujian.",
-          409,
-        );
-      }
       await admin.from("audit_logs").insert({
         organization_id: "6e143c55-7be5-4e6e-9f1a-8f8db429956a",
         actor_id: profile!.id,

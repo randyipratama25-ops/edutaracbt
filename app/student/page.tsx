@@ -1,15 +1,9 @@
-import Link from "next/link";
-export default function Student() {
-  return (
-    <main className="auth-wrap">
-      <section className="panel">
-        <h1>Ujian belum dibuka</h1>
-        <p>
-          Layanan PIN dan pengerjaan ujian akan tersedia setelah mesin ujian
-          selesai diverifikasi.
-        </p>
-        <Link href="/login">Kembali ke login</Link>
-      </section>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { actor } from "../../lib/auth/actor";
+import { StudentPortal } from "../../components/attempts/player";
+export const dynamic = "force-dynamic";
+export default async function Student() {
+  const a = await actor();
+  if (!a || a.context !== "student") redirect("/login");
+  return <StudentPortal />;
 }

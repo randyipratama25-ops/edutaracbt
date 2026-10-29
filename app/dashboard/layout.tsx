@@ -24,6 +24,9 @@ export default async function DashboardLayout({
           <Link href="/dashboard/users">Pengguna</Link>
           <Link href="/dashboard/master-data">Data master</Link>
           <Link href="/dashboard/exams">Ujian dan soal</Link>
+          {a.role === "admin" && (
+            <Link href="/dashboard/monitor">Peninjauan ujian</Link>
+          )}
         </nav>
         <p className="muted">
           {a.full_name}

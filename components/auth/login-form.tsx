@@ -65,7 +65,11 @@ export function LoginForm() {
         body: JSON.stringify({ username: recoveryName.trim() }),
       });
       const j = await r.json();
-      setRecoveryMessage(r.ok ? j.data.message : j.error?.message || "Pemulihan belum berhasil. Coba lagi.");
+      setRecoveryMessage(
+        r.ok
+          ? j.data.message
+          : j.error?.message || "Pemulihan belum berhasil. Coba lagi.",
+      );
     } catch {
       setRecoveryMessage("Tidak dapat meminta pemulihan. Coba lagi.");
     } finally {
@@ -74,86 +78,94 @@ export function LoginForm() {
   }
   return (
     <>
-    <form onSubmit={submit} className="stack">
-      <label>
-        Konteks masuk
-        <select value={context} onChange={(e) => setContext(e.target.value)}>
-          <option value="staff">Admin / Guru</option>
-          <option value="supervisor">Pengawas</option>
-          <option value="student">Siswa</option>
-        </select>
-      </label>
-      <label>
-        Username
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoComplete="username"
-          required
-          maxLength={64}
-        />
-      </label>
-      <label>
-        Password
-        <input
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          maxLength={256}
-        />
-      </label>
-      {context === "student" ? (
-        <>
-          <label>
-            PIN ujian
-            <input name="pin" inputMode="numeric" pattern="[0-9]+" required />
-          </label>
-          <p className="muted">
-            Login ujian siswa belum diaktifkan pada tahap ini.
-          </p>
-        </>
-      ) : null}
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={remember}
-          onChange={(e) => setRemember(e.target.checked)}
-        />
-        Ingat username saja
-      </label>
-      <Button disabled={busy}>{busy ? "Memproses…" : "Masuk"}</Button>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={busy}
-        onClick={() => {
-          setRecoveryName(name);
-          setRecoveryMessage("");
-          setRecoveryOpen(true);
-        }}
-      >
-        Lupa password
-      </Button>
-      <p role="status" aria-live="polite">
-        {message}
-      </p>
-    </form>
-    <Dialog
-      open={recoveryOpen}
-      onOpenChange={(open) => { if (!recovering) setRecoveryOpen(open); }}
-      title="Pulihkan password"
-      description="Masukkan username akun Anda. Petunjuk pemulihan dikirim ke email yang terdaftar. Jika tidak memiliki akses email, hubungi Admin madrasah."
-    >
-      <form onSubmit={recover} className="stack" aria-busy={recovering}>
+      <form onSubmit={submit} className="stack">
         <label>
-          Username pemulihan
-          <input value={recoveryName} onChange={(e) => setRecoveryName(e.target.value)} autoComplete="username" required maxLength={64} pattern={".*\\S.*"} disabled={recovering} />
+          Konteks masuk
+          <select value={context} onChange={(e) => setContext(e.target.value)}>
+            <option value="staff">Admin / Guru</option>
+            <option value="supervisor">Pengawas</option>
+            <option value="student">Siswa</option>
+          </select>
         </label>
-        <Button disabled={recovering}>{recovering ? "Mengirim permintaan…" : "Kirim petunjuk pemulihan"}</Button>
-        <p role="status" aria-live="polite">{recoveryMessage}</p>
+        <label>
+          Username
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="username"
+            required
+            maxLength={64}
+          />
+        </label>
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            maxLength={256}
+          />
+        </label>
+        {context === "student" && (
+          <p className="muted">
+            Pilih ujian dan masukkan PIN setelah berhasil masuk.
+          </p>
+        )}
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+          />
+          Ingat username saja
+        </label>
+        <Button disabled={busy}>{busy ? "Memproses…" : "Masuk"}</Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            setRecoveryName(name);
+            setRecoveryMessage("");
+            setRecoveryOpen(true);
+          }}
+        >
+          Lupa password
+        </Button>
+        <p role="status" aria-live="polite">
+          {message}
+        </p>
       </form>
-    </Dialog>
+      <Dialog
+        open={recoveryOpen}
+        onOpenChange={(open) => {
+          if (!recovering) setRecoveryOpen(open);
+        }}
+        title="Pulihkan password"
+        description="Masukkan username akun Anda. Petunjuk pemulihan dikirim ke email yang terdaftar. Jika tidak memiliki akses email, hubungi Admin madrasah."
+      >
+        <form onSubmit={recover} className="stack" aria-busy={recovering}>
+          <label>
+            Username pemulihan
+            <input
+              value={recoveryName}
+              onChange={(e) => setRecoveryName(e.target.value)}
+              autoComplete="username"
+              required
+              maxLength={64}
+              pattern={".*\\S.*"}
+              disabled={recovering}
+            />
+          </label>
+          <Button disabled={recovering}>
+            {recovering ? "Mengirim permintaan…" : "Kirim petunjuk pemulihan"}
+          </Button>
+          <p role="status" aria-live="polite">
+            {recoveryMessage}
+          </p>
+        </form>
+      </Dialog>
     </>
   );
 }
