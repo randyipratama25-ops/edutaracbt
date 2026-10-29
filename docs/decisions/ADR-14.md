@@ -11,3 +11,6 @@ Alternatif: perlu dielaborasi sesuai bukti source dan kebutuhan pemilik.
 Bukti dan konsekuensi: lihat dokumen dasar Bagian 16; validasi runtime/dataset belum tersedia.
 
 Uji penerimaan dan persetujuan: belum dijalankan; pihak dan tanggal belum ada. Jangan perlakukan rekomendasi sebagai keputusan final.
+
+## Implementasi Tahap 5 — 29 Oktober 2026
+Kartu hanya memuat username, identitas, ruang, jadwal dan alamat login. Tidak ada password permanen, PIN atau token aktivasi pada PDF/ZIP. Ini mengikuti gerbang keamanan 5.3; alur aktivasi akun tetap memakai mekanisme sebelumnya. One-time activation pada kartu tidak ditambahkan tanpa kebutuhan terpisah.

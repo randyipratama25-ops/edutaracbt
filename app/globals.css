@@ -348,3 +348,4 @@ fieldset { min-width: 0; border: 1px solid var(--border); border-radius: 8px; pa
 @media(max-width:760px) { .student-shell { padding: 12px; } .exam-top { position: static; } .student-shell .panel { padding: 16px; } }
 
 .answer-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; max-width: 100%; }
+.ops-choice-list{max-height:24rem;overflow:auto;padding:12px}.ops-choice-list label{display:flex;align-items:center;gap:10px;margin:8px 0}.ops-choice-list input[type=checkbox]{width:auto;flex:none}.ops-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}.ops-gallery code{overflow-wrap:anywhere}.ops-drop{padding:24px;border:2px dashed var(--border);border-radius:12px}.ops-gallery audio{width:100%}progress{max-width:100%;width:280px}input[type=checkbox]{width:auto}

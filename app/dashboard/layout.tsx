@@ -26,8 +26,11 @@ export default async function DashboardLayout({
           <Link href="/dashboard/exams">Ujian dan soal</Link>
           <Link href="/dashboard/results">Hasil dan koreksi</Link>
           <Link href="/dashboard/analytics">Analitik dan laporan</Link>
+          <Link href="/dashboard/monitor">Monitoring ujian</Link>
+          <Link href="/dashboard/media">Media soal</Link>
+          <Link href="/dashboard/cards">Kartu peserta</Link>
           {a.role === "admin" && (
-            <Link href="/dashboard/monitor">Peninjauan ujian</Link>
+            <Link href="/dashboard/rooms">Ruang dan pengawas</Link>
           )}
         </nav>
         <p className="muted">

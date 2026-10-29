@@ -45,7 +45,7 @@ export function rich(value: string) {
     }),
   );
 }
-async function css() {
+export async function reportStyles() {
   const base = path.join(process.cwd(), "node_modules/katex/dist");
   let math = await readFile(path.join(base, "katex.min.css"), "utf8");
   const urls = [
@@ -148,13 +148,14 @@ export async function reportHTML(
   const signature = settings.official
     ? `<section class="signature"><p>${esc(settings.official_title)}</p><br/><br/><p>${esc(settings.official)}</p></section>`
     : "";
-  return `<!doctype html><html lang="id"><head><meta charset="utf-8"><style>${await css()}</style></head><body>${body}${signature}</body></html>`;
+  return `<!doctype html><html lang="id"><head><meta charset="utf-8"><style>${await reportStyles()}</style></head><body>${body}${signature}</body></html>`;
 }
 export async function renderPDF(
   details: ResultDetail[],
   kind: ReportKind,
   settings: ReportSettings,
   resolve?: MediaResolver,
+  htmlOverride?: string,
 ) {
   const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
     import("@sparticuz/chromium"),
@@ -173,17 +174,21 @@ export async function renderPDF(
     page.on("request", (r) =>
       r.url().startsWith("data:") ? r.continue() : r.abort(),
     );
-    const chunks =
-      kind === "recap" || kind === "class" || kind === "analytics"
+    const chunks = htmlOverride
+      ? [[]]
+      : kind === "recap" || kind === "class" || kind === "analytics"
         ? [details]
         : Array.from({ length: Math.ceil(details.length / 10) }, (_, i) =>
             details.slice(i * 10, i * 10 + 10),
           );
     for (const chunk of chunks) {
-      await page.setContent(await reportHTML(chunk, kind, settings, resolve), {
-        waitUntil: "load",
-        timeout: 30000,
-      });
+      await page.setContent(
+        htmlOverride || (await reportHTML(chunk, kind, settings, resolve)),
+        {
+          waitUntil: "load",
+          timeout: 30000,
+        },
+      );
       await page.evaluate(() => document.fonts.ready);
       const pdf = await page.pdf({
         format: "A4",
@@ -270,11 +275,17 @@ export async function renderXLSX(
   if (settings.logo_media_id && resolve) {
     const logo = await resolve(settings.logo_media_id, "source");
     if (["image/png", "image/jpeg"].includes(logo.mime)) {
-      const id = wb.addImage({base64: Buffer.from(logo.bytes).toString("base64"), extension: logo.mime === "image/png" ? "png" : "jpeg"});
-      sheet.addImage(id, {tl:{col:0,row:0},ext:{width:60,height:60}});
-      sheet.getRow(1).height=48;
-      sheet.getCell("B1").value=text(settings.school);
-      sheet.getCell("A1").value="";
+      const id = wb.addImage({
+        base64: Buffer.from(logo.bytes).toString("base64"),
+        extension: logo.mime === "image/png" ? "png" : "jpeg",
+      });
+      sheet.addImage(id, {
+        tl: { col: 0, row: 0 },
+        ext: { width: 60, height: 60 },
+      });
+      sheet.getRow(1).height = 48;
+      sheet.getCell("B1").value = text(settings.school);
+      sheet.getCell("A1").value = "";
       sheet.mergeCells("B1:G1");
     } else sheet.mergeCells("A1:G1");
   } else sheet.mergeCells("A1:G1");

@@ -19,3 +19,5 @@ Implementasi modul authoring; pengujian unit, SQL/RLS/kuota konkuren dan HTTP. K
 Implementasi attempt/player/save/submit/integrity dan dependensi inti grading 4.1. Kebijakan D07/D08 serta adaptor OCR dipilih pemilik. Tes dan keterbatasan dicatat di docs/stages-3-1-to-3-3.md; UAT perangkat tetap terbuka.
 
 - 2026-10-29: Tahap 4.1–4.3: halaman hasil/analisis, RPC koreksi atomik/ledger/publikasi, adaptor AI nonaktif, laporan PDF/XLSX dan job privat. Migrasi 20261029102717 diterapkan setelah backup terarah, PostgreSQL staging lokal dan rollback teruji. Detail validasi dan batas: docs/stages-4-1-to-4-3.md.
+
+- 2026-10-29: Implementasi teknis Tahap 5.1–5.3. Tambah ruang/sesi/roster/pengganti efektif, monitor scoped, reset non-destruktif dengan deadline tetap, media immutable + cleanup retry, kartu privat PDF/ZIP dan notifikasi in-app. Migrasi 20261029120103 diterapkan setelah backup, staging lokal dan rollback test. Lihat docs/stages-5-1-to-5-3.md; UAT fisik, transport live/beban besar dan kredensial Drive nyata belum disahkan.

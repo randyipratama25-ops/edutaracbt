@@ -28,3 +28,6 @@ Mesin start/resume/snapshot/player, autosave berversi, finalisasi dan inti gradi
 
 ## Tahap 4.1–4.3 — implementasi teknis 29 Oktober 2026
 Hasil/koreksi manual atomik, ledger revisi, publikasi Admin, analisis lima tipe, dan ekspor PDF/XLSX privat berprogres diimplementasikan. Migrasi Supabase 20261029102717 diterapkan setelah backup/staged tests/rollback/preflight. AI tetap adaptor nonaktif sesuai keputusan pemilik. Validasi serta batas operasional: docs/stages-4-1-to-4-3.md. UAT perangkat fisik dan provider AI nyata belum disahkan.
+
+## Tahap 5.1–5.3 — implementasi teknis 29 Oktober 2026
+Ruang/sesi/roster/pengawas pengganti, monitor scoped dan reset berarsip, media privat, adaptor Drive opsional, kartu PDF/ZIP berprogres, serta notifikasi/receipt diimplementasikan. Migrasi Supabase 20261029120103 terpasang setelah backup dan validasi lokal. Detail, batas dan gerbang UAT yang belum disahkan: docs/stages-5-1-to-5-3.md.
