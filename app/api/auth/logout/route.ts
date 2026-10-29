@@ -5,8 +5,12 @@ export async function POST(request: Request) {
   try {
     requireOrigin(request);
     const client = await db();
+    await client.rpc("session_audit", { event_name: "LOGOUT_REQUEST" });
     const { error } = await client.auth.signOut({ scope: "local" });
-    if (error) throw error;
+    if (error) {
+      await client.rpc("session_audit", { event_name: "LOGOUT_FAILED" });
+      throw error;
+    }
     (await cookies()).delete("edutara_context");
     return json({ next: "/login" });
   } catch (error) {

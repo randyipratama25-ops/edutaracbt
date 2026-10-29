@@ -14,4 +14,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Node 24 and run checks without production credentials
-        run: npx --yes --package=node@24.10.0 --package=npm@11.9.0 -c 'node --version && npm ci --no-audit --no-fund && npm run check'
+        run: npx --yes --package=node@24.10.0 --package=npm@11.9.0 -c 'node --version && npm ci --no-audit --no-fund && npm run check && npm run test:database'

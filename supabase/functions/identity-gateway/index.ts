@@ -26,7 +26,7 @@ Deno.serve(async (request) => {
     const admin = createClient(url, service, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const site = "https://edutara-cbt-randyipratama25-2274.vercel.app";
+    const site = "https://edutara-cbt-ashen.vercel.app";
     const budget = async (key: string) => {
       const digest = await crypto.subtle.digest(
         "SHA-256",
