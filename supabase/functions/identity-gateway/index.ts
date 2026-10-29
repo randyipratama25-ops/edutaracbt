@@ -1,3 +1,4 @@
+import { InvitationError, assertInvitationAccess, invitationState, resendInvitation } from "./invitations.ts";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
@@ -168,6 +169,33 @@ Deno.serve(async (request) => {
         .single();
       return data;
     };
+    if (raw.operation === "invitation_info" || raw.operation === "resend_invitation") {
+      const input = z.object({ id: z.uuid(), operation: z.enum(["invitation_info", "resend_invitation"]) }).parse(raw);
+      if (actor.role !== "admin") return fail("Hanya Admin yang dapat mengirim ulang undangan.", 403);
+      const { data: target, error: targetError } = await admin.from("profiles")
+        .select("id,organization_id,active,archived_at").eq("id", input.id)
+        .eq("organization_id", actor.organization_id).maybeSingle();
+      if (targetError) return fail("Status pengguna belum dapat diperiksa.", 503);
+      assertInvitationAccess(actor, target);
+      const { data: account, error: accountError } = await admin.auth.admin.getUserById(input.id);
+      if (accountError || !account.user) return fail("Akun autentikasi pengguna tidak tersedia.", 404);
+      if (input.operation === "invitation_info") {
+        return Response.json({ email: account.user.email || "", ...invitationState(target!, account.user) }, { headers: { "Cache-Control": "no-store" } });
+      }
+      const result = await resendInvitation({ actor, target, account: account.user, site,
+        budget: () => budget(`resend-invite:${actor.organization_id}:${input.id}`),
+        send: async (email, redirectTo) => {
+          const r = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+          return { error: r.error, userId: r.data.user?.id };
+        },
+        audit: async () => {
+          const r = await admin.from("audit_logs").insert({ organization_id: actor.organization_id,
+            actor_id: actor.id, action: "RESEND_INVITATION", target_type: "profiles", target_id: input.id, request_id: requestId });
+          if (r.error) throw Error("AUDIT_FAILED");
+        },
+      });
+      return Response.json(result, { headers: { "Cache-Control": "no-store" } });
+    }
     const createOne = async (value: unknown) => {
       const input = userSchema.parse(value);
       if (
@@ -305,6 +333,7 @@ Deno.serve(async (request) => {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
+    if (error instanceof InvitationError) return fail(error.message, error.status);
     if (error instanceof z.ZodError)
       return fail(
         "Data tidak valid: " + error.issues.map((i) => i.message).join("; "),

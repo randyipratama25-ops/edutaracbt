@@ -48,6 +48,8 @@ export async function POST(request: Request) {
     const a = await actor();
     if (!a || a.context !== "staff") throw new HttpError(403, "Akses ditolak.");
     const payload = await body(request);
+    if (["invitation_info", "resend_invitation"].includes(payload.operation) && a.role !== "admin")
+      throw new HttpError(403, "Hanya Admin yang dapat mengirim ulang undangan.");
     const {
       data: { session },
     } = await a.client.auth.getSession();
