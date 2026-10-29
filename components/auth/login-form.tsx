@@ -1,12 +1,17 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "../ui/button";
+import { Dialog } from "../ui/dialog";
 export function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [remember, setRemember] = useState(false);
   const [name, setName] = useState("");
   const [context, setContext] = useState("staff");
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryName, setRecoveryName] = useState("");
+  const [recoveryMessage, setRecoveryMessage] = useState("");
+  const [recovering, setRecovering] = useState(false);
   useEffect(() => {
     try {
       const saved = localStorage.getItem("edutara_username");
@@ -49,23 +54,26 @@ export function LoginForm() {
       setBusy(false);
     }
   }
-  async function recover() {
-    setBusy(true);
+  async function recover(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setRecoveryMessage("");
+    setRecovering(true);
     try {
       const r = await fetch("/api/auth/recover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: name }),
+        body: JSON.stringify({ username: recoveryName.trim() }),
       });
       const j = await r.json();
-      setMessage(r.ok ? j.data.message : j.error?.message);
+      setRecoveryMessage(r.ok ? j.data.message : j.error?.message || "Pemulihan belum berhasil. Coba lagi.");
     } catch {
-      setMessage("Tidak dapat meminta pemulihan. Coba lagi.");
+      setRecoveryMessage("Tidak dapat meminta pemulihan. Coba lagi.");
     } finally {
-      setBusy(false);
+      setRecovering(false);
     }
   }
   return (
+    <>
     <form onSubmit={submit} className="stack">
       <label>
         Konteks masuk
@@ -118,8 +126,12 @@ export function LoginForm() {
       <Button
         type="button"
         variant="outline"
-        disabled={busy || !name}
-        onClick={recover}
+        disabled={busy}
+        onClick={() => {
+          setRecoveryName(name);
+          setRecoveryMessage("");
+          setRecoveryOpen(true);
+        }}
       >
         Lupa password
       </Button>
@@ -127,5 +139,21 @@ export function LoginForm() {
         {message}
       </p>
     </form>
+    <Dialog
+      open={recoveryOpen}
+      onOpenChange={(open) => { if (!recovering) setRecoveryOpen(open); }}
+      title="Pulihkan password"
+      description="Masukkan username akun Anda. Petunjuk pemulihan dikirim ke email yang terdaftar. Jika tidak memiliki akses email, hubungi Admin madrasah."
+    >
+      <form onSubmit={recover} className="stack" aria-busy={recovering}>
+        <label>
+          Username pemulihan
+          <input value={recoveryName} onChange={(e) => setRecoveryName(e.target.value)} autoComplete="username" required maxLength={64} pattern={".*\\S.*"} disabled={recovering} />
+        </label>
+        <Button disabled={recovering}>{recovering ? "Mengirim permintaan…" : "Kirim petunjuk pemulihan"}</Button>
+        <p role="status" aria-live="polite">{recoveryMessage}</p>
+      </form>
+    </Dialog>
+    </>
   );
 }
