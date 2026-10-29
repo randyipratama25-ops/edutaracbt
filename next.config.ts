@@ -1,5 +1,18 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  serverExternalPackages: [
+    "@sparticuz/chromium",
+    "puppeteer-core",
+    "pdf-lib",
+    "exceljs",
+  ],
+  outputFileTracingIncludes: {
+    "/api/reports/**": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+      "./public/fonts/**",
+      "./node_modules/katex/dist/**",
+    ],
+  },
   async headers() {
     return [
       {

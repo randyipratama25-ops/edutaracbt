@@ -346,3 +346,5 @@ fieldset { min-width: 0; border: 1px solid var(--border); border-radius: 8px; pa
 .essay-canvas { width: 100%; height: auto; border: 1px solid var(--border); touch-action: none; background: white; }
 .student-shell pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media(max-width:760px) { .student-shell { padding: 12px; } .exam-top { position: static; } .student-shell .panel { padding: 16px; } }
+
+.answer-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; max-width: 100%; }
