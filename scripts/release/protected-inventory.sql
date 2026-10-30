@@ -23,6 +23,7 @@ with attempts as (
  union all select 'private.result_publications',r.exam_id::text,to_jsonb(r)::text from private.result_publications r where r.organization_id='6e143c55-7be5-4e6e-9f1a-8f8db429956a'
  union all select 'private.exam_help_requests',r.id::text,to_jsonb(r)::text from private.exam_help_requests r join attempts a on a.id=r.attempt_id
 
+ union all select 'private.advanced_evaluations',r.id::text,to_jsonb(r)::text from private.advanced_evaluations r where r.organization_id='6e143c55-7be5-4e6e-9f1a-8f8db429956a'
 )
 select coalesce(jsonb_agg(jsonb_build_object('table',tbl,'key',key,'sha256',encode(extensions.digest(payload,'sha256'),'hex')) order by tbl,key),'[]') as inventory from protected;
 commit;

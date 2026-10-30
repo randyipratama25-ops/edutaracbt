@@ -1,10 +1,24 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.6 — Penerimaan operasional.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.7 — Fitur lanjutan terkendali.
+
+## Pembaruan Tahap 6 — Fitur lanjutan
+
+Inventaris terbaru **23 halaman produksi**, dengan tambahan `/dashboard/advanced`. Pilihan pengelola: AI belum diaktifkan; pertukaran nilai menggunakan XLSX dan PDF. Tahap sebelumnya merupakan catatan historis pada masing-masing versi.
+
+| Area | Fungsi dan tujuan | Izin CRUD dan batasan |
+|---|---|---|
+| Fitur lanjutan `/dashboard/advanced` | Status AI, konfigurasi uji SEB, pemeriksaan browser lokal dan riwayat evaluasi perangkat | Hanya Admin staf aktif. R status/riwayat organisasi sendiri; C hasil pengamatan. Tidak ada U/D riwayat. Guru/Pengawas/Siswa tidak mendapat halaman baru |
+| Evaluasi perangkat | Enam skenario login, soal/rumus, media, canvas, pemulihan dan submit; SHA kandidat, platform/versi, catatan serta referensi artefak | Admin C dengan validasi server, request idempoten, dan audit. R maksimal 50 per halaman. Hasil manual bukan sertifikasi atau pengesahan cutover; pengujian ulang menambah catatan baru |
+| Konfigurasi SEB | Unduh berkas `.seb` XML tidak terenkripsi untuk akun/perangkat uji, membuka login HTTPS aplikasi, dapat ditutup | Admin R/unduh saja; bukan konfigurasi ujian terkunci. Tidak ada pemaksaan SEB, validasi Browser Exam Key/Config Key, atau perluasan akses attempt. Pemeriksaan API browser/UA bukan bukti keamanan |
+| AI | Status nonaktif sesuai pilihan pengelola | Endpoint web mengembalikan 503 tanpa memanggil penyedia atau mencatat permintaan koreksi baru. Koreksi manual/moderasi tetap berjalan. Aktivasi kelak membutuhkan pilihan penyedia, evaluasi dan persetujuan data; nilai resmi tetap membutuhkan keputusan penilai |
+| Pertukaran nilai | Jenis laporan `exchange` pada Hasil/Analitik, format XLSX/PDF dengan ID peserta/ujian/attempt, kelas, revisi ledger, status, nilai final dan kelulusan | Admin/Guru C/R pekerjaan ekspor milik sendiri dalam cakupan can_grade snapshot. Revisi dipatok saat job dibuat; izin diperiksa ulang saat proses/unduh. Nilai belum final/diskualifikasi kosong, nol final tetap numerik 0. Tidak ada push ke LMS, CSV, atau CRUD nilai melalui ekspor |
+
+Endpoint baru `/api/advanced` (GET daftar, POST pencatatan Admin) dan `/api/advanced/seb` (GET unduhan Admin). Tabel `private.advanced_evaluations` RLS tanpa grant tabel langsung anon/authenticated; trigger menolak U/D. Backup otomatis yang memakai cakupan organisasi dan inventaris rollback mencakup catatan evaluasi. Migrasi `20261030063153_advanced_features.sql` tidak mengubah jawaban, nilai atau deadline historis. Bukti implementasi: `docs/stage6-advanced-features.md`.
 
 ## Pembaruan Tahap 5 — Penerimaan operasional
 
-Inventaris terbaru **22 halaman produksi**. Halaman baru `/dashboard/acceptance` hanya untuk Admin konteks staf organisasi aktif. Fungsinya membaca kondisi teknis dan mengunduh ringkasan observasi JSON tanpa identitas peserta, jawaban, token atau nilai secret. Izin **R**; unduhan dibuat lokal. Tidak ada C/U/D bukti, pengesahan UAT, deployment, pengiriman email atau aktivasi konfigurasi melalui halaman ini. Guru/Pengawas/Siswa tidak memiliki akses; RPC mengulang pemeriksaan Admin dan organisasi.
+Inventaris saat Tahap 5 **22 halaman produksi**. Halaman baru `/dashboard/acceptance` hanya untuk Admin konteks staf organisasi aktif. Fungsinya membaca kondisi teknis dan mengunduh ringkasan observasi JSON tanpa identitas peserta, jawaban, token atau nilai secret. Izin **R**; unduhan dibuat lokal. Tidak ada C/U/D bukti, pengesahan UAT, deployment, pengiriman email atau aktivasi konfigurasi melalui halaman ini. Guru/Pengawas/Siswa tidak memiliki akses; RPC mengulang pemeriksaan Admin dan organisasi.
 
 Snapshot memuat sesi belum final, konfigurasi otomasi/SMTP, tiga scheduler berdasarkan fungsi, antrean bermasalah, moderasi/publikasi tertahan dan backup terbaru. Snapshot >5 menit ditandai kedaluwarsa. Kelulusan indikator teknis tidak mengesahkan penerimaan: UAT semua peran/perangkat fisik, SLO 150 siswa, legacy/freeze/delta, inbox/pemulihan, latihan cloud dan persetujuan pemilik memerlukan bukti asli.
 
@@ -167,6 +181,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 20 | Bank soal | `/dashboard/bank` | Taksonomi, versi, review, impor, kisi-kisi, paket dan kualitas butir. | Admin, Guru konteks staf | C/R sesuai organisasi/seluruh kelas–mapel; U konten pemilik/Admin, review penilai lain; arsip tanpa D permanen. |
 | 21 | Koreksi dan moderasi | `/dashboard/grading` | Koreksi anonim, rubrik kriteria, moderasi dan jadwal publikasi. | Admin, Guru konteks staf | C/R/U penilaian dalam cakupan snapshot; keputusan moderasi oleh penilai lain; publikasi dan jadwal hanya Admin; tanpa D riwayat. |
 | 22 | Penerimaan operasional | `/dashboard/acceptance` | Snapshot teknis, tindak lanjut dan unduhan observasi; checklist bukti UAT. | Admin konteks staf | R organisasi sendiri; ekspor lokal. Tidak ada C/U/D bukti atau pengesahan otomatis. |
+| 23 | Fitur lanjutan | `/dashboard/advanced` | AI nonaktif, pilot SEB, evaluasi perangkat dan akses panduan pertukaran nilai. | Admin konteks staf | R status/riwayat/konfigurasi uji; C catatan evaluasi organisasi sendiri; tanpa U/D. Ekspor XLSX/PDF tetap tersedia bagi Admin/Guru melalui Hasil/Analitik. |
 
 `/auth/confirm` merupakan route handler konfirmasi email/token, bukan halaman `page.tsx`. File loading/error dashboard merupakan tampilan status, bukan halaman navigasi tersendiri. Modal soal, pratinjau, detail hasil, impor, kartu, inbox dan form pemulihan tidak memiliki route halaman tersendiri dalam inventaris ini.
 
@@ -232,7 +247,7 @@ Pengawas efektif memperhitungkan pengganti, pencabutan, akun aktif dan sesi wakt
 
 Penilaian Guru mengacu pada mapel dan salah satu kelas dalam snapshot attempt, bukan aturan authoring seluruh kelas ujian. Attempt harus telah difinalisasi dan bukan berstatus reset agar masuk cakupan koreksi. Hasil esai yang belum selesai dinilai tidak boleh dianggap nilai nol final.
 
-Publikasi hasil hanya Admin. Hak publikasi tidak memberi Siswa akses hasil orang lain atau semua kunci soal. Hasil/laporan memiliki ledger/revisi, pemeriksaan versi, dan jejak koreksi. Laporan tersedia dalam jenis recap, class, student, paper, answers, blank, dan analytics, dengan format PDF/XLSX sesuai validasi/pembuatan dokumennya. Pekerjaan laporan dibatasi ke peminta dan izin setiap attempt diperiksa kembali; Admin tidak otomatis mendapat semua job laporan milik orang lain.
+Publikasi hasil hanya Admin. Hak publikasi tidak memberi Siswa akses hasil orang lain atau semua kunci soal. Hasil/laporan memiliki ledger/revisi, pemeriksaan versi, dan jejak koreksi. Laporan tersedia dalam jenis recap, class, student, paper, answers, blank, analytics, dan exchange, dengan format PDF/XLSX sesuai validasi/pembuatan dokumennya. Pekerjaan laporan dibatasi ke peminta dan izin setiap attempt diperiksa kembali; Admin tidak otomatis mendapat semua job laporan milik orang lain.
 
 Alur saran AI ditemukan, tetapi kode penilaian memuat jalur penyedia belum dikonfigurasi. Keberadaan tombol/alur AI bukan bukti provider aktif atau koreksi otomatis berhasil. Koreksi manual tetap menjadi alur yang tersedia untuk penilai berizin.
 
@@ -265,6 +280,7 @@ Endpoint bukan tambahan halaman. Daftar ini membantu menelusuri kontrol server d
 | Media | `/api/media`, `/api/media/manage`, `/api/media/drive` | Hak sumber/ownership/rujukan, tindakan sesuai endpoint. |
 | Sistem | `/api/system`, `/api/backups/export`, `/api/backups/download` | Admin; status dan cakupan backup. |
 | Penerimaan | `/api/acceptance` | GET saja, Admin staf; RPC memeriksa ulang organisasi/akun aktif. |
+| Fitur lanjutan | `/api/advanced`, `/api/advanced/seb` | Admin staf; R/C evaluasi dan R konfigurasi pilot. Tidak ada aktivasi AI atau pemaksaan SEB. |
 | Infrastruktur | `/api/health`, `/api/load-info` | Status layanan; bukan halaman pengelolaan akademik. |
 | Konfirmasi email | `/auth/confirm` | Validasi konfirmasi dan pengalihan autentikasi. |
 
@@ -285,7 +301,7 @@ Semua path relatif terhadap repositori pada commit di awal dokumen.
 
 | Bukti | Lokasi |
 |---|---|
-| Inventaris 22 halaman | `app/**/page.tsx` dan `app/page.tsx` |
+| Inventaris 23 halaman | `app/**/page.tsx` dan `app/page.tsx` |
 | Pagar dashboard dan menu Admin | `app/dashboard/layout.tsx`; halaman rooms/settings/audit/jobs |
 | Tahap 3 persiapan/pelaksanaan | `components/workflow`, `app/dashboard/preparation/page.tsx`, `app/api/workflow/route.ts`, `lib/workflow/schema.ts`, migrasi `20261030033230_preparation_execution_workflow.sql` |
 | Role/konteks dan akun aktif | `lib/domain/validation.ts`, `lib/auth/actor.ts` |
