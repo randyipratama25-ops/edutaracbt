@@ -4,9 +4,9 @@ const now = new Date('2026-10-29T14:00:00Z');
 const commit = 'a'.repeat(40);
 const proof = () => ({ passed: true, candidate_sha: commit, recorded_at: now.toISOString(), artifact: 'docs/evidence/review.json' });
 const valid = () => ({
-  format: 'edutara-release-v1', candidate_sha: commit,
+  format: 'edutara-release-v2', candidate_sha: commit,
   production_project: 'cwklpfplqoofvehlyfvd', production_origin: 'https://edutara-cbt-ashen.vercel.app',
-  observed_at: now.toISOString(), active_attempts: 0, scheduler_count: 1,
+  observed_at: now.toISOString(), active_attempts: 0, scheduler_count: 1, schedulers: [{name:"edutara-operations",active:true,schedule:"* * * * *"},{name:"edutara-recovery-retention",active:true,schedule:"*/15 * * * *"},{name:"edutara-results-publication",active:true,schedule:"* * * * *"}],
   backup: { id: '9e895868-859d-4e66-9074-572bafd7d924', status: 'succeeded', completed_at: now.toISOString(), checksum: 'b'.repeat(64) },
   data_mode: 'legacy', observation_minutes: 60,
   proofs: Object.fromEntries([...requiredProofs, 'legacy_freeze', 'delta_parity'].map(k => [k, proof()])),

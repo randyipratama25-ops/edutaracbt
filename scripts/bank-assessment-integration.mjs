@@ -1,6 +1,8 @@
 import {stagingDatabase} from './stage4-local-db.mjs';
 import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
+import {restoreRows} from './restore-drill.mjs';
+import {assertAnswersPreserved} from './release/gate.mjs';
 import {randomUUID} from 'node:crypto';
 const db=await stagingDatabase();
 const org='6e143c55-7be5-4e6e-9f1a-8f8db429956a',subject='44000000-0000-4000-8000-000000000001',cid='33000000-0000-4000-8000-000000000001',other='33000000-0000-4000-8000-000000000002';
@@ -45,5 +47,17 @@ try{
  await owner();assert.equal((await db.query('select private.publish_due_results() n')).rows[0].n,0);await db.query("update private.result_publications set scheduled_at=clock_timestamp()-interval '1 second' where exam_id=$1",[exams[0]]);assert.equal((await db.query('select private.publish_due_results() n')).rows[0].n,1);assert.equal((await db.query('select private.publish_due_results() n')).rows[0].n,0);
  await actor(1);await assessment({...schedule,request_id:randomUUID()});await actor(5);await rpc('results_command',grade(4,4,{concept:2,reason:2}));await owner();assert.equal((await db.query('select state from private.result_publications where exam_id=$1',[exams[0]])).rows[0].state,'blocked');assert.equal((await db.query('select show_exam_result from public.exams where id=$1',[exams[0]])).rows[0].show_exam_result,false);
  await db.query('update public.teacher_assignments set active=false where teacher_id=$1',[uid(5)]);await actor(5);await denied(()=>bank(create),/AUTH/);await denied(()=>assessment({action:'detail',attempt_id:aid}),/AUTH/);await owner();const grants=(await db.query("select has_table_privilege('authenticated','private.bank_versions','select') bank,has_function_privilege('anon','public.bank_command(jsonb)','execute') anon,has_function_privilege('authenticated','private.publish_due_results()','execute') worker")).rows[0];assert.deepEqual(grants,{bank:false,anon:false,worker:false});
- await db.exec('rollback');console.log('PASS bank scope, review separation, duplicate checks, immutable versions, equivalent blueprint composition, atomic rollback, media protection, snapshot/rubric privacy, anonymous projection, criterion ledger, idempotent grading, peer moderation/stale rejection, scheduled publication/revalidation, revoked access and private grants');
+ await actor(1);const readiness=(await db.query('select public.operational_snapshot() r')).rows[0].r;assert.equal(readiness.operational_accepted,false);assert.equal(readiness.schedulers.length,3);assert.equal(readiness.blocked_publications,1);assert.ok(!JSON.stringify(readiness).includes('nonce'));assert.ok(!JSON.stringify(readiness).includes('Attempt fixture'));
+ await actor(5);await denied(()=>db.query('select public.operational_snapshot()'),/AUTH/);await actor(2);await denied(()=>db.query('select public.operational_snapshot()'),/AUTH/);await owner();assert.equal((await db.query("select has_function_privilege('anon','public.operational_snapshot()','execute') p")).rows[0].p,false);
+ const rows=(await db.query('select table_name as table,payload::text as record from private.backup_data($1)',[org])).rows;
+ for(const name of ['private.bank_items','private.bank_versions','private.bank_reviews','private.bank_packs','private.bank_usage','private.essay_grades','private.essay_grade_history','private.grade_moderations','private.result_publications'])assert.ok(rows.some(r=>r.table===name),name+' must be included in actual backup');
+ await db.query("insert into public.organizations(id,name) values('99000000-0000-4000-8000-000000000001','Other bank org')");
+ await db.query("insert into private.bank_items(id,organization_id,owner_id,metadata) values('99000000-0000-4000-8000-000000000002','99000000-0000-4000-8000-000000000001',$1,'{}')",[uid(1)]);
+ await db.query("insert into private.bank_versions(item_id,version,metadata,payload,checksum,actor_id,reason) values('99000000-0000-4000-8000-000000000002',1,'{}','{}','other-org-checksum',$1,'Other organization fixture')",[uid(1)]);
+ assert.equal((await db.query("select count(*)::int n from private.backup_data($1) where payload->>'checksum'='other-org-checksum'",[org])).rows[0].n,0);
+ async function inventory(){const result=await db.exec(readFileSync('scripts/release/protected-inventory.sql','utf8'));return result.find(r=>r.rows?.[0]?.inventory).rows[0].inventory;}
+ await db.exec('commit');const before=await inventory();const bankVersion=before.find(r=>r.table==='private.bank_versions');assert.ok(bankVersion);assert.throws(()=>assertAnswersPreserved(before,before.filter(r=>r!==bankVersion)));
+ const restored=await restoreRows(db,rows);assert.ok(restored.records>0);const afterRestore=await inventory();assert.equal(assertAnswersPreserved(before,afterRestore).additional_rows,0);
+ console.log('PASS operational Admin-only snapshot, false acceptance, three schedulers, bank backup completeness, cross-organization isolation and isolated restore exact protected inventory parity');
+ console.log('PASS bank scope, review separation, duplicate checks, immutable versions, equivalent blueprint composition, atomic rollback, media protection, snapshot/rubric privacy, anonymous projection, criterion ledger, idempotent grading, peer moderation/stale rejection, scheduled publication/revalidation, revoked access and private grants');
 }catch(e){console.error(JSON.stringify({message:e.message,where:e.where,stack:e.code?undefined:e.stack}));process.exitCode=1;}finally{await db.close();}

@@ -1,3 +1,4 @@
+import { evaluateSlo } from "../../lib/acceptance/slo.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
@@ -167,12 +168,19 @@ export async function run() {
         completed++;
       } catch (e) {
         semanticErrors++;
-        failures.push({ user_index: index, stage: "workflow", message: String(e.message).slice(0, 160) });
+        failures.push({
+          user_index: index,
+          stage: "workflow",
+          message: String(e.message).slice(0, 160),
+        });
       }
     }),
   );
   const report = {
     target_scope: "ISOLATED_STAGING",
+    recorded_at: new Date().toISOString(),
+    candidate_sha: process.env.CBT_CANDIDATE_SHA || null,
+    profile: "burst-login-http",
     logical_clients: users.length,
     requests,
     errors,
@@ -184,10 +192,8 @@ export async function run() {
       Object.entries(timings).map(([k, v]) => [k, metrics(v)]),
     ),
     failures,
-    capacity_acceptance: process.env.CBT_AUTOSAVE_P95_MS
-      ? "CONFIGURED_THRESHOLD"
-      : "SLO_NOT_AGREED",
   };
+  report.capacity_acceptance = evaluateSlo(report);
   writeFileSync(
     process.env.CBT_LOAD_REPORT || "/tmp/edutara-load-report.json",
     JSON.stringify(report, null, 2),
@@ -203,6 +209,7 @@ export async function run() {
     }),
   );
   if (
+    !report.capacity_acceptance.passed ||
     completed !== users.length ||
     semanticErrors ||
     errors ||
