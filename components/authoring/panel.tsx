@@ -124,7 +124,9 @@ export function AuthoringPanel() {
   }
   useEffect(() => {
     let live = true;
-    fetch("/api/authoring")
+    const requested = new URLSearchParams(location.search).get("exam");
+    if (requested) setExamId(requested);
+    fetch("/api/authoring" + (requested ? "?exam=" + encodeURIComponent(requested) : ""))
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) throw Error(j.error?.message);
@@ -361,6 +363,7 @@ export function AuthoringPanel() {
       {loading && <p role="status">Memuat data…</p>}
       <section className="panel stack">
         <div className="actions">
+          <Button asChild variant="outline"><a href="/dashboard/preparation">Persiapan & checklist</a></Button>
           {data.canManage && (
             <Button onClick={() => editExam(null)}>Tambah ujian</Button>
           )}

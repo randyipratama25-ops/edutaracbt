@@ -4,6 +4,6 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "next-env.d.ts", "supabase/functions/**"]),
+  globalIgnores([".next/**", ".next-stage2-*/**", "next-env.d.ts", "supabase/functions/**"]),
   { rules: { "react-hooks/set-state-in-effect": "off" } },
 ]);

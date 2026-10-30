@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     let input: unknown;
     switch (raw.action) {
       case "exam":
-        input = { action: "exam", exam: examSchema.parse(raw.exam) };
+        input = { action: "exam", exam: examSchema.parse(raw.exam), ...(raw.request_id ? {request_id:z.uuid().parse(raw.request_id)} : {}) };
         break;
       case "period":
         input = z

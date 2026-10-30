@@ -1,4 +1,5 @@
 "use client";
+import { StudentHelp } from "../workflow/help";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Bookmark, CheckCircle2, ChevronDown, ListOrdered, Type, Wifi, WifiOff, ClipboardList } from "lucide-react";
@@ -487,6 +488,7 @@ export function ExamPlayer({
               </p>
               <p>{a.review_reason}</p>
               <Button onClick={onReload}>Periksa keputusan pengawas</Button>
+              <StudentHelp attemptId={a.id} />
             </>
           ) : (
             <>
@@ -576,6 +578,7 @@ export function ExamPlayer({
           <details className="exam-tools"><summary className="button button-outline" aria-label="Alat ujian">Alat<ChevronDown size={15} aria-hidden="true" /></summary>
             <div className="exam-tools-menu">
               <label><span><Type size={16} aria-hidden="true" /> Ukuran tulisan soal</span><select value={fontSize} onChange={event => setFontSize(Number(event.target.value))}>{[16,18,20,22].map(size => <option value={size} key={size}>{size === 18 ? "Normal" : size < 18 ? "Ringkas" : size === 20 ? "Besar" : "Sangat besar"}</option>)}</select></label>
+              <StudentHelp attemptId={a.id} />
               <Button variant="outline" onClick={() => void fullscreen()}>Fullscreen / landscape</Button>
               <Button variant="outline" onClick={() => setReloadConfirm(true)}>Muat status server</Button>
               <Button variant="outline" disabled={submitting || transferring || submitUncertain} onClick={() => { setTransferMessage(""); setTransferOpen(true); }}>Pindah perangkat</Button>

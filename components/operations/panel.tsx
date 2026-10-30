@@ -1,4 +1,5 @@
 "use client";
+import { IncidentPanel } from "../workflow/incidents";
 import {
   useCallback,
   useEffect,
@@ -461,6 +462,7 @@ export function OperationsPanel({
       )}
       {mode === "monitor" && exam && (
         <>
+          <IncidentPanel key={exam} exam={exam} rows={rows} admin={!!options?.admin} onChanged={load} />
           <div className="toolbar">
             <label>
               Cari siswa/ruang

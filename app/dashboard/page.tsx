@@ -1,3 +1,4 @@
+import { Workbench } from "../../components/workflow/workbench";
 import { actor } from "../../lib/auth/actor";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -24,6 +25,7 @@ export default async function Dashboard() {
           </section>
         ))}
       </div>
+      <Workbench />
       <section className="panel">
         <h2>Kelola kegiatan ujian</h2>
         <p>

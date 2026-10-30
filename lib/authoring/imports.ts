@@ -22,10 +22,14 @@ export function previewImport(text: string): Preview[] {
       });
   }
   if (rows.length > 500) throw Error("Maksimal 500 soal per permintaan.");
+  const seen = new Set<string>();
   return rows.map((r, i) => {
     if (r && typeof r === "object" && "parseError" in r)
       return { block: i + 1, error: String(r.parseError) };
     const v = questionSchema.safeParse(r);
+    const signature = v.success ? JSON.stringify(v.data) : "";
+    if (signature && seen.has(signature)) return { block: i + 1, error: "Soal duplikat dalam berkas." };
+    if (signature) seen.add(signature);
     return v.success
       ? { block: i + 1, question: v.data }
       : {
