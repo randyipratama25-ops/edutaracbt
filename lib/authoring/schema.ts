@@ -28,6 +28,7 @@ export const questionSchema = z
     key: z.array(z.string().max(100)).max(50).default([]),
     explanation: z.string().max(20000).default("").transform(safeHtml),
     rubric: z.string().max(20000).default(""),
+    rubricCriteria: z.array(z.object({id:z.string().regex(/^[a-zA-Z0-9_-]{1,40}$/),label:z.string().trim().min(1).max(250),maxPoints:z.number().positive().max(10000)})).max(12).optional(),
     minChars: z.number().int().min(0).max(50000).default(0),
     direction: z.enum(["ltr", "rtl"]).default("ltr"),
     attachments: z.array(z.uuid()).max(10).default([]),
@@ -41,6 +42,8 @@ export const questionSchema = z
   })
   .superRefine((q, ctx) => {
     const err = (message: string) => ctx.addIssue({ code: "custom", message });
+    const cs=q.rubricCriteria||[];
+    if(cs.length&&(q.type!=="Esai"||new Set(cs.map(c=>c.id)).size!==cs.length||Math.abs(cs.reduce((n,c)=>n+c.maxPoints,0)-q.points)>0.000001))err("Rubrik harus memiliki ID unik dan total bobot sama dengan poin esai.");
     const ids = q.options.map((o) => o.id);
     if (new Set(ids).size !== ids.length) err("ID opsi harus unik.");
     if (q.type === "PG" || q.type === "PG_KOMPLEKS") {
@@ -113,10 +116,11 @@ export const examSchema = z
       c.addIssue({ code: "custom", message: "PIN wajib untuk ujian baru." });
   });
 export function studentQuestion(q: Question) {
-  const { key, explanation, rubric, keywords, ...publicFields } = q;
+  const { key, explanation, rubric, rubricCriteria, keywords, ...publicFields } = q;
   void key;
   void explanation;
   void rubric;
+  void rubricCriteria;
   void keywords;
   return publicFields;
 }

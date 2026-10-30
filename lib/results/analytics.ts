@@ -88,7 +88,9 @@ export function analyze(details: ResultDetail[]) {
             });
         }
       }
-      return { id: option.id, text: option.text, choices, correct, wrong };
+      const is_key=["PG","PG_KOMPLEKS"].includes(q.payload.type)&&q.payload.key.includes(option.id);
+      const selection_rate=(choices.selected||0)/n;
+      return { id: option.id, text: option.text, choices, correct, wrong,is_key,selection_rate,nonfunctional:["PG","PG_KOMPLEKS"].includes(q.payload.type)&&!is_key&&selection_rate<.05 };
     });
     return {
       id,
@@ -102,8 +104,8 @@ export function analyze(details: ResultDetail[]) {
       p,
       d,
       difficulty: difficulty(p),
-      discrimination: discrimination(d),
-      small_sample: n < 4,
+      discrimination: n<4?"Belum cukup data":discrimination(d),
+      small_sample: n < 30,
       wrong: entries
         .filter((e) => ratio(e) < 1)
         .map((e) => ({

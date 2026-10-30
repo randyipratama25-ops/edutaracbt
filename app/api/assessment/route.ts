@@ -1,0 +1,6 @@
+import {z} from "zod";
+import {staff} from "../../../lib/results/server";
+import {body,failure,HttpError,json,requireOrigin} from "../../../lib/http";
+import {assessmentCommand} from "../../../lib/assessment/schema";
+export async function GET(request:Request){try{const a=await staff(),p=new URL(request.url).searchParams;const input={action:z.enum(["list","detail","moderations","publications"]).parse(p.get("action")||"list"),page:Math.max(1,Number(p.get("page"))||1),...(p.get("attempt")?{attempt_id:z.uuid().parse(p.get("attempt"))}:{}),...(p.get("exam")?{exam_id:z.uuid().parse(p.get("exam"))}:{})};const r=await a.client.rpc("assessment_command",{input});if(r.error)throw new HttpError(403,r.error.message);return json(r.data);}catch(e){return failure(e);}}
+export async function POST(request:Request){try{requireOrigin(request);const a=await staff(),input=assessmentCommand.parse(await body(request));if(["schedule","cancel"].includes(input.action)&&a.role!=="admin")throw new HttpError(403,"Publikasi hanya Admin.");const r=await a.client.rpc("assessment_command",{input});if(r.error)throw new HttpError(r.error.message.includes("CONFLICT")?409:422,r.error.message);return json(r.data);}catch(e){return failure(e);}}

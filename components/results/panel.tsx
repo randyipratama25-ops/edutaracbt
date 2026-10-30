@@ -2,6 +2,7 @@
 import { useEffect, useCallback, useRef, useState, type FormEvent } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import type { ResultDetail, ResultRow } from "../../lib/results/types";
@@ -157,7 +158,7 @@ export function ResultsPanel({
       const grades = detail.questions
         .filter(
           (q) =>
-            q.payload.type === "Esai" &&
+            q.payload.type === "Esai" && !q.payload.rubricCriteria?.length &&
             (points[q.id] !== undefined || comments[q.id] !== undefined),
         )
         .filter(
@@ -204,6 +205,7 @@ export function ResultsPanel({
   );
   return (
     <div className="stack">
+      <div className="actions"><Button asChild variant="outline"><Link href="/dashboard/grading">Koreksi anonim, rubrik & moderasi</Link></Button></div>
       <p role="status" aria-live="polite">
         {message}
       </p>
@@ -689,12 +691,14 @@ export function ResultsPanel({
                 {q.payload.type === "Esai" &&
                   detail.attempt.status !== "disqualified" && (
                     <>
+                      {!!q.payload.rubricCriteria?.length&&<p>Soal ini memakai rubrik per kriteria. <Link href="/dashboard/grading">Buka ruang koreksi rubrik</Link>.</p>}
                       <label>
                         Nilai esai (0 sah; kosong = pending)
                         <input
                           type="number"
                           min={0}
                           max={q.payload.points}
+                          disabled={!!q.payload.rubricCriteria?.length}
                           step="any"
                           value={
                             points[q.id] ??
@@ -750,7 +754,7 @@ export function ResultsPanel({
                 void run(() =>
                   suggest(
                     detail.questions
-                      .filter((q) => q.payload.type === "Esai")
+                      .filter((q) => q.payload.type === "Esai" && !q.payload.rubricCriteria?.length)
                       .slice(0, 50)
                       .map((q) => ({
                         attempt_id: detail.attempt.id,
@@ -894,7 +898,7 @@ export function ResultsPanel({
                 new Map(
                   batch.flatMap((d) =>
                     d.questions
-                      .filter((q) => q.payload.type === "Esai")
+                      .filter((q) => q.payload.type === "Esai" && !q.payload.rubricCriteria?.length)
                       .map((q) => [q.id, q] as const),
                   ),
                 ).values(),

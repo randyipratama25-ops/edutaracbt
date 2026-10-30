@@ -48,6 +48,7 @@ export function QuestionPreview({
           <p>
             <b>Rubrik:</b> {q.rubric || "—"}
           </p>
+          {!!q.rubricCriteria?.length&&<ul>{q.rubricCriteria.map(c=><li key={c.id}>{c.label}: maksimal {c.maxPoints} poin</li>)}</ul>}
           <div dangerouslySetInnerHTML={{ __html: safeHtml(q.explanation) }} />
         </>
       )}

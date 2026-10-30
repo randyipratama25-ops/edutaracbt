@@ -13,6 +13,8 @@ const mutation = z.discriminatedUnion("action", [
           expected_revision: z.number().int().min(0),
           points: z.number().finite().min(0).max(10000),
           comment: z.string().max(5000).default(""),
+          criteria:z.record(z.string().max(40),z.number().finite().min(0).max(10000)).default({}),
+          reason:z.string().trim().min(5).max(1000).optional(),
         }),
       )
       .min(1)

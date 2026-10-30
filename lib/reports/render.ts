@@ -138,6 +138,8 @@ export async function reportHTML(
             body += await mediaTag(canvas, "canvas", resolve);
           body += `<p>Nilai: ${q.earned === null ? "Belum dikoreksi" : q.earned} / ${q.payload.points}</p>`;
           if (q.comment) body += `<p>Catatan: ${esc(q.comment)}</p>`;
+          if(q.payload.rubricCriteria?.length)body+=`<table><thead><tr><th>Kriteria rubrik</th><th>Bobot</th><th>Skor</th></tr></thead><tbody>${q.payload.rubricCriteria.map(c=>`<tr><td>${esc(c.label)}</td><td>${c.maxPoints}</td><td>${q.criteria?.[c.id]??"Menunggu"}</td></tr>`).join("")}</tbody></table>`;
+          if(q.revision_reason)body+=`<p class="meta">Catatan penilaian: ${esc(q.revision_reason)}</p>`;
           if (kind === "student")
             body += `<p>Rubrik: ${esc(q.payload.rubric)}</p>`;
         }
@@ -335,7 +337,7 @@ export async function renderXLSX(
         `${q.p} / ${q.difficulty}`,
         `${q.d} / ${q.discrimination}`,
         q.group_size,
-        q.version,
+        `${q.version}${q.small_sample?" / sampel kecil (<30)":""}`,
       ]);
       for (const w of q.wrong)
         sheet.addRow([
@@ -374,7 +376,7 @@ export async function renderXLSX(
               ? q.payload.options.map((o) => `${o.id}. ${o.text}`).join("\n")
               : answerText(q.answer),
           ),
-          comment = splitCell(q.comment || q.payload.rubric || "");
+          comment = splitCell([q.comment||q.payload.rubric||"",...(q.payload.rubricCriteria||[]).map(c=>`${c.label}: ${q.criteria?.[c.id]??"Menunggu"} / ${c.maxPoints}`),q.revision_reason||""].filter(Boolean).join("\n"));
         for (
           let i = 0;
           i < Math.max(stem.length, answer.length, comment.length);
