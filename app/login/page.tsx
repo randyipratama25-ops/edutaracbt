@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export default async function Login() {
   const b = await branding();
   return (
-    <main
+    <main id="main-content" tabIndex={-1}
       className="auth-wrap"
       style={
         b.background

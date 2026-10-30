@@ -53,18 +53,20 @@ export function PasswordForm() {
     }
   }
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} className="stack" aria-busy={busy}>
       <label>
         Password baru
         <input
           name="password"
           type="password"
+          aria-describedby="password-policy"
           minLength={12}
           maxLength={128}
           required
           autoComplete="new-password"
         />
       </label>
+      <p id="password-policy" className="muted">Gunakan minimal 12 karakter untuk password baru.</p>
       <label>
         Ulangi password
         <input

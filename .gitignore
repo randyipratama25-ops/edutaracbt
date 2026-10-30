@@ -9,3 +9,5 @@ out/
 load-accounts*.json
 legacy-export*.json
 backup-downloads/
+
+.next-stage2-*/

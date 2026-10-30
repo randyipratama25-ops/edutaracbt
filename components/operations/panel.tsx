@@ -294,7 +294,7 @@ export function OperationsPanel({
               Tugaskan pengawas
             </Button>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel operasional ujian; geser untuk melihat kolom lain">
             <table>
               <thead>
                 <tr>
@@ -382,7 +382,7 @@ export function OperationsPanel({
             ))}
           </ul>
           <h2>Penugasan</h2>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel operasional ujian; geser untuk melihat kolom lain">
             <table>
               <thead>
                 <tr>
@@ -547,7 +547,7 @@ export function OperationsPanel({
               Riwayat pesan
             </Button>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel operasional ujian; geser untuk melihat kolom lain">
             <table>
               <thead>
                 <tr>

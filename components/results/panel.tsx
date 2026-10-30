@@ -315,7 +315,7 @@ export function ResultsPanel({
           </Button>
         </div>
         {loading && <p>Memuat hasil…</p>}
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel hasil ujian; geser untuk melihat kolom lain">
           <table>
             <thead>
               <tr>

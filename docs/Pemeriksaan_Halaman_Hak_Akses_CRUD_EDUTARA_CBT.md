@@ -1,6 +1,29 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.2 — pemulihan setelah tab ditutup dan perpindahan perangkat.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.3 — UI/UX global dan player ujian.
+
+## Pembaruan Tahap 2 — UI/UX global dan player
+
+Implementasi pada branch `feat/stage2-global-player-ui`, berbasis `main` commit `7e6670d66e8371f3bf45f7a8c00fd3c5d10a6287`. Jumlah halaman produksi tetap **18**; tidak ada role, endpoint, tabel, kolom atau aturan CRUD baru.
+
+| Area | Perubahan antarmuka | Hak akses dan perilaku |
+|---|---|---|
+| Dashboard dan seluruh halaman staf | Sidebar dikelompokkan menjadi Ruang kerja, Ujian, Penilaian dan Administrasi; halaman aktif ditandai; breadcrumb dan identitas peran ditampilkan | Tetap Admin/Guru konteks staf. Menu Administrasi serta Ruang & pengawas hanya ditampilkan untuk Admin; guard server yang ada dipertahankan |
+| Navigasi mobile | Menu dibuka dalam dialog yang mendukung keyboard, Escape, penguncian fokus dan pengembalian fokus ke pembuka | Tidak menambah akses halaman; pilihan menu mengikuti peran yang sama |
+| Desain global | Warna, tipografi, jarak, panel, tombol, form, dialog, tabel dan indikator loading diseragamkan | Tidak mengubah validasi maupun proses CRUD |
+| Tabel modul | Header/kolom identitas tetap sticky; zebra striping; kontainer gulir dapat difokuskan dan diberi label untuk keyboard/pembaca layar | Data dan cakupan filter tetap ditentukan layanan/RLS yang sudah ada |
+| Login dan atur password | Form responsif, status loading, tombol tampil/sembunyikan password login dan petunjuk minimum password | Tidak mengubah kredensial, aturan password, konteks login atau autentikasi |
+| Portal siswa | Loading, error, retry dan empty state dibedakan; daftar ujian memiliki kartu status; waktu jadwal ditampilkan WIB | Tetap hanya ujian siswa berizin; bukan pembukaan ujian di luar jadwal |
+| Player `/student` | Header/timer tetap terlihat di mobile; status koneksi/simpan diringkas; kontrol tambahan ada di Alat; ukuran tulisan dapat disesuaikan | Deadline server, autosave, pemulihan draf, takeover dan submit tetap memakai mekanisme Tahap 1 |
+| Navigasi soal | Peta soal pada desktop dan dialog Daftar soal pada mobile; status kosong, parsial, terjawab dan ragu memiliki label teks/aksesibel | Status terjawab tidak menunjukkan benar/salah; penilaian tetap di server |
+| Konfirmasi pengumpulan | Ringkasan terjawab/belum lengkap/ragu serta tombol menuju soal belum lengkap | Tidak melewati pemeriksaan wajib/minimum karakter, penyimpanan, canvas dan deadline server |
+| Lampiran soal | Player menghindari duplikasi pilihan pada pratinjau; kegagalan lampiran memiliki feedback dan tombol coba ulang | Endpoint/media dan izin lampiran tetap; tidak membocorkan kunci/rubrik |
+
+Preferensi tampilan player (ukuran tulisan, nomor soal terakhir, tanda ragu) disimpan lokal per siswa/attempt dengan key `edutara:player-ui:v1:<student_id>:<attempt_id>`. Ini preferensi UI, bukan jawaban/nilai dan bukan tambahan izin CRUD. Preferensi ini tidak disinkronkan lintas perangkat. Cadangan jawaban Tahap 1 tetap terpisah dan berlaku seperti bagian berikut.
+
+**Migrasi database tidak diperlukan** untuk Tahap 2 karena seluruh perubahan berada pada komponen, CSS dan preferensi tampilan lokal. Tidak ada perubahan skema atau kebijakan akses.
+
+Verifikasi mencakup tes regresi, build produksi dan browser dengan data simulasi pada lebar 320/390/768/1440 piksel: overflow, tabel gulir, menu/dialog keyboard, fokus kembali setelah Escape, status jawaban parsial, ukuran tulisan, timer sticky, ringkasan pengumpulan serta loading/error/empty/retry siswa. Route sementara pemeriksaan browser dibuat hanya oleh skrip uji, dihapus setelah selesai, dan tidak termasuk halaman produksi. Pengujian ini bukan UAT perangkat fisik siswa atau sertifikasi WCAG.
 
 ## Pembaruan Tahap 1 — pemulihan persisten dan lintas perangkat
 

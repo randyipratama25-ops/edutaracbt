@@ -3,7 +3,7 @@ import { ActivationRedirect } from "../components/auth/activation-redirect";
 import { Button } from "../components/ui/button";
 export default function Home() {
   return (
-    <main className="auth-wrap">
+    <main id="main-content" tabIndex={-1} className="auth-wrap">
       <ActivationRedirect />
       <section className="panel hero">
         <p className="eyebrow">EDUTARA CBT</p>
@@ -12,7 +12,7 @@ export default function Home() {
           <br />
           Pengelolaan yang terarah.
         </h1>
-        <p>Fondasi pengelolaan pengguna dan data akademik madrasah.</p>
+        <p>Platform asesmen dan pengelolaan ujian madrasah.</p>
         <p className="notice">
           Aplikasi dalam pengembangan. Pelaksanaan ujian belum dibuka.
         </p>

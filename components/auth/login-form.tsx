@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 export function LoginForm() {
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [remember, setRemember] = useState(false);
   const [name, setName] = useState("");
@@ -78,10 +80,10 @@ export function LoginForm() {
   }
   return (
     <>
-      <form onSubmit={submit} className="stack">
+      <form onSubmit={submit} className="stack" aria-busy={busy}>
         <label>
           Konteks masuk
-          <select value={context} onChange={(e) => setContext(e.target.value)}>
+          <select disabled={busy} value={context} onChange={(e) => setContext(e.target.value)}>
             <option value="staff">Admin / Guru</option>
             <option value="supervisor">Pengawas</option>
             <option value="student">Siswa</option>
@@ -90,6 +92,7 @@ export function LoginForm() {
         <label>
           Username
           <input
+            disabled={busy}
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoComplete="username"
@@ -99,13 +102,15 @@ export function LoginForm() {
         </label>
         <label>
           Password
-          <input
+          <span className="password-field"><input
+            id="login-password"
+            disabled={busy}
             name="password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             required
             maxLength={256}
-          />
+          /><button type="button" className="password-toggle" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} aria-controls="login-password" aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>{showPassword ? <EyeOff size={19} aria-hidden="true" /> : <Eye size={19} aria-hidden="true" />}</button></span>
         </label>
         {context === "student" && (
           <p className="muted">

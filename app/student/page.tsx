@@ -8,7 +8,7 @@ export default async function Student() {
   if (!a || a.context !== "student") redirect("/login");
   return (
     <>
-      <Inbox />
+      <div className="student-inbox"><Inbox /></div>
       <StudentPortal studentId={a.id} />
     </>
   );
