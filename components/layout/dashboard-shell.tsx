@@ -28,6 +28,7 @@ const groups = [
     { href: "/dashboard/analytics", label: "Analitik & laporan", icon: BarChart3 },
   ] },
   { label: "Administrasi", items: [
+    { href: "/dashboard/advanced", label: "Fitur lanjutan", icon: Settings, admin: true },
     { href: "/dashboard/acceptance", label: "Penerimaan operasional", icon: ClipboardCheck, admin: true },
     { href: "/dashboard/settings", label: "Pengaturan", icon: Settings, admin: true },
     { href: "/dashboard/audit", label: "Audit aktivitas", icon: ShieldCheck, admin: true },

@@ -3,6 +3,7 @@ import path from "node:path";
 import katex from "katex";
 import ExcelJS from "exceljs";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { exchangeHeaders, exchangeRow } from "./exchange";
 import { safeHtml } from "../authoring/schema";
 import { analyze } from "../results/analytics";
 import type { ResultDetail } from "../results/types";
@@ -28,6 +29,7 @@ const esc = (s: unknown) =>
       ]!,
   );
 const labels: Record<ReportKind, string> = {
+  exchange: "Pertukaran nilai",
   recap: "Rekap nilai",
   class: "Rekap per kelas",
   student: "Laporan rinci peserta",
@@ -100,7 +102,18 @@ export async function reportHTML(
     logo = await mediaTag(settings.logo_media_id, "source", resolve);
   const header = `<header class="letterhead">${logo}<h1>${esc(settings.school)}</h1><p>${esc(settings.address)}</p></header>`;
   let body = "";
-  if (kind === "recap" || kind === "class") {
+  if (kind === "exchange") {
+    body = `${header}<h2>Pertukaran nilai</h2><p>Format edutara-grade-exchange-v1 · nilai menurut revisi ledger pada saat pekerjaan dibuat. Kosong = belum final; nol = nilai final 0.</p><table><thead><tr>${exchangeHeaders.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${details
+      .map(
+        (d) =>
+          `<tr>${exchangeRow(d)
+            .map((v) => `<td dir="auto">${esc(v)}</td>`)
+            .join("")}</tr>`,
+      )
+      .join(
+        "",
+      )}</tbody></table><style>@page{size:A4 landscape}table{font-size:7pt}th,td{padding:3pt;word-break:break-word}</style>`;
+  } else if (kind === "recap" || kind === "class") {
     const groups = new Map<string, ResultDetail[]>();
     for (const d of details) {
       const key =
@@ -138,8 +151,10 @@ export async function reportHTML(
             body += await mediaTag(canvas, "canvas", resolve);
           body += `<p>Nilai: ${q.earned === null ? "Belum dikoreksi" : q.earned} / ${q.payload.points}</p>`;
           if (q.comment) body += `<p>Catatan: ${esc(q.comment)}</p>`;
-          if(q.payload.rubricCriteria?.length)body+=`<table><thead><tr><th>Kriteria rubrik</th><th>Bobot</th><th>Skor</th></tr></thead><tbody>${q.payload.rubricCriteria.map(c=>`<tr><td>${esc(c.label)}</td><td>${c.maxPoints}</td><td>${q.criteria?.[c.id]??"Menunggu"}</td></tr>`).join("")}</tbody></table>`;
-          if(q.revision_reason)body+=`<p class="meta">Catatan penilaian: ${esc(q.revision_reason)}</p>`;
+          if (q.payload.rubricCriteria?.length)
+            body += `<table><thead><tr><th>Kriteria rubrik</th><th>Bobot</th><th>Skor</th></tr></thead><tbody>${q.payload.rubricCriteria.map((c) => `<tr><td>${esc(c.label)}</td><td>${c.maxPoints}</td><td>${q.criteria?.[c.id] ?? "Menunggu"}</td></tr>`).join("")}</tbody></table>`;
+          if (q.revision_reason)
+            body += `<p class="meta">Catatan penilaian: ${esc(q.revision_reason)}</p>`;
           if (kind === "student")
             body += `<p>Rubrik: ${esc(q.payload.rubric)}</p>`;
         }
@@ -178,7 +193,10 @@ export async function renderPDF(
     );
     const chunks = htmlOverride
       ? [[]]
-      : kind === "recap" || kind === "class" || kind === "analytics"
+      : kind === "recap" ||
+          kind === "class" ||
+          kind === "analytics" ||
+          kind === "exchange"
         ? [details]
         : Array.from({ length: Math.ceil(details.length / 10) }, (_, i) =>
             details.slice(i * 10, i * 10 + 10),
@@ -293,7 +311,42 @@ export async function renderXLSX(
   } else sheet.mergeCells("A1:G1");
   sheet.mergeCells("A2:G2");
   sheet.mergeCells("A3:G3");
-  if (kind === "recap" || kind === "class") {
+  if (kind === "exchange") {
+    sheet.columns = [32, 30, 32, 34, 32, 24, 14, 20, 16, 14, 18].map(
+      (width) => ({ width }),
+    );
+    sheet.addRow(exchangeHeaders);
+    details.forEach((d) =>
+      sheet.addRow(
+        exchangeRow(d).map((v) => (typeof v === "string" ? text(v) : v)),
+      ),
+    );
+    sheet.views = [{ state: "frozen", xSplit: 2, ySplit: 4 }];
+    sheet.autoFilter = {
+      from: { row: 4, column: 1 },
+      to: { row: 4, column: exchangeHeaders.length },
+    };
+    const guide = wb.addWorksheet("Panduan");
+    guide.addRows([
+      ["Format", "edutara-grade-exchange-v1"],
+      ["Nilai final kosong", "Belum final; jangan diubah menjadi nol"],
+      ["Nilai final 0", "Nilai nol yang sudah final"],
+      [
+        "ID Peserta/Ujian/Attempt",
+        "Kunci stabil untuk pemetaan; nama bukan kunci unik",
+      ],
+      ["Revisi ledger", "Versi resmi saat pekerjaan dibuat"],
+      [
+        "Akses",
+        "Berkas memuat identitas; simpan dan bagikan sesuai kewenangan",
+      ],
+    ]);
+    guide.columns = [{ width: 30 }, { width: 90 }];
+    guide.eachRow((r) => {
+      r.alignment = { wrapText: true, vertical: "top" };
+      r.height = 32;
+    });
+  } else if (kind === "recap" || kind === "class") {
     sheet.addRow([
       "No",
       "Peserta",
@@ -337,7 +390,7 @@ export async function renderXLSX(
         `${q.p} / ${q.difficulty}`,
         `${q.d} / ${q.discrimination}`,
         q.group_size,
-        `${q.version}${q.small_sample?" / sampel kecil (<30)":""}`,
+        `${q.version}${q.small_sample ? " / sampel kecil (<30)" : ""}`,
       ]);
       for (const w of q.wrong)
         sheet.addRow([
@@ -376,7 +429,18 @@ export async function renderXLSX(
               ? q.payload.options.map((o) => `${o.id}. ${o.text}`).join("\n")
               : answerText(q.answer),
           ),
-          comment = splitCell([q.comment||q.payload.rubric||"",...(q.payload.rubricCriteria||[]).map(c=>`${c.label}: ${q.criteria?.[c.id]??"Menunggu"} / ${c.maxPoints}`),q.revision_reason||""].filter(Boolean).join("\n"));
+          comment = splitCell(
+            [
+              q.comment || q.payload.rubric || "",
+              ...(q.payload.rubricCriteria || []).map(
+                (c) =>
+                  `${c.label}: ${q.criteria?.[c.id] ?? "Menunggu"} / ${c.maxPoints}`,
+              ),
+              q.revision_reason || "",
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          );
         for (
           let i = 0;
           i < Math.max(stem.length, answer.length, comment.length);
