@@ -36,6 +36,8 @@ export function parseUserImport(text: string) {
   const hasHeader = lines[0]?.startsWith("username\t");
   if (hasHeader) lines.shift();
   if (lines.length > 200) throw new Error("Maksimal 200 baris per impor.");
+  if (!text.trim()) return [];
+  const seen = new Set<string>();
   return lines.map((line, index) => {
     const [username, full_name, email, role, class_id] = line
       .split("\t")
@@ -47,11 +49,13 @@ export function parseUserImport(text: string) {
       role,
       ...(class_id ? { class_id } : {}),
     });
+    const duplicate = result.success && seen.has(result.data.username);
+    if (result.success) seen.add(result.data.username);
     return {
       row: index + (hasHeader ? 2 : 1),
-      valid: result.success,
+      valid: result.success && !duplicate,
       data: result.success ? result.data : null,
-      error: result.success
+      error: duplicate ? "Username duplikat dalam berkas." : result.success
         ? ""
         : result.error.issues
             .map((i) => `${i.path.join(".")}: ${i.message}`)

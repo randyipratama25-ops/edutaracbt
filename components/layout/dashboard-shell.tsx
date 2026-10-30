@@ -14,6 +14,7 @@ const groups = [
     { href: "/dashboard/master-data", label: "Data akademik", icon: BookOpen },
   ] },
   { label: "Ujian", items: [
+    { href: "/dashboard/preparation", label: "Persiapan ujian", icon: ClipboardCheck },
     { href: "/dashboard/exams", label: "Ujian & bank soal", icon: CalendarDays },
     { href: "/dashboard/monitor", label: "Monitoring", icon: Activity },
     { href: "/dashboard/rooms", label: "Ruang & pengawas", icon: DoorOpen, admin: true },

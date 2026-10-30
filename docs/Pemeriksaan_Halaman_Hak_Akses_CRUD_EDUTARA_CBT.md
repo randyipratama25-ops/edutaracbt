@@ -1,6 +1,30 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.3 — UI/UX global dan player ujian.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.4 — Alur persiapan dan pelaksanaan ujian.
+
+## Pembaruan Tahap 3 — Alur persiapan dan pelaksanaan
+
+Implementasi branch `feat/stage3-preparation-operations`, berbasis main `8c34f8f6c9a81dc58d80b5ac3b3ee646b7016ce8`. Inventaris terbaru **19 halaman produksi**. Bagian Tahap 1/2 di bawah adalah catatan historis pada versinya; tambahan dan perubahan izin terbaru di bagian ini serta matriks berlaku saat ini.
+
+| Area/objek | Fungsi terbaru | Izin CRUD dan batasan |
+|---|---|---|
+| **Persiapan ujian** `/dashboard/preparation` (baru) | Wizard Identitas → Peserta → Jadwal → Soal → Aturan → Pemeriksaan → Publikasi; checklist server dan status siklus ujian | Admin/Guru konteks staf dapat masuk. Admin C/U draf, R checklist, U publikasi jadwal. Guru R checklist pada cakupan authoring seluruh kelas–mapel; C/U soal tetap melalui bank soal. Tidak ada D permanen atau izin Pengawas/Siswa ke halaman ini |
+| Kesiapan dan publikasi jadwal | Memeriksa mapel/kelas aktif, peserta aktif, jadwal/durasi/PIN, lima konfigurasi tipe, soal/kunci, keberadaan lampiran | Hanya Admin mempublikasikan jadwal dengan konfirmasi. Server memeriksa ulang, termasuk jika memakai form jadwal lama/direct RPC. Akun belum konfirmasi email dan kelengkapan ruang/pengawas menjadi peringatan; bukan bukti login maupun penghalang publikasi |
+| Perubahan bank soal sebelum mulai | Jadwal scheduled kembali ke draft ketika soal/versinya berubah | Admin perlu meninjau dan mempublikasikan kembali. Penguncian soal setelah ujian mulai tetap berlaku |
+| Ringkasan staf | Agenda ujian, draf belum lengkap dan tindak lanjut penilaian | R sesuai authoring yang sudah ada; bukan akses seluruh ujian Guru |
+| Monitoring dan portal pengawas | Ringkasan aktif/belum mulai, indikasi kontak server dan antrean bantuan | Admin/Guru staf R sesuai ops_student; Pengawas efektif R peserta tugas. Kontak >45 detik perlu dicek, bukan otomatis dianggap offline/curang |
+| Bantuan ujian | Siswa mengirim kendala dari player atau layar penguncian, melihat status/tanggapan | Siswa C/R bantuan attempt sendiri selama sesi belum final dan deadline belum lewat; satu terbuka, maksimal 20 per attempt. Admin/pengawas efektif C tanggapan/U penutupan dalam cakupan. Guru dengan hak baca saja R, tidak dapat menutup. Tidak ada D/edit pesan historis |
+| Dispensasi waktu | Tambahan waktu eksplisit, terpisah dari lanjut sesi/unlock/reset | **Hanya Admin staf** U deadline attempt in_progress yang belum final/belum lewat deadline. Versi harus cocok; alasan dan konfirmasi wajib; 1–60 menit per tindakan, tidak melewati akhir jadwal. Pengawas/Guru/Siswa tidak mendapat izin dispensasi |
+| Impor pengguna | Template TSV, referensi ID kelas, validasi/duplikat/pratinjau server, progress dan unduhan hasil per baris | Admin C akun sesuai izin lama; Guru C siswa kelas penugasan. Pratinjau R ketersediaan username dan kelayakan kelas tanpa membuat akun/mengirim undangan. Gateway tetap memvalidasi ulang saat C; baris bermasalah dilewati dan dilaporkan |
+| Impor soal | Deteksi duplikat dalam satu berkas sebelum simpan | Izin C soal, kuota, periode, lampiran dan penguncian tetap sama |
+
+Status siklus tampilan: **Draf → Siap Ditinjau → Terjadwal → Berlangsung → Selesai → Dinilai → Dipublikasikan → Diarsipkan**. Label dihitung dari status/waktu server, finalisasi/pending koreksi dan publikasi hasil; bukan enum baru. Publikasi jadwal berarti tampil di daftar ujian Siswa, sedangkan publikasi hasil tetap memakai aturan modul Hasil.
+
+Endpoint baru `/api/workflow` menyediakan kesiapan/preflight impor, indikator pelaksanaan, bantuan/tanggapan, publikasi jadwal dan dispensasi. Role, konteks, organisasi, penugasan/ownership, status, versi dan waktu diperiksa pada API serta RPC terkontrol. Jalur direct RPC tetap memeriksa role/cakupan; konteks login ditangani API. PIN/hash/kunci soal tidak ada dalam payload checklist.
+
+Migrasi tambahan `20261030033230_preparation_execution_workflow.sql` telah diterapkan dan diverifikasi di staging serta produksi: tabel private `attempt_presence`, `exam_help_requests`, `workflow_requests`, RPC workflow, pembungkus authoring/attempt serta trigger invalidasi kesiapan. RLS aktif; tidak ada grant tabel langsung ke anon/authenticated. Request mutasi bersifat idempoten; draf wizard menyimpan fingerprint request, bukan PIN mentah, untuk deduplikasi. Dispensasi menyimpan before_state dan alasan dalam attempt_overrides serta audit. Migrasi tidak mengubah massal jawaban, nilai, snapshot, deadline atau status ujian yang sudah ada.
+
+Verifikasi mencakup tes database/regresi dan browser fixture pada 320/390/768/1440: wizard, gate publikasi, role, bantuan/tanggapan, dispensasi, pratinjau impor/duplikat/laporan, serta responsivitas. Ini bukan pengesahan UAT akun produksi/perangkat fisik. Bukti implementasi dan batas operasional terdapat di `docs/stage3-preparation-execution.md`.
 
 ## Pembaruan Tahap 2 — UI/UX global dan player
 
@@ -61,7 +85,7 @@ Pengujian meliputi penutupan tab/client baru, pilihan cadangan server, konflik r
 
 Repositori: https://github.com/randyipratama25-ops/edutaracbt — branch `main`, commit `bc2970528e07e6a5ebe3e0110ca9d6707b4e4c0c`.
 
-Dokumen ini merupakan inventaris implementasi Next.js berdasarkan pemeriksaan statis 18 file `page.tsx`, layout, komponen antarmuka, API, identity gateway, serta migrasi SQL otorisasi. Hak akses di bawah mengikuti kode pada commit tersebut; bukan semata rencana fitur atau perilaku aplikasi GAS lama. File legacy `index.html` dan `Code.gs` masih ada di repositori, tetapi tidak dihitung sebagai halaman App Router yang aktif. Status migrasi di database produksi, konfigurasi layanan, dan hasil UAT login setiap peran tidak diverifikasi dalam pemeriksaan ini. Karena itu, dokumen ini bukan sertifikasi bahwa seluruh fitur berhasil dijalankan di produksi.
+Dokumen ini merupakan inventaris implementasi Next.js berdasarkan pemeriksaan awal 18 file `page.tsx` (kini 19 setelah Tahap 3), layout, komponen antarmuka, API, identity gateway, serta migrasi SQL otorisasi. Inventaris awal mengikuti commit tersebut dan disinkronkan dengan pembaruan Tahap 1–3 di atas; bukan semata rencana fitur atau perilaku aplikasi GAS lama. File legacy `index.html` dan `Code.gs` masih ada di repositori, tetapi tidak dihitung sebagai halaman App Router yang aktif. Status migrasi di database produksi, konfigurasi layanan, dan hasil UAT login setiap peran tidak diverifikasi dalam pemeriksaan ini. Karena itu, dokumen ini bukan sertifikasi bahwa seluruh fitur berhasil dijalankan di produksi.
 
 ### Arti izin
 
@@ -100,15 +124,16 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 7 | Ujian dan bank soal | `/dashboard/exams` | Jadwal, kelas peserta, PIN, konfigurasi tipe soal, periode input, penyusunan/impor/salin soal, versi dan pratinjau. | Admin, Guru dalam konteks staf | Admin mengelola ujian dan soal; Guru mengelola soal pada ujian berizin. Arsip terpisah dari D. |
 | 8 | Hasil dan koreksi | `/dashboard/results` | Daftar/detail hasil, koreksi esai, rekalkulasi, publikasi, riwayat dan saran AI bila tersedia. | Admin, Guru dalam konteks staf | R dan C/U penilaian sesuai cakupan; publikasi hanya Admin; tidak ada D ledger. |
 | 9 | Analitik dan laporan | `/dashboard/analytics` | Analisis kelompok peserta dan pembuatan/unduh laporan PDF/XLSX. Memakai komponen hasil yang sama, dengan analitik didahulukan. | Admin, Guru dalam konteks staf | R analitik, C pekerjaan ekspor; kop laporan C/U hanya Admin. Hak koreksi mengikuti modul hasil yang sama. |
-| 10 | Peninjauan/monitoring ujian | `/dashboard/monitor` | Status peserta, kejadian integritas, tindakan operasional, pesan dan riwayat tindakan. | Admin, Guru dalam konteks staf | R sesuai cakupan; Admin dapat reset/unlock/diskualifikasi; Guru staf biasa tidak otomatis boleh intervensi. C pesan sesuai penerima berizin. |
+| 10 | Peninjauan/monitoring ujian | `/dashboard/monitor` | Status peserta, kejadian integritas, tindakan operasional, pesan dan riwayat tindakan. | Admin, Guru dalam konteks staf | R sesuai cakupan; Admin dapat reset/unlock/diskualifikasi; Guru staf biasa tidak otomatis boleh intervensi. C pesan sesuai penerima berizin; R bantuan, U tanggapan sesuai hak pengawas; dispensasi waktu hanya Admin. |
 | 11 | Media soal | `/dashboard/media` | Daftar, unggah/impor sumber media, akses media dan pembersihan berkas yang tidak dirujuk. | Admin, Guru dalam konteks staf | C/R/D bersyarat; Guru atas media miliknya, Admin dalam organisasi. Tidak ada edit isi berkas umum. |
 | 12 | Kartu peserta ujian | `/dashboard/cards` | Membuat serta mengunduh kartu peserta PDF/ZIP sesuai peserta berizin. | Admin, Guru dalam konteks staf | C pekerjaan kartu, R status/hasil; tidak ada CRUD akun/PIN melalui kartu. |
 | 13 | Ruang, sesi dan pengawas | `/dashboard/rooms` | Ruang/kapasitas, sesi, roster siswa, penugasan pengawas, pengganti dan pencabutan. | Admin saja | C/R/U/D ruang/sesi bersyarat; tambah/hapus roster; penugasan dicabut/nonaktif, riwayat dipertahankan. |
 | 14 | Pengaturan aplikasi | `/dashboard/settings` | Identitas/branding, zona waktu, kebijakan ujian, hasil/canvas, otomasi, reminder, retensi, sender dan referensi secret. | Admin saja | R/U konfigurasi, simpan/ganti secret; tidak ada baca balik nilai secret. |
 | 15 | Audit aktivitas | `/dashboard/audit` | Menelusuri tindakan, pelaku, sasaran dan waktu untuk pengawasan operasional. | Admin saja | R; tidak ada edit/hapus audit melalui halaman. |
 | 16 | Otomasi dan backup | `/dashboard/jobs` | Memantau pekerjaan, meminta backup/probe SMTP, retry, membatalkan backup dan rekonsiliasi status email yang tidak pasti. | Admin saja | C pekerjaan, R status/unduhan, U tindakan terkontrol; bukan halaman restore atau hapus semua data. |
-| 17 | Portal siswa / player ujian | `/student` | Daftar ujian sendiri, mulai/lanjut ujian, jawaban/canvas, sinkronisasi, submit, hasil yang diizinkan dan kotak pesan. | Siswa dalam konteks siswa | C attempt/jawaban sendiri; R sendiri; U jawaban selama ujian terbuka dan status baca pesan; tidak ada D attempt/hasil. |
-| 18 | Portal pengawas | `/supervisor` | Monitoring peserta dan intervensi pada ruang/sesi tugas efektif; pesan, riwayat, serta kartu peserta dalam panel tambahan. | Pengawas atau Guru dalam konteks pengawas dengan penugasan sah | R peserta tugas, U reset/unlock/diskualifikasi beralasan, C pesan/kartu dalam cakupan; tidak mengelola ruang/penugasan. |
+| 17 | Portal siswa / player ujian | `/student` | Daftar ujian sendiri, mulai/lanjut ujian, jawaban/canvas, sinkronisasi, submit, hasil yang diizinkan, kotak pesan dan permintaan bantuan. | Siswa dalam konteks siswa | C attempt/jawaban sendiri; R sendiri; U jawaban selama ujian terbuka dan status baca pesan; tidak ada D attempt/hasil. |
+| 18 | Portal pengawas | `/supervisor` | Monitoring peserta dan intervensi pada ruang/sesi tugas efektif; pesan, bantuan/tanggapan, indikator koneksi, riwayat, serta kartu peserta dalam panel tambahan. | Pengawas atau Guru dalam konteks pengawas dengan penugasan sah | R peserta tugas, U reset/unlock/diskualifikasi beralasan, C pesan/kartu dalam cakupan; tidak mengelola ruang/penugasan. |
+| 19 | Persiapan ujian | `/dashboard/preparation` | Wizard pembuatan draf, checklist kesiapan, siklus ujian dan publikasi jadwal. | Admin, Guru konteks staf | Admin C/R/U draf dan U publikasi jadwal setelah pemeriksaan; Guru R kesiapan dalam cakupan authoring. Tidak ada D permanen. |
 
 `/auth/confirm` merupakan route handler konfirmasi email/token, bukan halaman `page.tsx`. File loading/error dashboard merupakan tampilan status, bukan halaman navigasi tersendiri. Modal soal, pratinjau, detail hasil, impor, kartu, inbox dan form pemulihan tidak memiliki route halaman tersendiri dalam inventaris ini.
 
@@ -133,6 +158,11 @@ Cakupan Admin pada tabel ini adalah organisasi yang sama. Seluruh tanda izin tet
 | Penugasan/pengganti pengawas | C/R/U; nonaktif/cabut | — | R tugas efektif; tidak menunjuk pengganti | — |
 | Attempt dan jawaban | R operasional/hasil; bukan menulis jawaban siswa | R sesuai monitoring/penilaian | R operasional ruang tugas | C/R/U milik sendiri selama status/deadline mengizinkan |
 | Reset/unlock/diskualifikasi | U dengan alasan dan pemeriksaan versi | Tidak otomatis; perlu konteks/penugasan pengawas yang sesuai | U sesuai peserta tugas dan prasyarat status | — |
+| Checklist kesiapan | R seluruh ujian organisasi | R jika can_author seluruh kelas–mapel | — melalui halaman persiapan | — |
+| Publikasi jadwal | U sesudah checklist wajib lulus; konfirmasi | — | — | R daftar ujian eligible |
+| Bantuan dan tanggapan | R; C tanggapan/U penutupan | R monitoring tercakup; U hanya dengan hak pengawas efektif | R/C tanggapan/U penutupan peserta tugas | C/R bantuan attempt sendiri; tidak dapat menutup/edit/hapus |
+| Dispensasi waktu | U deadline dengan alasan, konfirmasi, versi, sesi aktif, batas akhir jadwal | — | — | R deadline sendiri dari server |
+| Indikator kontak server | R operasional | R monitoring tercakup | R peserta tugas | C/U otomatis hanya melalui perintah writer sah; bukan akses tabel |
 | Koreksi esai/rekalkulasi | C/R/U sesuai status attempt | C/R/U kelas–mapel snapshot berizin | — melalui portal pengawas | — |
 | Publikasi/sembunyikan hasil | U | — | — | R hasil sendiri jika dipublikasikan dan kebijakan mengizinkan |
 | Saran koreksi AI | Minta/R/terima/edit/tolak bila layanan tersedia | Sama dalam cakupan penilaian | — | — |
@@ -163,7 +193,7 @@ Soal terkunci setelah waktu mulai atau status active/closed/archived. Guru juga 
 
 Guru dalam konteks staf dapat membaca monitoring berdasarkan mapel dan kelas penugasan. Hak menulis intervensi membutuhkan Admin atau penugasan pengawas efektif; hak baca monitoring saja tidak cukup. Route `/api/review` lebih eksplisit membatasi pemanggil ke Admin staf atau konteks pengawas; `/api/operations` juga memeriksa cakupan melalui fungsi SQL.
 
-Pengawas efektif memperhitungkan pengganti, pencabutan, akun aktif dan sesi waktu yang berlaku. Karena itu, role `supervisor` saja tidak menjamin daftar peserta maupun tindakan tersedia. Pengawas asli dapat kehilangan cakupan saat pengganti efektif berlaku. Reset mempertahankan deadline dan riwayat; tidak memberi tambahan waktu otomatis. Roster peserta yang telah mulai dikunci. Hapus ruang/sesi dapat ditolak ketika masih dirujuk data lain.
+Pengawas efektif memperhitungkan pengganti, pencabutan, akun aktif dan sesi waktu yang berlaku. Karena itu, role `supervisor` saja tidak menjamin daftar peserta maupun tindakan tersedia. Pengawas asli dapat kehilangan cakupan saat pengganti efektif berlaku. Reset mempertahankan deadline dan riwayat; tidak memberi tambahan waktu otomatis. Dispensasi merupakan tindakan terpisah khusus Admin: sesi aktif sebelum deadline, maksimal 60 menit per tindakan dan tidak melewati akhir jadwal, dengan alasan/konfirmasi/versi serta audit. Roster peserta yang telah mulai dikunci. Hapus ruang/sesi dapat ditolak ketika masih dirujuk data lain.
 
 ### 4.4 Hasil, laporan, dan AI
 
@@ -179,7 +209,7 @@ Media milik Guru dan media organisasi untuk Admin memiliki pembatasan rujukan. M
 
 Halaman pengaturan menyimpan nilai setting serta referensi secret. Status keberadaan secret dapat dibaca; nilai secret tidak dikembalikan. Pengaturan retensi/reminder/SMTP dan tombol otomasi tidak membuktikan worker telah diaktifkan di produksi: kode memiliki pemeriksaan kapabilitas worker.
 
-Pembatalan backup dan penyelesaian status email tidak pasti membutuhkan alasan/konfirmasi yang divalidasi. Unduh backup memerlukan pekerjaan selesai. Tidak ditemukan alur restore database umum pada 18 halaman ini; jangan menjanjikan restore melalui halaman jobs. Log audit dan ledger tidak memiliki tombol hapus/edit umum.
+Pembatalan backup dan penyelesaian status email tidak pasti membutuhkan alasan/konfirmasi yang divalidasi. Unduh backup memerlukan pekerjaan selesai. Tidak ditemukan alur restore database umum pada 19 halaman ini; jangan menjanjikan restore melalui halaman jobs. Log audit dan ledger tidak memiliki tombol hapus/edit umum.
 
 ## 5. Peta endpoint untuk pengembangan
 
@@ -191,6 +221,7 @@ Endpoint bukan tambahan halaman. Daftar ini membantu menelusuri kontrol server d
 | Pengguna/master | `/api/admin/users`, `/api/admin/master` | Actor staf; operasi akun melalui gateway; master tulis hanya Admin. |
 | Penyusunan | `/api/authoring`, `/api/authoring/media` | Actor staf; authoring_command dan author_guard. |
 | Ujian siswa | `/api/attempts`, `/api/attempts/canvas`, `/api/attempts/latex`, `/api/attempts/media` | Konteks Siswa, ownership, epoch/versi, status dan deadline. |
+| Alur persiapan/pelaksanaan | `/api/workflow` | Staf untuk kesiapan/preflight, Siswa untuk bantuan sendiri, petugas sesuai monitoring/penugasan untuk indikator/tanggapan; publikasi dan dispensasi hanya Admin staf. |
 | Peninjauan | `/api/review` | Admin staf atau konteks Pengawas; cakupan attempt SQL. |
 | Operasional | `/api/operations`, `/api/operations/live` | Operator dan ops_command; baca/tulis dibedakan. |
 | Hasil | `/api/results`, `/api/results/media`, `/api/grading/ai` | Admin/Guru staf; can_grade dan pembatasan publikasi. |
@@ -218,8 +249,9 @@ Semua path relatif terhadap repositori pada commit di awal dokumen.
 
 | Bukti | Lokasi |
 |---|---|
-| Inventaris 18 halaman | `app/**/page.tsx` dan `app/page.tsx` |
+| Inventaris 19 halaman | `app/**/page.tsx` dan `app/page.tsx` |
 | Pagar dashboard dan menu Admin | `app/dashboard/layout.tsx`; halaman rooms/settings/audit/jobs |
+| Tahap 3 persiapan/pelaksanaan | `components/workflow`, `app/dashboard/preparation/page.tsx`, `app/api/workflow/route.ts`, `lib/workflow/schema.ts`, migrasi `20261030033230_preparation_execution_workflow.sql` |
 | Role/konteks dan akun aktif | `lib/domain/validation.ts`, `lib/auth/actor.ts` |
 | Hak akun dan kirim ulang undangan | `app/api/admin/users/route.ts`, `components/admin/users-panel.tsx`, `supabase/functions/identity-gateway/index.ts`, `invitations.ts` |
 | Master dan RLS dasar | `app/api/admin/master/route.ts`, migrasi `20261028193445_foundation.sql`, `20261028193853_authorization_hardening.sql` |

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
+import { api } from "../operations/shared";
 import { parseUserImport } from "../../lib/domain/validation";
 type Row = {
   id: string;
@@ -30,8 +31,51 @@ export function UsersPanel() {
     [bulk, setBulk] = useState(""),
     [preview, setPreview] = useState<ReturnType<typeof parseUserImport>>([]),
     [chosenRole, setChosenRole] = useState("student");
+  const [importReport, setImportReport] = useState<
+    { row: number; username: string; status: string }[]
+  >([]);
+  const importLock = useRef(false);
+  const importSequence = useRef(0);
+  async function previewUsers() {
+    const sequence = ++importSequence.current;
+    setBusy(true);
+    setMessage("");
+    setPreview([]);
+    setImportReport([]);
+    try {
+      const parsed = parseUserImport(bulk);
+      const valid = parsed.filter((r) => r.valid && r.data);
+      const checks = valid.length
+        ? await api<{ username: string; error: string }[]>("/api/workflow", {
+            action: "import_preview",
+            items: valid.map((r) => r.data),
+          })
+        : [];
+      if (sequence !== importSequence.current) return;
+      setPreview(
+        parsed.map((r) => {
+          const error = checks.find(
+            (c) => c.username === r.data?.username,
+          )?.error;
+          return r.valid && error ? { ...r, valid: false, error } : r;
+        }),
+      );
+      setMessage(
+        "Pratinjau selesai. Data belum disimpan; server memeriksa izin lagi saat impor.",
+      );
+    } catch (e) {
+      if (sequence === importSequence.current)
+        setMessage(e instanceof Error ? e.message : "Pratinjau gagal.");
+    } finally {
+      if (sequence === importSequence.current) setBusy(false);
+    }
+  }
   const [invitation, setInvitation] = useState<Row | null>(null);
-  const [invitationInfo, setInvitationInfo] = useState<{ email: string; eligible: boolean; reason: string } | null>(null);
+  const [invitationInfo, setInvitationInfo] = useState<{
+    email: string;
+    eligible: boolean;
+    reason: string;
+  } | null>(null);
   const [invitationMessage, setInvitationMessage] = useState("");
   const [invitationLoading, setInvitationLoading] = useState(false);
   const [invitationSending, setInvitationSending] = useState(false);
@@ -39,23 +83,49 @@ export function UsersPanel() {
   const invitationSequence = useRef(0);
   async function openInvitation(row: Row) {
     const seq = ++invitationSequence.current;
-    setInvitation(row); setInvitationInfo(null); setInvitationMessage(""); setInvitationLoading(true);
+    setInvitation(row);
+    setInvitationInfo(null);
+    setInvitationMessage("");
+    setInvitationLoading(true);
     try {
       const info = await mutate({ operation: "invitation_info", id: row.id });
       if (seq === invitationSequence.current) setInvitationInfo(info);
     } catch (e) {
-      if (seq === invitationSequence.current) setInvitationMessage(e instanceof Error ? e.message : "Status undangan gagal dimuat.");
-    } finally { if (seq === invitationSequence.current) setInvitationLoading(false); }
+      if (seq === invitationSequence.current)
+        setInvitationMessage(
+          e instanceof Error ? e.message : "Status undangan gagal dimuat.",
+        );
+    } finally {
+      if (seq === invitationSequence.current) setInvitationLoading(false);
+    }
   }
   async function sendInvitation() {
-    if (!invitation || !invitationInfo?.eligible || invitationLock.current) return;
-    invitationLock.current = true; setInvitationSending(true); setInvitationMessage("");
+    if (!invitation || !invitationInfo?.eligible || invitationLock.current)
+      return;
+    invitationLock.current = true;
+    setInvitationSending(true);
+    setInvitationMessage("");
     try {
-      const result = await mutate({ operation: "resend_invitation", id: invitation.id });
-      setMessage(result.message); setInvitationMessage(result.message);
-      setInvitationInfo({ ...invitationInfo, eligible: false, reason: "Undangan baru dikirim. Tunggu setidaknya 60 detik sebelum mencoba lagi." });
-    } catch (e) { setInvitationMessage(e instanceof Error ? e.message : "Pengiriman gagal."); }
-    finally { invitationLock.current = false; setInvitationSending(false); }
+      const result = await mutate({
+        operation: "resend_invitation",
+        id: invitation.id,
+      });
+      setMessage(result.message);
+      setInvitationMessage(result.message);
+      setInvitationInfo({
+        ...invitationInfo,
+        eligible: false,
+        reason:
+          "Undangan baru dikirim. Tunggu setidaknya 60 detik sebelum mencoba lagi.",
+      });
+    } catch (e) {
+      setInvitationMessage(
+        e instanceof Error ? e.message : "Pengiriman gagal.",
+      );
+    } finally {
+      invitationLock.current = false;
+      setInvitationSending(false);
+    }
   }
   useEffect(() => {
     const controller = new AbortController();
@@ -169,7 +239,16 @@ export function UsersPanel() {
     }
   }
   async function importRows() {
+    if (importLock.current) return;
+    importLock.current = true;
     setBusy(true);
+    const report: { row: number; username: string; status: string }[] = preview
+      .filter((r) => !r.valid)
+      .map((r) => ({
+        row: r.row,
+        username: r.data?.username || "—",
+        status: "Dilewati: " + r.error,
+      }));
     const valid = preview.filter((x) => x.valid && x.data);
     const failures: string[] = [];
     let saved = 0;
@@ -180,7 +259,17 @@ export function UsersPanel() {
         try {
           await mutate({ operation: "create", ...row.data });
           saved++;
+          report.push({
+            row: row.row,
+            username: row.data!.username,
+            status: "Berhasil",
+          });
         } catch (error) {
+          report.push({
+            row: row.row,
+            username: row.data!.username,
+            status: error instanceof Error ? error.message : "Gagal",
+          });
           failures.push(
             `Baris ${row.row}: ${error instanceof Error ? error.message : "Gagal"}`,
           );
@@ -190,8 +279,10 @@ export function UsersPanel() {
         `Impor: ${saved} berhasil, ${failures.length} gagal. ${failures.join("; ")}`,
       );
       setVersion((v) => v + 1);
+      setImportReport(report);
       setPreview([]);
     } finally {
+      importLock.current = false;
       setBusy(false);
     }
   }
@@ -303,7 +394,11 @@ export function UsersPanel() {
                       </Button>
                       {canManage ? (
                         <>
-                          <Button variant="outline" disabled={busy || invitationSending || !row.active} onClick={() => void openInvitation(row)}>
+                          <Button
+                            variant="outline"
+                            disabled={busy || invitationSending || !row.active}
+                            onClick={() => void openInvitation(row)}
+                          >
                             Kirim ulang undangan
                           </Button>
                           <Button
@@ -358,6 +453,25 @@ export function UsersPanel() {
           Tempel data tab-separated dari spreadsheet. Maksimal 200 baris. Setiap
           akun baru menerima undangan aktivasi.
         </p>
+        <p className="muted">
+          Kolom class_id memakai ID kelas dari Data akademik. Guru hanya dapat
+          mengimpor siswa pada kelas penugasannya. Username duplikat akan
+          ditandai pada pratinjau.
+        </p>
+        <a
+          download="referensi-kelas.tsv"
+          href={
+            "data:text/tab-separated-values;charset=utf-8," +
+            encodeURIComponent(
+              "class_id\tnama_kelas\n" +
+                classes
+                  .map((c) => c.id + "\t" + c.name.replace(/[\t\r\n]/g, " "))
+                  .join("\n"),
+            )
+          }
+        >
+          Unduh referensi ID kelas
+        </a>
         <a
           download="template-pengguna.tsv"
           href={
@@ -372,7 +486,9 @@ export function UsersPanel() {
           <textarea
             rows={5}
             value={bulk}
+            disabled={busy}
             onChange={(e) => {
+              importSequence.current++;
               setBulk(e.target.value);
               setPreview([]);
             }}
@@ -382,15 +498,8 @@ export function UsersPanel() {
         <div className="actions">
           <Button
             variant="outline"
-            onClick={() => {
-              try {
-                setPreview(parseUserImport(bulk));
-              } catch (e) {
-                setMessage(
-                  e instanceof Error ? e.message : "Format tidak valid.",
-                );
-              }
-            }}
+            disabled={busy}
+            onClick={() => void previewUsers()}
           >
             Pratinjau
           </Button>
@@ -401,8 +510,45 @@ export function UsersPanel() {
             Impor baris valid
           </Button>
         </div>
+        {importReport.length > 0 && (
+          <div className="notice">
+            <p>Hasil per baris tetap tersedia untuk ditinjau.</p>
+            <a
+              download="hasil-impor-pengguna.tsv"
+              href={
+                "data:text/tab-separated-values;charset=utf-8," +
+                encodeURIComponent(
+                  "baris\tusername\thasil\n" +
+                    importReport
+                      .map((r) =>
+                        [
+                          r.row,
+                          r.username,
+                          r.status.replace(/[\t\r\n]/g, " "),
+                        ].join("\t"),
+                      )
+                      .join("\n"),
+                )
+              }
+            >
+              Unduh hasil impor
+            </a>
+            <ul>
+              {importReport.map((r) => (
+                <li key={r.row}>
+                  Baris {r.row} ({r.username}): {r.status}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {preview.length ? (
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel pengguna; geser untuk melihat kolom lain">
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Tabel pengguna; geser untuk melihat kolom lain"
+          >
             <table>
               <thead>
                 <tr>
@@ -424,21 +570,64 @@ export function UsersPanel() {
           </div>
         ) : null}
       </section>
-      <Dialog open={!!invitation} onOpenChange={(value) => {
-        if (invitationSending) return;
-        if (!value) { invitationSequence.current++; setInvitation(null); }
-      }} title="Kirim ulang undangan" description="Kirim tautan aktivasi baru ke email yang terdaftar pada akun pengguna.">
+      <Dialog
+        open={!!invitation}
+        onOpenChange={(value) => {
+          if (invitationSending) return;
+          if (!value) {
+            invitationSequence.current++;
+            setInvitation(null);
+          }
+        }}
+        title="Kirim ulang undangan"
+        description="Kirim tautan aktivasi baru ke email yang terdaftar pada akun pengguna."
+      >
         <div className="stack">
-          <p>Pengguna: <strong>{invitation?.full_name}</strong> ({invitation?.username})</p>
-          {invitationLoading ? <p role="status">Memeriksa status akun…</p> : null}
-          {invitationInfo ? <>
-            <p>Email tujuan: <strong>{invitationInfo.email || "Tidak tersedia"}</strong></p>
-            {!invitationInfo.eligible ? <p>{invitationInfo.reason}</p> : <p>Pastikan alamat email benar. Pengguna perlu membuka tautan dari email terbaru.</p>}
-          </> : null}
-          <p role="status" aria-live="polite">{invitationMessage}</p>
+          <p>
+            Pengguna: <strong>{invitation?.full_name}</strong> (
+            {invitation?.username})
+          </p>
+          {invitationLoading ? (
+            <p role="status">Memeriksa status akun…</p>
+          ) : null}
+          {invitationInfo ? (
+            <>
+              <p>
+                Email tujuan:{" "}
+                <strong>{invitationInfo.email || "Tidak tersedia"}</strong>
+              </p>
+              {!invitationInfo.eligible ? (
+                <p>{invitationInfo.reason}</p>
+              ) : (
+                <p>
+                  Pastikan alamat email benar. Pengguna perlu membuka tautan
+                  dari email terbaru.
+                </p>
+              )}
+            </>
+          ) : null}
+          <p role="status" aria-live="polite">
+            {invitationMessage}
+          </p>
           <div className="actions">
-            <Button variant="outline" disabled={invitationSending} onClick={() => { invitationSequence.current++; setInvitation(null); }}>Tutup</Button>
-            <Button disabled={invitationLoading || invitationSending || !invitationInfo?.eligible} onClick={() => void sendInvitation()}>
+            <Button
+              variant="outline"
+              disabled={invitationSending}
+              onClick={() => {
+                invitationSequence.current++;
+                setInvitation(null);
+              }}
+            >
+              Tutup
+            </Button>
+            <Button
+              disabled={
+                invitationLoading ||
+                invitationSending ||
+                !invitationInfo?.eligible
+              }
+              onClick={() => void sendInvitation()}
+            >
               {invitationSending ? "Mengirim…" : "Kirim undangan"}
             </Button>
           </div>
