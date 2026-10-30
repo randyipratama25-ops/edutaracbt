@@ -26,6 +26,8 @@ export type ResultQuestion = {
   earned: number | null;
   comment: string | null;
   source: string | null;
+  criteria?:Record<string,number>;
+  revision_reason?:string;
 };
 export type ResultDetail = {
   attempt: {
