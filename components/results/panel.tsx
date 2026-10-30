@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import type { ResultDetail, ResultRow } from "../../lib/results/types";
 import type { analyze } from "../../lib/results/analytics";
-import { reportKinds } from "../../lib/reports/schema";
+import { reportKinds, reportLabels } from "../../lib/reports/schema";
 import type { ReportSettings } from "../../lib/reports/render";
 const Preview = dynamic(
   () => import("../authoring/preview").then((m) => m.QuestionPreview),
@@ -507,7 +507,7 @@ export function ResultsPanel({
               onChange={(e) => setKind(e.target.value as typeof kind)}
             >
               {reportKinds.map((k) => (
-                <option key={k}>{k}</option>
+                <option key={k} value={k}>{reportLabels[k]}</option>
               ))}
             </select>
           </label>

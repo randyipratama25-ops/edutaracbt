@@ -138,6 +138,7 @@ export function assertAnswersPreserved(before, after) {
           "private.grade_moderations",
           "private.result_publications",
           "private.exam_help_requests",
+        "private.advanced_evaluations",
         ]),
         key: z.string().min(1),
         sha256: z.string().regex(/^[a-f0-9]{64}$/),

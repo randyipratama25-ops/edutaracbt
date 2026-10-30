@@ -7,6 +7,7 @@ export const reportKinds = [
   "answers",
   "blank",
   "analytics",
+  "exchange",
 ] as const;
 export const createReportSchema = z.object({
   action: z.literal("create"),
@@ -23,3 +24,14 @@ export const reportSettingsSchema = z.object({
   official_title: z.string().max(150),
   logo_media_id: z.uuid().nullable(),
 });
+
+export const reportLabels: Record<(typeof reportKinds)[number], string> = {
+  recap: "Rekap nilai",
+  class: "Rekap per kelas",
+  student: "Rincian peserta",
+  paper: "Lembar soal",
+  answers: "Lembar jawaban",
+  blank: "Lembar kosong",
+  analytics: "Analisis butir",
+  exchange: "Pertukaran nilai",
+};
