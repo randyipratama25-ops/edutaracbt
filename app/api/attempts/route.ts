@@ -35,6 +35,13 @@ export async function POST(request: Request) {
       throw new HttpError(400, "JSON tidak valid.");
     }
     const input = attemptCommand.parse(raw);
+    if (input.action === "save") {
+      // Supplemental recovery must never block canonical autosave.
+      try {
+        const backup = await a.client.rpc("attempt_recovery", { input: { ...input, action: "stage" } });
+        if (backup.error) console.error(JSON.stringify({ event: "draft_backup_unavailable" }));
+      } catch { console.error(JSON.stringify({ event: "draft_backup_unavailable" })); }
+    }
     const { data, error } = await a.client.rpc("attempt_command", { input });
     if (error)
       throw new HttpError(
@@ -46,6 +53,16 @@ export async function POST(request: Request) {
         error.message,
       );
     if (data?.error) throw new HttpError(data.status || 422, data.error);
+    if (["start", "resume", "takeover"].includes(input.action) && data?.status === "in_progress" && !data.finalized_at) {
+      let recovery = null;
+      try {
+        const result = await a.client.rpc("attempt_recovery", { input: {
+          action: "list", attempt_id: data.id, client_id: input.client_id, epoch: data.epoch,
+        } });
+        if (!result.error) recovery = result.data;
+      } catch { console.error(JSON.stringify({ event: "draft_recovery_unavailable" })); }
+      return json({ ...data, recovery });
+    }
     return json(data);
   } catch (e) {
     return failure(e);

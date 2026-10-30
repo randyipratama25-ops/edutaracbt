@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { LogoutButton } from "../auth/logout-button";
+import { sameAnswer, deviceDrafts, receiptOf, secondsRemaining, type AnswerValue } from "../../lib/attempts/recovery";
+import { AttemptError } from "./queue";
 import { essayLength } from "../../lib/attempts/essay";
 import type { Question } from "../../lib/authoring/schema";
 import { command, useAnswerQueue, type Saved } from "./queue";
@@ -47,11 +49,13 @@ export type Attempt = {
   score: number | null;
   result_visible: boolean;
   review_reason: string | null;
+  recovery?: { drafts: { question_id: string; value: AnswerValue; revision: number; updated_at: string; client_id: string; epoch: number }[];
+    canvases: { id: string; question_id: string; created_at: string }[] } | null;
 };
 function terminal(data: unknown): data is Attempt {
   return !!data && typeof data === "object" && "id" in data && "status" in data;
 }
-export function StudentPortal() {
+export function StudentPortal({ studentId }: { studentId: string }) {
   const [exams, setExams] = useState<Exam[]>([]),
     [attempt, setAttempt] = useState<Attempt | null>(null),
     [client, setClient] = useState(""),
@@ -103,6 +107,7 @@ export function StudentPortal() {
           key={attempt.id + ":" + attempt.epoch + ":" + reloadKey}
           attempt={attempt}
           clientId={client}
+          studentId={studentId}
           onUpdate={setAttempt}
           onReload={() =>
             void open(
@@ -194,8 +199,7 @@ export function StudentPortal() {
           <p>
             Attempt sedang ditulis perangkat/tab lain. Mengambil alih akan
             menonaktifkan penulisan pada perangkat tersebut, tanpa menambah
-            waktu. Jawaban yang digunakan adalah versi terakhir yang tersimpan
-            di server.
+            waktu. Jawaban dan cadangan draf yang sudah mencapai server dapat dipulihkan. Draf offline tetap berada di perangkat asal.
           </p>
           <Button
             disabled={busy}
@@ -215,14 +219,16 @@ export function StudentPortal() {
     </main>
   );
 }
-function ExamPlayer({
+export function ExamPlayer({
   attempt: a,
   clientId,
+  studentId,
   onUpdate,
   onReload,
 }: {
   attempt: Attempt;
   clientId: string;
+  studentId: string;
   onUpdate: (data: Attempt) => void;
   onReload: () => void;
 }) {
@@ -233,7 +239,7 @@ function ExamPlayer({
   const active = a.status === "in_progress" && !a.finalized_at;
   const queue = useAnswerQueue(writer, a.answers, (data) => {
     if (terminal(data)) onUpdate(data);
-  });
+  }, { ownerId: studentId, enabled: active, finalized: !!a.finalized_at, questionIds: a.questions.map(q => q.id) });
   const warning = useIntegrity(writer, active);
   const [index, setIndex] = useState(0),
     [remaining, setRemaining] = useState(() =>
@@ -247,13 +253,23 @@ function ExamPlayer({
     [message, setMessage] = useState(""),
     [confirm, setConfirm] = useState(false),
     [reloadConfirm, setReloadConfirm] = useState(false),
+    [transferOpen, setTransferOpen] = useState(false),
+    [transferring, setTransferring] = useState(false),
+    [transferMessage, setTransferMessage] = useState(""),
     [mediaDirty, setMediaDirty] = useState(false),
     [submitting, setSubmitting] = useState(false),
-    [flagged, setFlagged] = useState<string[]>([]);
+    [submitUncertain, setSubmitUncertain] = useState(false),
+    [connected, setConnected] = useState(true),
+    [flagged, setFlagged] = useState<string[]>([]),
+    [recoveryChoices, setRecoveryChoices] = useState<{ id: string; questionId: string; value: AnswerValue; revision: number; label: string }[]>([]);
   const started = useRef({
       server: Date.parse(a.server_now),
       local: 0,
     }),
+    deadline = useRef(a.deadline_at),
+    submittingRef = useRef(false),
+    submitUncertainRef = useRef(false),
+    submitMode = useRef<"manual" | "timeout">("manual"),
     autoSent = useRef(false),
     submitId = useRef(crypto.randomUUID());
   useEffect(() => {
@@ -266,13 +282,7 @@ function ExamPlayer({
       setRemaining(
         Math.max(
           0,
-          Math.ceil(
-            (Date.parse(a.deadline_at) -
-              (started.current.server +
-                performance.now() -
-                started.current.local)) /
-              1000,
-          ),
+          secondsRemaining(deadline.current, started.current.server, performance.now() - started.current.local),
         ),
       );
     }, 500);
@@ -280,29 +290,44 @@ function ExamPlayer({
   }, [active, a.deadline_at, a.server_now]);
   useEffect(() => {
     if (!active) return;
-    const heartbeat = setInterval(() => {
-      void command({ action: "resume", attempt_id: a.id, client_id: clientId })
-        .then((data) => {
-          if (terminal(data)) {
-            if (data.status !== "in_progress" || data.finalized_at)
-              onUpdate(data);
-            else
-              started.current = {
-                server: Date.parse(data.server_now),
-                local: performance.now(),
-              };
+    let live = true, checking = false;
+    const check = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const data = await command({ action: "resume", attempt_id: a.id, client_id: clientId });
+        if (!live) return;
+        if (terminal(data)) {
+          setConnected(true);
+          if (data.status !== "in_progress" || data.finalized_at || data.epoch !== a.epoch) onUpdate(data);
+          else {
+            deadline.current = data.deadline_at;
+            started.current = { server: Date.parse(data.server_now), local: performance.now() };
+            setRemaining(secondsRemaining(data.deadline_at, started.current.server, 0));
+            // An uncertain submit must be retried with the same payload or resolved by a terminal response.
           }
-        })
-        .catch((e) =>
-          setMessage(
-            e instanceof Error
-              ? e.message
-              : "Status server belum dapat diperiksa.",
-          ),
-        );
-    }, 15000);
-    return () => clearInterval(heartbeat);
-  }, [active, a.id, clientId, onUpdate]);
+        }
+      } catch (e) {
+        if (live) {
+          setConnected(false);
+          setMessage(e instanceof Error ? e.message : "Status server belum dapat diperiksa.");
+        }
+      } finally { checking = false; }
+    };
+    const visible = () => { if (document.visibilityState === "visible") void check(); };
+    const offline = () => setConnected(false);
+    const heartbeat = setInterval(() => void check(), 15000);
+    window.addEventListener("online", check);
+    window.addEventListener("offline", offline);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      live = false;
+      clearInterval(heartbeat);
+      window.removeEventListener("online", check);
+      window.removeEventListener("offline", offline);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [active, a.id, a.epoch, clientId, onUpdate]);
   useEffect(() => {
     const unload = (e: BeforeUnloadEvent) => {
       if (mediaDirty) {
@@ -314,35 +339,53 @@ function ExamPlayer({
     return () => window.removeEventListener("beforeunload", unload);
   }, [mediaDirty]);
   async function submit(mode: "manual" | "timeout") {
-    if (submitting) return;
+    if (submittingRef.current) return;
     if (mode === "manual" && mediaDirty) {
       setMessage(
         "Canvas belum tersimpan. Tunggu unggahan atau coba unggah lagi.",
       );
       return;
     }
+    submittingRef.current = true;
     setSubmitting(true);
     setMessage("");
+    let sent = false;
     try {
       if (mode === "manual" && !(await queue.flushAll()))
         throw Error(
           "Masih ada jawaban belum diakui server atau konflik. Selesaikan penyimpanan sebelum mengakhiri ujian.",
         );
       if (mode === "timeout") await queue.flushAll();
+      if (!submitUncertainRef.current) submitMode.current = mode;
+      sent = true;
       const data = await command({
         action: "submit",
         ...writer,
         request_id: submitId.current,
-        mode,
+        mode: submitMode.current,
       });
-      if (terminal(data)) onUpdate(data);
+      if (terminal(data) && (data.finalized_at || data.status === "disqualified")) {
+        submitUncertainRef.current = false;
+        setSubmitUncertain(false);
+        onUpdate(data);
+      }
       else
         throw Error(
           "Status akhir belum diterima. Coba lagi dengan permintaan yang sama.",
         );
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Finalisasi belum berhasil.");
+      if (sent && (!(e instanceof AttemptError) || e.status >= 500)) {
+        submitUncertainRef.current = true;
+        setSubmitUncertain(true);
+        setMessage("Pengumpulan belum dapat dipastikan. Jawaban dikunci sementara; periksa status atau coba pengumpulan lagi dengan permintaan yang sama.");
+      } else {
+        submitUncertainRef.current = false;
+        setSubmitUncertain(false);
+        submitId.current = crypto.randomUUID();
+        setMessage(e instanceof Error ? e.message : "Finalisasi belum berhasil.");
+      }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
       setConfirm(false);
     }
@@ -353,6 +396,29 @@ function ExamPlayer({
       void submit("timeout");
     }
   });
+  useEffect(() => {
+    if (!a.finalized_at) return;
+    const prefix = `edutara:canvas:v1:${studentId}:${a.id}:`;
+    try {
+      for (const key of Object.keys(localStorage)) if (key.startsWith(prefix)) localStorage.removeItem(key);
+    } catch { /* Terminal server status remains available even if device storage is blocked. */ }
+  }, [a.finalized_at, a.id, studentId]);
+  useEffect(() => {
+    if (!active) return;
+    const choices: { id: string; questionId: string; value: AnswerValue; revision: number; label: string }[] = [];
+    for (const { key, draft } of deviceDrafts(studentId, a.id)) {
+      if (key.endsWith(`:${clientId}`) && draft.epoch === a.epoch) continue;
+      for (const [id, row] of Object.entries(draft.rows)) {
+        if (!a.questions.some(q => q.id === id)) continue;
+        const canonical = a.answers.find(answer => answer.question_id === id);
+        if (canonical && sameAnswer(canonical.value, row.value)) continue;
+        choices.push({ id: `${key}:${id}`, questionId: id, value: row.value, revision: row.revision, label: "Draf perangkat dari tab/sesi sebelumnya" });
+      }
+    }
+    for (const d of a.recovery?.drafts || []) choices.push({ id: `cloud:${d.client_id}:${d.epoch}:${d.question_id}`, questionId: d.question_id, value: d.value, revision: d.revision, label: "Cadangan draf server" });
+    setRecoveryChoices(choices);
+  }, [active, studentId, a.id, a.epoch, a.questions, a.answers, a.recovery, clientId]);
+  const receipt = receiptOf(a);
   if (!active)
     return (
       <main className="workspace student-shell">
@@ -372,10 +438,21 @@ function ExamPlayer({
             </>
           ) : (
             <>
-              <p>
-                Ujian telah berakhir. Jawaban yang diterima server telah
-                difinalisasi.
-              </p>
+              <p>Ujian telah berakhir. Status berikut berasal dari server.</p>
+              {receipt && <section className="notice" aria-label="Bukti pengumpulan ujian">
+                <h2>Bukti pengumpulan</h2>
+                <p>Nomor penerimaan: <strong>{receipt.number}</strong></p>
+                <p>Waktu finalisasi server: {new Date(receipt.receivedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB</p>
+                <p>{receipt.status === "time_expired" ? "Difinalisasi karena waktu habis/ujian ditutup." : "Pengumpulan diterima server."}</p>
+                <p>Bukti ini mengacu pada jawaban yang diterima server, bukan draf yang belum tersinkron.</p>
+                <Button variant="outline" onClick={() => {
+                  const blob = new Blob([`EDUTARA CBT — Bukti pengumpulan\nUjian: ${a.title}\nNomor: ${receipt.number}\nFinalisasi server: ${receipt.receivedAt}\nStatus: ${receipt.status}\n`], { type: "text/plain;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a"); link.href = url; link.download = `bukti-ujian-${a.id}.txt`; link.click();
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }}>Unduh bukti pengumpulan</Button>
+              </section>}
+              <Button variant="outline" onClick={onReload}>Periksa status terbaru</Button>
               {a.grading_pending > 0 ? (
                 <p>
                   Penilaian esai masih menunggu koreksi. Nilai resmi belum
@@ -404,6 +481,8 @@ function ExamPlayer({
   const disabled =
     remaining === 0 ||
     submitting ||
+    transferring ||
+    submitUncertain ||
     queue.status.includes("DEVICE_CONFLICT") ||
     message.includes("DEVICE_CONFLICT");
   const preview = { ...q, key: [], rubric: "", explanation: "", keywords: [] };
@@ -455,7 +534,8 @@ function ExamPlayer({
           <Button variant="outline" onClick={() => setReloadConfirm(true)}>
             Muat status server
           </Button>
-          <Button disabled={submitting} onClick={() => setConfirm(true)}>
+          <Button variant="outline" disabled={submitting || transferring || submitUncertain} onClick={() => { setTransferMessage(""); setTransferOpen(true); }}>Pindah perangkat</Button>
+          <Button disabled={submitting || transferring} onClick={() => setConfirm(true)}>
             Akhiri ujian
           </Button>
         </div>
@@ -465,6 +545,13 @@ function ExamPlayer({
         wake lock mengikuti dukungan perangkat; alat ini tidak dapat mencegah
         seluruh bentuk kecurangan.
       </p>
+      <p role="status">{connected ? "Terhubung ke server" : "Koneksi/status server belum tersedia; waktu ujian tetap berjalan."}</p>
+      {queue.lastSavedAt && <p>Respons simpan terakhir diterima: {new Date(queue.lastSavedAt).toLocaleTimeString("id-ID")}</p>}
+      {queue.recoveryMessage && <p role="status" className="notice">{queue.recoveryMessage}</p>}
+      {submitUncertain && <section className="notice">
+        <p>Menunggu kepastian pengumpulan. Jangan berpindah perangkat.</p>
+        <Button disabled={submitting} onClick={() => void submit(submitMode.current)}>Periksa / ulangi pengumpulan</Button>
+      </section>}
       <p role="status">
         {mediaDirty
           ? "Canvas belum tersimpan; tunggu unggahan dan pengakuan server."
@@ -496,6 +583,27 @@ function ExamPlayer({
           </div>
         </section>
       ))}
+      {(recoveryChoices.length > 0 || (a.recovery?.canvases?.length || 0) > 0) && <details className="panel">
+        <summary>Pemulihan draf dari tab/perangkat sebelumnya</summary>
+        <p>Pilih draf yang ingin dipulihkan. Draf berbeda tidak menimpa jawaban otomatis; deadline tetap berlaku.</p>
+        {recoveryChoices.map(d => <section key={d.id}>
+          <p>{d.label} · Soal {a.questions.findIndex(q => q.id === d.questionId) + 1}</p>
+          <p>{JSON.stringify(d.value).slice(0,180)}</p>
+          <Button disabled={disabled || mediaDirty} variant="outline" onClick={() => {
+            queue.importDraft(d.questionId, d.value, d.revision);
+            setRecoveryChoices(rows => rows.filter(row => row.id !== d.id));
+          }}>Pulihkan draf ini</Button>
+        </section>)}
+        {(a.recovery?.canvases || []).map(c => <section key={c.id}>
+          <p>Canvas sudah diunggah · Soal {a.questions.findIndex(q => q.id === c.question_id) + 1} · {new Date(c.created_at).toLocaleString("id-ID")}</p>
+          <Button disabled={disabled || mediaDirty} variant="outline" onClick={() => {
+            const current = queue.getValue(c.question_id);
+            const value = current && !Array.isArray(current) ? current : { text: "" };
+            queue.change(c.question_id, { ...value, canvas_id: c.id });
+            setIndex(a.questions.findIndex(q => q.id === c.question_id));
+          }}>Gunakan canvas yang diunggah</Button>
+        </section>)}
+      </details>}
       <nav aria-label="Navigasi soal" className="question-nav">
         {a.questions.map((q, i) => (
           <button
@@ -632,9 +740,10 @@ function ExamPlayer({
             </details>
             {q.canvas.enabled && (
               <Canvas
-                key={item.id}
+                key={`${item.id}:${record.canvas_id || "new"}`}
                 writer={writer}
                 questionId={item.id}
+                recoveryScope={studentId}
                 canvasWidth={q.canvas.width}
                 canvasHeight={q.canvas.height}
                 savedId={record.canvas_id}
@@ -720,6 +829,18 @@ function ExamPlayer({
           </Button>
         </section>
       )}
+      <Dialog open={transferOpen} onOpenChange={open => { if (!transferring) setTransferOpen(open); }} title="Siapkan perpindahan perangkat"
+        description="Simpan jawaban, lalu masuk di perangkat tujuan dan pilih Lanjutkan serta ambil alih sesi. Deadline tetap berjalan. Draf yang masih offline tidak tersedia di perangkat lain.">
+        <Button disabled={transferring || submitting || remaining === 0 || mediaDirty || submitUncertain} onClick={async () => {
+          setTransferring(true); setTransferMessage("Memastikan jawaban diterima server…");
+          try {
+            const saved = await queue.flushAll();
+            setTransferMessage(saved ? "Jawaban saat persiapan sudah diakui server. Masuk di perangkat tujuan dan ambil alih sesi. Perubahan setelah dialog ini ditutup tetap perlu disimpan." : "Belum siap berpindah. Selesaikan konflik atau pulihkan koneksi dan coba simpan lagi.");
+          } finally { setTransferring(false); }
+        }}>{transferring ? "Menyimpan…" : "Simpan dan periksa kesiapan"}</Button>
+        {mediaDirty && <p>Simpan canvas sebelum menyiapkan perpindahan perangkat.</p>}
+        <p role="status">{transferMessage}</p>
+      </Dialog>
       <Dialog
         open={confirm}
         onOpenChange={setConfirm}
@@ -738,9 +859,16 @@ function ExamPlayer({
         open={reloadConfirm}
         onOpenChange={setReloadConfirm}
         title="Muat ulang dari server?"
-        description="Draf lokal yang belum diakui server akan ditinggalkan. Jika perangkat lain mengambil alih, lanjutkan dari perangkat tersebut atau ambil alih secara eksplisit pada daftar ujian."
+        description="Jawaban akan disimpan sebelum memuat ulang status. Jika ada konflik atau canvas belum tersimpan, selesaikan terlebih dahulu. Jika perangkat lain mengambil alih, hubungi pengawas."
       >
-        <Button onClick={onReload}>Gunakan jawaban terakhir di server</Button>
+        <Button disabled={submitting || mediaDirty} onClick={async () => {
+          if (!submitUncertain && !(await queue.flushAll())) {
+            setMessage("Draf belum tersimpan. Selesaikan konflik atau coba simpan lagi sebelum memuat status.");
+            setReloadConfirm(false);
+            return;
+          }
+          onReload();
+        }}>Simpan dan muat status server</Button>
       </Dialog>
     </main>
   );
