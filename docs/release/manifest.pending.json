@@ -1,9 +1,9 @@
 {
-  "format": "edutara-release-v1",
-  "candidate_sha": "3868c8275ce697c5241b7c302bfae99e60ce0af3",
+  "format": "edutara-release-v2",
+  "candidate_sha": "407fa91fa4ece249a973a9a28876010e2a6f3217",
   "production_project": "cwklpfplqoofvehlyfvd",
   "production_origin": "https://edutara-cbt-ashen.vercel.app",
-  "observed_at": "2026-10-29T13:58:36.876887Z",
+  "observed_at": null,
   "active_attempts": 0,
   "scheduler_count": 1,
   "backup": {
@@ -14,5 +14,22 @@
   },
   "data_mode": "legacy",
   "observation_minutes": 60,
-  "proofs": {}
+  "proofs": {},
+  "schedulers": [
+    {
+      "name": "edutara-operations",
+      "active": false,
+      "schedule": "* * * * *"
+    },
+    {
+      "name": "edutara-recovery-retention",
+      "active": false,
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "name": "edutara-results-publication",
+      "active": false,
+      "schedule": "* * * * *"
+    }
+  ]
 }

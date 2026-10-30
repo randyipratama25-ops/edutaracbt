@@ -1,10 +1,20 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.5 — Bank soal dan penilaian.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.6 — Penerimaan operasional.
+
+## Pembaruan Tahap 5 — Penerimaan operasional
+
+Inventaris terbaru **22 halaman produksi**. Halaman baru `/dashboard/acceptance` hanya untuk Admin konteks staf organisasi aktif. Fungsinya membaca kondisi teknis dan mengunduh ringkasan observasi JSON tanpa identitas peserta, jawaban, token atau nilai secret. Izin **R**; unduhan dibuat lokal. Tidak ada C/U/D bukti, pengesahan UAT, deployment, pengiriman email atau aktivasi konfigurasi melalui halaman ini. Guru/Pengawas/Siswa tidak memiliki akses; RPC mengulang pemeriksaan Admin dan organisasi.
+
+Snapshot memuat sesi belum final, konfigurasi otomasi/SMTP, tiga scheduler berdasarkan fungsi, antrean bermasalah, moderasi/publikasi tertahan dan backup terbaru. Snapshot >5 menit ditandai kedaluwarsa. Kelulusan indikator teknis tidak mengesahkan penerimaan: UAT semua peran/perangkat fisik, SLO 150 siswa, legacy/freeze/delta, inbox/pemulihan, latihan cloud dan persetujuan pemilik memerlukan bukti asli.
+
+Backup kini mencakup versi dan riwayat review bank yang sebelumnya terlewat; transport `record` berupa teks JSON PostgreSQL mempertahankan presisi numerik. Helper restore menerima teks baru dan objek lama. Backup lama tidak otomatis menjadi bukti cakupan atau presisi baru. Inventaris rollback melindungi snapshot/rubrik, bank/versi/review/paket/pemakaian, moderasi, publikasi dan bantuan selain jawaban/ledger. Tidak ada restore produksi atau perubahan jawaban/nilai historis melalui migrasi.
+
+Endpoint R baru `/api/acceptance`; migrasi `20261030055417_operational_acceptance.sql`. Runbook dan manifest pemeriksaan rilis v2 mengikuti satu scheduler operasi, satu retensi draf dan satu publikasi hasil. Laporan implementasi terdapat di `docs/acceptance/stage5-operational-acceptance.md`.
 
 ## Pembaruan Tahap 4 — Bank soal dan penilaian
 
-Inventaris saat ini **21 halaman produksi**, dengan tambahan `/dashboard/bank` dan `/dashboard/grading`. Bagian Tahap 1–3 di bawah merupakan catatan historis; matriks dan ketentuan Tahap 4 ini berlaku untuk implementasi terbaru.
+Inventaris saat Tahap 4 **21 halaman produksi**, dengan tambahan `/dashboard/bank` dan `/dashboard/grading`. Bagian Tahap 1–3 di bawah merupakan catatan historis; matriks dan ketentuan Tahap 4 ini berlaku untuk implementasi terbaru.
 
 | Area/objek | Fungsi dan tujuan | Hak akses dan CRUD |
 |---|---|---|
@@ -156,6 +166,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 19 | Persiapan ujian | `/dashboard/preparation` | Wizard pembuatan draf, checklist kesiapan, siklus ujian dan publikasi jadwal. | Admin, Guru konteks staf | Admin C/R/U draf dan U publikasi jadwal setelah pemeriksaan; Guru R kesiapan dalam cakupan authoring. Tidak ada D permanen. |
 | 20 | Bank soal | `/dashboard/bank` | Taksonomi, versi, review, impor, kisi-kisi, paket dan kualitas butir. | Admin, Guru konteks staf | C/R sesuai organisasi/seluruh kelas–mapel; U konten pemilik/Admin, review penilai lain; arsip tanpa D permanen. |
 | 21 | Koreksi dan moderasi | `/dashboard/grading` | Koreksi anonim, rubrik kriteria, moderasi dan jadwal publikasi. | Admin, Guru konteks staf | C/R/U penilaian dalam cakupan snapshot; keputusan moderasi oleh penilai lain; publikasi dan jadwal hanya Admin; tanpa D riwayat. |
+| 22 | Penerimaan operasional | `/dashboard/acceptance` | Snapshot teknis, tindak lanjut dan unduhan observasi; checklist bukti UAT. | Admin konteks staf | R organisasi sendiri; ekspor lokal. Tidak ada C/U/D bukti atau pengesahan otomatis. |
 
 `/auth/confirm` merupakan route handler konfirmasi email/token, bukan halaman `page.tsx`. File loading/error dashboard merupakan tampilan status, bukan halaman navigasi tersendiri. Modal soal, pratinjau, detail hasil, impor, kartu, inbox dan form pemulihan tidak memiliki route halaman tersendiri dalam inventaris ini.
 
@@ -253,6 +264,7 @@ Endpoint bukan tambahan halaman. Daftar ini membantu menelusuri kontrol server d
 | Kartu | `/api/cards`, `/api/cards/download` | Operator, peserta berizin dan akses job. |
 | Media | `/api/media`, `/api/media/manage`, `/api/media/drive` | Hak sumber/ownership/rujukan, tindakan sesuai endpoint. |
 | Sistem | `/api/system`, `/api/backups/export`, `/api/backups/download` | Admin; status dan cakupan backup. |
+| Penerimaan | `/api/acceptance` | GET saja, Admin staf; RPC memeriksa ulang organisasi/akun aktif. |
 | Infrastruktur | `/api/health`, `/api/load-info` | Status layanan; bukan halaman pengelolaan akademik. |
 | Konfirmasi email | `/auth/confirm` | Validasi konfirmasi dan pengalihan autentikasi. |
 
@@ -273,7 +285,7 @@ Semua path relatif terhadap repositori pada commit di awal dokumen.
 
 | Bukti | Lokasi |
 |---|---|
-| Inventaris 21 halaman | `app/**/page.tsx` dan `app/page.tsx` |
+| Inventaris 22 halaman | `app/**/page.tsx` dan `app/page.tsx` |
 | Pagar dashboard dan menu Admin | `app/dashboard/layout.tsx`; halaman rooms/settings/audit/jobs |
 | Tahap 3 persiapan/pelaksanaan | `components/workflow`, `app/dashboard/preparation/page.tsx`, `app/api/workflow/route.ts`, `lib/workflow/schema.ts`, migrasi `20261030033230_preparation_execution_workflow.sql` |
 | Role/konteks dan akun aktif | `lib/domain/validation.ts`, `lib/auth/actor.ts` |

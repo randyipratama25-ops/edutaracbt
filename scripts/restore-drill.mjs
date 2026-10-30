@@ -10,7 +10,7 @@ export async function restoreRows(db, rows) {
     (byTable.get(r.table) || byTable.set(r.table, []).get(r.table)).push(
       r.record,
     );
-  const auth = byTable.get("auth.identities_safe") || [];
+  const auth = (byTable.get("auth.identities_safe") || []).map(r => typeof r === "string" ? JSON.parse(r) : r);
   byTable.delete("auth.identities_safe");
   await db.exec("begin");
   try {
@@ -44,7 +44,7 @@ export async function restoreRows(db, rows) {
         for (const record of byTable.get(table))
           await db.query(
             `insert into ${sqlName} overriding system value select (jsonb_populate_record(null::${sqlName},$1::jsonb)).*`,
-            [JSON.stringify(record)],
+            [typeof record === "string" ? record : JSON.stringify(record)],
           );
         await db.exec(`alter table ${sqlName} enable trigger user`);
         pending.delete(table);

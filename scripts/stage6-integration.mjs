@@ -204,6 +204,11 @@ try {
     "worker_command",
   );
   assert.ok(data.rows > 0);
+  const transportPage = await rpc({ action: "data", id: job.id, lease: claimed.lease, cursor: 0 }, "worker_command");
+  assert.ok(transportPage.length>0);
+  assert.ok(transportPage.every(r=>typeof r.record==='string'), 'Backup transport must retain raw PostgreSQL JSON text');
+  await reject(()=>rpc({action:'data',id:job.id,lease:randomUUID()},'worker_command'));
+
   await owner();
   const captured = (
     await db.query(
