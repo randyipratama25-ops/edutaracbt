@@ -151,7 +151,7 @@ describe("draft recovery after refresh", () => {
   }
   beforeEach(() => {
     storage = new Map();
-    vi.stubGlobal("sessionStorage", {
+    vi.stubGlobal("localStorage", {
       getItem: k => storage.get(k) || null,
       setItem: (k, v) => storage.set(k, v),
       removeItem: k => storage.delete(k),
@@ -213,7 +213,7 @@ describe("draft recovery after refresh", () => {
   });
   it("warns on storage failure without falsely reporting an acknowledgement", async () => {
     await mount();
-    sessionStorage.setItem = () => { throw Error("QuotaExceeded"); };
+    localStorage.setItem = () => { throw Error("QuotaExceeded"); };
     await act(async () => queue.change("q", ["A"]));
     expect(queue.pendingCount).toBe(1);
     expect(queue.recoveryMessage).toContain("tidak tersedia/penuh");

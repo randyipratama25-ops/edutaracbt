@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { parseDraft, sameAnswer, type AnswerValue, type RecoveryRow } from "../../lib/attempts/recovery";
+import { pruneAcknowledgedDrafts, clearDeviceDrafts, parseDraft, sameAnswer, type AnswerValue, type RecoveryRow } from "../../lib/attempts/recovery";
 export type Value = AnswerValue;
 export type Saved = { question_id: string; revision: number; value: Value };
 export class AttemptError extends Error {
@@ -37,11 +37,12 @@ export function useAnswerQueue(
   const mounted = useRef(true), transientFailure = useRef(false);
   const storageKey = recovery ? `edutara:draft:v1:${recovery.ownerId}:${writer.attempt_id}:${writer.client_id}` : null;
   const currentValues = useRef(values);
+  const serverValues = useRef({ ...values });
   function persist() {
     if (!storageKey || !mounted.current) return;
     try {
-      if (!pending.current.size) sessionStorage.removeItem(storageKey);
-      else sessionStorage.setItem(storageKey, JSON.stringify({ version: 1, epoch: writer.epoch,
+      if (!pending.current.size) localStorage.removeItem(storageKey);
+      else localStorage.setItem(storageKey, JSON.stringify({ version: 1, epoch: writer.epoch,
         updatedAt: Date.now(), rows: Object.fromEntries(Array.from(pending.current, ([id, row]) =>
           [id, { value: row.value, revision: revisions.current[id] || 0 }])) }));
     } catch {
@@ -121,7 +122,7 @@ export function useAnswerQueue(
           "Attempt tidak menerima perubahan lagi; gunakan status akhir dari server.",
         );
         if (result.finalized_at && storageKey) {
-          try { sessionStorage.removeItem(storageKey); } catch { /* Keep server receipt available. */ }
+          try { clearDeviceDrafts(recovery!.ownerId, writer.attempt_id); } catch { /* Keep server receipt available. */ }
         }
         onTerminal(result);
         return false;
@@ -139,6 +140,14 @@ export function useAnswerQueue(
         if (!row) continue;
         if (ack.saved) {
           revisions.current[ack.question_id] = ack.revision;
+          const sent = (batch.input as { answers: { question_id: string; value: Value }[] }).answers.find(answer => answer.question_id === ack.question_id);
+          if (sent) {
+            serverValues.current[ack.question_id] = sent.value;
+            if (recovery) {
+              try { pruneAcknowledgedDrafts(recovery.ownerId, writer.attempt_id, ack.question_id, sent.value); }
+              catch { setRecoveryMessage("Jawaban diakui server; cache draf perangkat belum dapat dibersihkan."); }
+            }
+          }
           if (
             pending.current.get(ack.question_id)?.generation === row.generation
           )
@@ -191,10 +200,29 @@ export function useAnswerQueue(
     }
     return !pending.current.size;
   }
+  function importDraft(id: string, value: Value, baseRevision: number) {
+    if (!recovery?.enabled || !recovery.questionIds.includes(id)) return;
+    const serverValue = serverValues.current[id] || {};
+    const serverRevision = conflictRef.current[id]?.revision ?? (revisions.current[id] || 0);
+    delete conflictRef.current[id];
+    revisions.current[id] = serverRevision;
+    stalled.current = false;
+    setConflicts({ ...conflictRef.current });
+    change(id, value);
+    if (serverRevision !== baseRevision) {
+      conflictRef.current[id] = { revision: serverRevision, value: serverValue };
+      revisions.current[id] = baseRevision;
+      setConflicts({ ...conflictRef.current });
+      stalled.current = true;
+      persist();
+      setStatus("Draf dipulihkan tetapi revisi server berbeda. Pilih jawaban sebelum menyimpan.");
+    }
+  }
   function resolve(id: string, local: boolean) {
     const c = conflictRef.current[id];
     if (!c) return;
     revisions.current[id] = c.revision;
+    serverValues.current[id] = c.value;
     delete conflictRef.current[id];
     setConflicts({ ...conflictRef.current });
     if (!local) {
@@ -213,10 +241,10 @@ export function useAnswerQueue(
     if (storageKey) {
       try {
         if (!recovery?.enabled) {
-          if (recovery?.finalized) sessionStorage.removeItem(storageKey);
+          if (recovery?.finalized) clearDeviceDrafts(recovery.ownerId, writer.attempt_id);
         }
         else {
-          const draft = parseDraft(sessionStorage.getItem(storageKey));
+          const draft = parseDraft(localStorage.getItem(storageKey));
           if (draft && draft.epoch === writer.epoch) {
             const allowed = new Set(recovery.questionIds);
             const server = Object.fromEntries(initial.map(row => [row.question_id, row]));
@@ -238,8 +266,7 @@ export function useAnswerQueue(
             if (pending.current.size) setRecoveryMessage("Draf perangkat dipulihkan. Status tersimpan hanya diberikan setelah pengakuan server; periksa konflik jika ada.");
             persist();
           } else if (draft) {
-            setRecoveryMessage("Draf sesi sebelumnya tidak dikirim karena kewenangan perangkat telah berubah. Jawaban server digunakan.");
-            sessionStorage.removeItem(storageKey);
+            setRecoveryMessage("Draf sesi sebelumnya tidak dikirim karena kewenangan perangkat telah berubah. Jawaban server digunakan; salinan lama dapat dipilih melalui pemulihan draf.");
           }
         }
       } catch { setRecoveryMessage("Penyimpanan draf perangkat tidak tersedia. Jangan muat ulang sebelum simpan selesai."); }
@@ -280,6 +307,7 @@ export function useAnswerQueue(
     values,
     getValue: (id: string) => currentValues.current[id],
     change,
+    importDraft,
     status,
     pendingCount,
     lastSavedAt,

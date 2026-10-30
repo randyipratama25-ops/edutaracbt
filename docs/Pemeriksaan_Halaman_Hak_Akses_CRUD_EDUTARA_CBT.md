@@ -1,25 +1,38 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.1 — Tahap 1 keandalan jawaban dan sesi.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.2 — pemulihan setelah tab ditutup dan perpindahan perangkat.
 
-## Pembaruan Tahap 1 — 30 Oktober 2026
+## Pembaruan Tahap 1 — pemulihan persisten dan lintas perangkat
 
-Implementasi pada branch `feat/answer-session-reliability`, berbasis commit pemeriksaan di bawah. Jumlah halaman tetap **18**; tidak ada route halaman atau role baru. Belum menyatakan perubahan telah aktif di produksi sebelum PR digabung/deploy diverifikasi.
+Versi implementasi: PR #10, branch `feat/answer-session-reliability`; baseline inventaris terdapat pada bagian 1. Jumlah halaman tetap **18**, tanpa role atau URL halaman baru.
 
 Perubahan pada `/student`:
 
-- Draf jawaban ditulis ke sessionStorage sebelum debounce autosave. Cakupan draf: siswa, attempt, client, dan writer epoch; hanya soal pada snapshot yang boleh dipulihkan. Draf berusia lebih dari 24 jam diabaikan.
-- Setelah refresh/resume, draf dicocokkan dengan revisi dan jawaban server. Jawaban identik dianggap sudah diterima; revisi berbeda memerlukan pilihan konflik eksplisit. Draf epoch lama tidak dikirim otomatis.
-- Gangguan jaringan mendapat retry terbatas per putaran dan pemeriksaan ulang berkala/ketika online. Penolakan izin/validasi tidak diulang terus sebagai gangguan jaringan. Status simpan dan waktu respons terakhir ditampilkan tanpa menyebut draf lokal sebagai jawaban tersimpan server.
-- Canvas memiliki draf PNG per soal dan epoch untuk pemulihan refresh. Canvas lama yang gagal dimuat mengunci penggambaran agar tidak tertimpa. Pemulihan canvas lokal memerlukan unggah dan pengakuan jawaban sebelum dianggap tersimpan.
-- Timer mengikuti waktu dan deadline server, disinkronkan kembali melalui heartbeat, koneksi kembali dan tab yang aktif lagi. Refresh/resume/reset tidak memberi tambahan waktu otomatis.
-- Submit manual menunggu seluruh jawaban diakui dan canvas selesai; klik ganda dicegah. Jika respons submit tidak pasti, isian dikunci sementara dan pengulangan menggunakan ID/payload submit yang sama. Server tetap memfinalisasi menurut deadline asli.
-- Bukti pengumpulan tampil untuk `submitted`/`time_expired` dengan `finalized_at` dari server: referensi `EDU-<attempt_id>`, judul ujian, status, waktu server, dan unduhan TXT. Ini referensi finalisasi, bukan tanda tangan digital, bukan bukti seluruh draf offline telah diterima, dan bukan publikasi nilai.
-- Draf jawaban dibersihkan setelah diakui; draf canvas sesi dibersihkan setelah finalisasi server. Penyimpanan perangkat gagal/penuh memunculkan peringatan.
+- Draf teks/pilihan dan PNG canvas memakai **localStorage**, sehingga tetap tersedia setelah tab/browser ditutup pada perangkat, profil browser dan origin yang sama. Namespace mencakup siswa, attempt, client dan writer epoch. Data yang dihapus/diblokir oleh browser tidak dapat dipulihkan dari perangkat.
+- Salinan tab/sesi lama ditawarkan sebagai pilihan eksplisit setelah siswa membuka sesi yang sah. Draf berbeda tidak menimpa jawaban otomatis; perbedaan revisi masuk alur konflik. Salinan identik dengan jawaban server disaring/dibersihkan.
+- Tombol **Pindah perangkat** membantu menyimpan dan memeriksa kesiapan jawaban. Siswa kemudian login di perangkat tujuan, memilih Lanjutkan dan melakukan **ambil alih sesi**. Deadline tetap berjalan.
+- API mencoba menyimpan cadangan draf server sebelum autosave jawaban utama. Kegagalan cadangan tidak menghalangi percobaan penyimpanan utama. Salinan yang sudah mencapai server dapat dipilih di perangkat lain setelah takeover; jawaban utama yang tersimpan tetap tersedia melalui resume.
+- Canvas yang sudah diunggah tetapi belum terhubung ke jawaban tersedia dalam pilihan pemulihan. Draf PNG yang masih offline hanya tersedia di perangkat asal. Penggambaran dikunci bila canvas lama belum berhasil dimuat agar gambar tidak tertimpa.
+- Perangkat lama kehilangan hak menulis setelah takeover. Server tetap memeriksa siswa pemilik, sesi Auth aktif, writer client/session/epoch, snapshot soal, revisi, status dan deadline. Pemulihan tidak memberi tambahan waktu atau hak mengubah jawaban setelah ujian berakhir.
+- Status simpan, waktu respons terakhir, sinkronisasi heartbeat/koneksi/visibility, pencegahan klik ganda, dan retry submit identik tetap berlaku. Hasil pengumpulan yang belum pasti mengunci isian sementara.
+- Bukti `EDU-<attempt_id>` dan unduhan TXT hanya muncul untuk submitted/time_expired dengan finalized_at dari server. Ini referensi finalisasi, bukan tanda tangan digital, bukti seluruh draf offline diterima atau publikasi nilai.
 
-Hak CRUD tambahan tetap dalam hak Siswa yang ada: C/U draf lokal sendiri, R status/bukti attempt sendiri, dan D cache lokal yang telah terselesaikan. Tidak memberi izin baru untuk mengubah jawaban setelah deadline, membaca attempt orang lain, mengubah hasil, atau mengakses kunci. Admin/Guru/Pengawas tetap mengikuti matriks di dokumen ini.
+### Hak akses dan CRUD pemulihan
 
-Batas pemulihan: sessionStorage digunakan untuk refresh pada tab/sesi browser yang sama, bukan jaminan pemulihan setelah tab ditutup, data browser dihapus, perangkat rusak, atau perangkat diganti. Draf lokal tidak menjadikan aplikasi ujian offline tanpa batas; penerimaan akhir selalu diputuskan server. UAT perangkat nyata dan pengujian produksi tetap dilakukan terpisah.
+| Objek | Siswa pemilik dengan writer aktif | Admin/Guru/Pengawas | Publik/siswa lain |
+|---|---|---|---|
+| Draf lokal | C/R/U salinan sendiri; hapus setelah terselesaikan/finalisasi | Tidak ada halaman akses tambahan | Tidak mendapat akses aplikasi ke draf siswa |
+| Cadangan draf server | C/U melalui autosave; R setelah resume/takeover sah | Tidak mendapat hak baru pada fitur ini | Ditolak |
+| Canvas pemulihan | R media/metadata sendiri dan U tautan jawaban selama ujian terbuka | Tetap mengikuti kewenangan peninjauan yang sudah ada | Ditolak |
+| Pembersihan cadangan | Otomatis setelah ACK identik, finalisasi/reset atau retensi | Pekerjaan internal, bukan editor draf | Tidak ada |
+
+Tidak ada endpoint baru: `/api/attempts` memakai RPC `attempt_recovery` untuk cadangan dan pilihan pemulihan. Tabel `private.attempt_recovery_drafts` menggunakan RLS dan tidak memberikan akses tabel langsung kepada anon/authenticated. RPC membatasi kepemilikan dan writer aktif. Draf belum menjadi dasar penilaian sebelum tersimpan sebagai jawaban utama.
+
+Migrasi `20261029184135_durable_attempt_recovery.sql` diterapkan serta diverifikasi di staging dan produksi. Perubahannya bersifat tambahan: tabel draf, RPC terkontrol, trigger pembersihan dan jadwal retensi setiap 15 menit. TTL server maksimal 24 jam dan tidak melewati deadline; maksimal tiga salinan writer per soal. Draf lokal berusia lebih dari 24 jam diabaikan/dibersihkan saat diperiksa. Jawaban, nilai dan deadline yang sudah ada tidak diubah.
+
+Pengujian meliputi penutupan tab/client baru, pilihan cadangan server, konflik revisi, takeover dan penolakan writer lama, isolasi siswa/Guru, snapshot, ACK cleanup, finalisasi serta retensi. UAT perangkat nyata tetap diperlukan untuk kompatibilitas browser dan jaringan madrasah.
+
+**Batas teknis:** draf yang belum pernah keluar dari perangkat offline tidak tersedia di perangkat lain. Penyimpanan lokal tidak melindungi dari penghapusan data browser, kerusakan perangkat atau penghapusan profil browser. Seluruh penerimaan jawaban tetap mengikuti waktu server.
 
 ## 1. Dasar dan batas pemeriksaan
 

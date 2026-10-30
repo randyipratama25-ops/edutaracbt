@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { LogoutButton } from "../auth/logout-button";
-import { receiptOf, secondsRemaining } from "../../lib/attempts/recovery";
+import { sameAnswer, deviceDrafts, receiptOf, secondsRemaining, type AnswerValue } from "../../lib/attempts/recovery";
 import { AttemptError } from "./queue";
 import { essayLength } from "../../lib/attempts/essay";
 import type { Question } from "../../lib/authoring/schema";
@@ -49,6 +49,8 @@ export type Attempt = {
   score: number | null;
   result_visible: boolean;
   review_reason: string | null;
+  recovery?: { drafts: { question_id: string; value: AnswerValue; revision: number; updated_at: string; client_id: string; epoch: number }[];
+    canvases: { id: string; question_id: string; created_at: string }[] } | null;
 };
 function terminal(data: unknown): data is Attempt {
   return !!data && typeof data === "object" && "id" in data && "status" in data;
@@ -197,8 +199,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
           <p>
             Attempt sedang ditulis perangkat/tab lain. Mengambil alih akan
             menonaktifkan penulisan pada perangkat tersebut, tanpa menambah
-            waktu. Jawaban yang digunakan adalah versi terakhir yang tersimpan
-            di server.
+            waktu. Jawaban dan cadangan draf yang sudah mencapai server dapat dipulihkan. Draf offline tetap berada di perangkat asal.
           </p>
           <Button
             disabled={busy}
@@ -252,11 +253,15 @@ export function ExamPlayer({
     [message, setMessage] = useState(""),
     [confirm, setConfirm] = useState(false),
     [reloadConfirm, setReloadConfirm] = useState(false),
+    [transferOpen, setTransferOpen] = useState(false),
+    [transferring, setTransferring] = useState(false),
+    [transferMessage, setTransferMessage] = useState(""),
     [mediaDirty, setMediaDirty] = useState(false),
     [submitting, setSubmitting] = useState(false),
     [submitUncertain, setSubmitUncertain] = useState(false),
     [connected, setConnected] = useState(true),
-    [flagged, setFlagged] = useState<string[]>([]);
+    [flagged, setFlagged] = useState<string[]>([]),
+    [recoveryChoices, setRecoveryChoices] = useState<{ id: string; questionId: string; value: AnswerValue; revision: number; label: string }[]>([]);
   const started = useRef({
       server: Date.parse(a.server_now),
       local: 0,
@@ -395,9 +400,24 @@ export function ExamPlayer({
     if (!a.finalized_at) return;
     const prefix = `edutara:canvas:v1:${studentId}:${a.id}:`;
     try {
-      for (const key of Object.keys(sessionStorage)) if (key.startsWith(prefix)) sessionStorage.removeItem(key);
+      for (const key of Object.keys(localStorage)) if (key.startsWith(prefix)) localStorage.removeItem(key);
     } catch { /* Terminal server status remains available even if device storage is blocked. */ }
   }, [a.finalized_at, a.id, studentId]);
+  useEffect(() => {
+    if (!active) return;
+    const choices: { id: string; questionId: string; value: AnswerValue; revision: number; label: string }[] = [];
+    for (const { key, draft } of deviceDrafts(studentId, a.id)) {
+      if (key.endsWith(`:${clientId}`) && draft.epoch === a.epoch) continue;
+      for (const [id, row] of Object.entries(draft.rows)) {
+        if (!a.questions.some(q => q.id === id)) continue;
+        const canonical = a.answers.find(answer => answer.question_id === id);
+        if (canonical && sameAnswer(canonical.value, row.value)) continue;
+        choices.push({ id: `${key}:${id}`, questionId: id, value: row.value, revision: row.revision, label: "Draf perangkat dari tab/sesi sebelumnya" });
+      }
+    }
+    for (const d of a.recovery?.drafts || []) choices.push({ id: `cloud:${d.client_id}:${d.epoch}:${d.question_id}`, questionId: d.question_id, value: d.value, revision: d.revision, label: "Cadangan draf server" });
+    setRecoveryChoices(choices);
+  }, [active, studentId, a.id, a.epoch, a.questions, a.answers, a.recovery, clientId]);
   const receipt = receiptOf(a);
   if (!active)
     return (
@@ -461,6 +481,7 @@ export function ExamPlayer({
   const disabled =
     remaining === 0 ||
     submitting ||
+    transferring ||
     submitUncertain ||
     queue.status.includes("DEVICE_CONFLICT") ||
     message.includes("DEVICE_CONFLICT");
@@ -513,7 +534,8 @@ export function ExamPlayer({
           <Button variant="outline" onClick={() => setReloadConfirm(true)}>
             Muat status server
           </Button>
-          <Button disabled={submitting} onClick={() => setConfirm(true)}>
+          <Button variant="outline" disabled={submitting || transferring || submitUncertain} onClick={() => { setTransferMessage(""); setTransferOpen(true); }}>Pindah perangkat</Button>
+          <Button disabled={submitting || transferring} onClick={() => setConfirm(true)}>
             Akhiri ujian
           </Button>
         </div>
@@ -561,6 +583,27 @@ export function ExamPlayer({
           </div>
         </section>
       ))}
+      {(recoveryChoices.length > 0 || (a.recovery?.canvases?.length || 0) > 0) && <details className="panel">
+        <summary>Pemulihan draf dari tab/perangkat sebelumnya</summary>
+        <p>Pilih draf yang ingin dipulihkan. Draf berbeda tidak menimpa jawaban otomatis; deadline tetap berlaku.</p>
+        {recoveryChoices.map(d => <section key={d.id}>
+          <p>{d.label} · Soal {a.questions.findIndex(q => q.id === d.questionId) + 1}</p>
+          <p>{JSON.stringify(d.value).slice(0,180)}</p>
+          <Button disabled={disabled || mediaDirty} variant="outline" onClick={() => {
+            queue.importDraft(d.questionId, d.value, d.revision);
+            setRecoveryChoices(rows => rows.filter(row => row.id !== d.id));
+          }}>Pulihkan draf ini</Button>
+        </section>)}
+        {(a.recovery?.canvases || []).map(c => <section key={c.id}>
+          <p>Canvas sudah diunggah · Soal {a.questions.findIndex(q => q.id === c.question_id) + 1} · {new Date(c.created_at).toLocaleString("id-ID")}</p>
+          <Button disabled={disabled || mediaDirty} variant="outline" onClick={() => {
+            const current = queue.getValue(c.question_id);
+            const value = current && !Array.isArray(current) ? current : { text: "" };
+            queue.change(c.question_id, { ...value, canvas_id: c.id });
+            setIndex(a.questions.findIndex(q => q.id === c.question_id));
+          }}>Gunakan canvas yang diunggah</Button>
+        </section>)}
+      </details>}
       <nav aria-label="Navigasi soal" className="question-nav">
         {a.questions.map((q, i) => (
           <button
@@ -697,7 +740,7 @@ export function ExamPlayer({
             </details>
             {q.canvas.enabled && (
               <Canvas
-                key={item.id}
+                key={`${item.id}:${record.canvas_id || "new"}`}
                 writer={writer}
                 questionId={item.id}
                 recoveryScope={studentId}
@@ -786,6 +829,18 @@ export function ExamPlayer({
           </Button>
         </section>
       )}
+      <Dialog open={transferOpen} onOpenChange={open => { if (!transferring) setTransferOpen(open); }} title="Siapkan perpindahan perangkat"
+        description="Simpan jawaban, lalu masuk di perangkat tujuan dan pilih Lanjutkan serta ambil alih sesi. Deadline tetap berjalan. Draf yang masih offline tidak tersedia di perangkat lain.">
+        <Button disabled={transferring || submitting || remaining === 0 || mediaDirty || submitUncertain} onClick={async () => {
+          setTransferring(true); setTransferMessage("Memastikan jawaban diterima server…");
+          try {
+            const saved = await queue.flushAll();
+            setTransferMessage(saved ? "Jawaban saat persiapan sudah diakui server. Masuk di perangkat tujuan dan ambil alih sesi. Perubahan setelah dialog ini ditutup tetap perlu disimpan." : "Belum siap berpindah. Selesaikan konflik atau pulihkan koneksi dan coba simpan lagi.");
+          } finally { setTransferring(false); }
+        }}>{transferring ? "Menyimpan…" : "Simpan dan periksa kesiapan"}</Button>
+        {mediaDirty && <p>Simpan canvas sebelum menyiapkan perpindahan perangkat.</p>}
+        <p role="status">{transferMessage}</p>
+      </Dialog>
       <Dialog
         open={confirm}
         onOpenChange={setConfirm}

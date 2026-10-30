@@ -36,3 +36,41 @@ export function receiptOf(a: { id: string; status: string; finalized_at: string 
     ? { number: `EDU-${a.id}`, receivedAt: a.finalized_at, status: a.status }
     : null;
 }
+
+export function deviceDrafts(ownerId: string, attemptId: string) {
+  const prefix = `edutara:draft:v1:${ownerId}:${attemptId}:`;
+  const candidates: { key: string; draft: RecoveryDraft }[] = [];
+  try {
+    const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+    for (const key of keys) {
+      if (!key?.startsWith(prefix)) continue;
+      const draft = parseDraft(localStorage.getItem(key));
+      if (draft) candidates.push({ key, draft });
+      else localStorage.removeItem(key);
+    }
+  } catch { /* Queue reports blocked device storage separately. */ }
+  return candidates.sort((a, b) => b.draft.updatedAt - a.draft.updatedAt);
+}
+export function clearDeviceDrafts(ownerId: string, attemptId: string) {
+  for (const { key } of deviceDrafts(ownerId, attemptId)) localStorage.removeItem(key);
+}
+export function pruneAcknowledgedDrafts(ownerId: string, attemptId: string, questionId: string, value: AnswerValue) {
+  for (const { key, draft } of deviceDrafts(ownerId, attemptId)) {
+    if (!draft.rows[questionId] || !sameAnswer(draft.rows[questionId].value, value)) continue;
+    delete draft.rows[questionId];
+    if (Object.keys(draft.rows).length) localStorage.setItem(key, JSON.stringify(draft));
+    else localStorage.removeItem(key);
+  }
+}
+export type CanvasDraft = { image: string; mediaId?: string; updatedAt: number };
+export function parseCanvasDraft(raw: string | null, now = Date.now()): CanvasDraft | null {
+  try {
+    const d = JSON.parse(raw || 'null');
+    return d && typeof d.image === 'string' && d.image.startsWith('data:image/png;base64,') &&
+      d.image.length <= 7_000_000 && Number.isFinite(d.updatedAt) && now-d.updatedAt < 86400000 &&
+      d.updatedAt <= now+60000 ? d : null;
+  } catch { return null; }
+}
+export function storeCanvasDraft(key: string, image: string, mediaId?: string) {
+  localStorage.setItem(key, JSON.stringify({ image, mediaId, updatedAt: Date.now() }));
+}

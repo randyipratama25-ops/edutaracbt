@@ -13,7 +13,7 @@ const mount = async (savedId) => act(async () => {
 beforeEach(() => {
   vi.useFakeTimers(); globalThis.IS_REACT_ACT_ENVIRONMENT = true; vi.stubGlobal("React", React);
   storage = new Map(); dirty = vi.fn(); saved = vi.fn();
-  vi.stubGlobal("sessionStorage", { getItem: k => storage.get(k) || null, setItem: (k,v) => storage.set(k,v), removeItem: k => storage.delete(k) });
+  vi.stubGlobal("localStorage", { get length() { return storage.size; }, key: i => [...storage.keys()][i] || null, getItem: k => storage.get(k) || null, setItem: (k,v) => storage.set(k,v), removeItem: k => storage.delete(k) });
   const ctx = new Proxy({}, { get: (obj,k) => obj[k] || (() => {}), set: (obj,k,v) => { obj[k] = v; return true; } });
   canvas = { width: 1200, height: 800, getContext: () => ctx, toDataURL: () => "data:image/png;base64,draft", setPointerCapture() {}, getBoundingClientRect: () => ({ left:0,top:0,width:1200,height:800 }) };
   vi.stubGlobal("Image", class { set src(_v) { this.onload(); } });
@@ -39,4 +39,10 @@ describe("canvas recovery", () => {
     for (const input of root.root.findAllByType("input")) expect(input.props.disabled).toBe(true);
     expect(JSON.stringify(root.toJSON())).toContain("agar gambar lama tidak tertimpa");
   });
+  it("offers an unsent canvas from a closed tab under a different writer", async () => {
+    storage.set("edutara:canvas:v1:student:attempt:closed-client:1:q",JSON.stringify({image:"data:image/png;base64,previous",updatedAt:Date.now()}));
+    await mount();const restore=root.root.findAllByType("button").find(b=>b.children.join("").startsWith("Pulihkan canvas"));
+    expect(restore).toBeDefined();await act(async()=>restore.props.onClick());expect(dirty).toHaveBeenCalledWith(true);expect(JSON.parse(storage.get(key)).image).toContain("data:image/png;base64,");expect(saved).not.toHaveBeenCalled();
+  });
+
 });

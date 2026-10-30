@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { parseCanvasDraft, storeCanvasDraft } from "../../lib/attempts/recovery";
 import { Button } from "../ui/button";
 type Stroke = {
   color: string;
@@ -30,11 +31,12 @@ export function EssayCanvas({
   const initialSavedId = useRef(savedId);
   const draftKey = `edutara:canvas:v1:${recoveryScope}:${writer.attempt_id}:${writer.client_id}:${writer.epoch}:${questionId}`;
   const [loading, setLoading] = useState(true);
+  const [olderDrafts, setOlderDrafts] = useState<{ key: string; image: string; updatedAt: number }[]>([]);
   const [storageWarning, setStorageWarning] = useState("");
   function saveLocal(mediaId?: string) {
     try {
       const image = ref.current?.toDataURL("image/png");
-      if (image) sessionStorage.setItem(draftKey, JSON.stringify({ image, mediaId, updatedAt: Date.now() }));
+      if (image) storeCanvasDraft(draftKey, image, mediaId);
     } catch { setStorageWarning("Draf canvas belum dapat disimpan di perangkat. Jangan muat ulang sebelum unggahan dan jawaban diakui server."); }
   }
   const ref = useRef<HTMLCanvasElement>(null),
@@ -79,14 +81,12 @@ export function EssayCanvas({
       try {
         let local: { image: string; mediaId?: string; updatedAt: number } | null = null;
         try {
-          const raw = sessionStorage.getItem(draftKey);
+          const raw = localStorage.getItem(draftKey);
           if (raw) {
-            const d = JSON.parse(raw);
-            if (typeof d.image === "string" && d.image.startsWith("data:image/png;base64,") && d.image.length <= 7_000_000 &&
-              Number.isFinite(d.updatedAt) && Date.now() - d.updatedAt < 86400000 && d.updatedAt <= Date.now() + 60000) local = d;
+            local = parseCanvasDraft(raw);
           }
           if (local?.mediaId && local.mediaId === initialSavedId.current) {
-            sessionStorage.removeItem(draftKey);
+            localStorage.removeItem(draftKey);
             local = null;
           }
         } catch { setStorageWarning("Draf canvas perangkat tidak tersedia."); }
@@ -110,12 +110,23 @@ export function EssayCanvas({
       } catch (e) { if (active) setMessage(e instanceof Error ? e.message : "Canvas gagal dimuat."); }
     }
     void restore();
+    try {
+      const prefix = `edutara:canvas:v1:${recoveryScope}:${writer.attempt_id}:`;
+      const drafts = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || key === draftKey || !key.startsWith(prefix) || !key.endsWith(`:${questionId}`)) continue;
+        const d = parseCanvasDraft(localStorage.getItem(key));
+        if (d && (!d.mediaId || d.mediaId !== initialSavedId.current)) drafts.push({ key, image: d.image, updatedAt: d.updatedAt });
+      }
+      setOlderDrafts(drafts.sort((a,b) => b.updatedAt-a.updatedAt).slice(0,3));
+    } catch { /* Persistent device storage may be blocked. */ }
     return () => {
       active = false;
       if (url) URL.revokeObjectURL(url);
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [draftKey, onDirty]);
+  }, [draftKey, onDirty, questionId, recoveryScope, writer.attempt_id]);
   async function upload() {
     if (disabled || loading || uploading.current) return;
     const canvas = ref.current;
@@ -225,6 +236,15 @@ export function EssayCanvas({
           Bersihkan canvas
         </Button>
       </div>
+      {olderDrafts.length > 0 && <section className="notice">
+        <p>Ada draf canvas dari tab/sesi sebelumnya. Memulihkan draf mengganti gambar editor; unggah sebelum melanjutkan.</p>
+        {olderDrafts.map(d => <Button key={d.key} disabled={disabled || loading} variant="outline" onClick={() => {
+          const img = new Image();
+          img.onload = () => { base.current = img; paths.current = []; gen.current++; redraw(); saveLocal(); onDirty(true); setMessage("Draf canvas dipulihkan; simpan untuk mengunggah."); setOlderDrafts([]); };
+          img.onerror = () => setMessage("Draf canvas belum dapat dimuat.");
+          img.src = d.image;
+        }}>Pulihkan canvas {new Date(d.updatedAt).toLocaleTimeString("id-ID")}</Button>)}
+      </section>}
       <canvas
         ref={ref}
         width={canvasWidth}
