@@ -14,6 +14,7 @@ const groups = [
     { href: "/dashboard/master-data", label: "Data akademik", icon: BookOpen },
   ] },
   { label: "Ujian", items: [
+    { href: "/dashboard/bank", label: "Bank soal", icon: BookOpen },
     { href: "/dashboard/preparation", label: "Persiapan ujian", icon: ClipboardCheck },
     { href: "/dashboard/exams", label: "Ujian & bank soal", icon: CalendarDays },
     { href: "/dashboard/monitor", label: "Monitoring", icon: Activity },
@@ -22,6 +23,7 @@ const groups = [
     { href: "/dashboard/media", label: "Media soal", icon: ImageIcon },
   ] },
   { label: "Penilaian", items: [
+    { href: "/dashboard/grading", label: "Koreksi & moderasi", icon: ClipboardCheck },
     { href: "/dashboard/results", label: "Hasil & koreksi", icon: ClipboardCheck },
     { href: "/dashboard/analytics", label: "Analitik & laporan", icon: BarChart3 },
   ] },

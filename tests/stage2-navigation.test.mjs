@@ -13,7 +13,7 @@ afterEach(async()=>{if(root)await act(async()=>root.unmount());vi.unstubAllGloba
 describe("role-aware navigation and question map",()=>{
  it("shows all Admin destinations and exactly one active page",async()=>{
   await act(async()=>{root=create(React.createElement(DashboardNavigation,{role:"admin",pathname:"/dashboard/exams"}));});
-  const links=root.root.findAllByType("a");expect(links).toHaveLength(14);expect(links.filter(a=>a.props["aria-current"]==="page").map(a=>a.props.href)).toEqual(["/dashboard/exams"]);
+  const links=root.root.findAllByType("a");expect(links).toHaveLength(16);expect(links.filter(a=>a.props["aria-current"]==="page").map(a=>a.props.href)).toEqual(["/dashboard/exams"]);
  });
  it("does not expose administration destinations to teachers",async()=>{
   await act(async()=>{root=create(React.createElement(DashboardNavigation,{role:"teacher",pathname:"/dashboard"}));});
