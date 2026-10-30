@@ -174,7 +174,7 @@ create function private.results_command(input jsonb) returns jsonb language plpg
  if input->>'action'='publish' then
   if not private.is_admin() or not exists(select 1 from public.exams where id=(input->>'exam_id')::uuid and organization_id=private.actor_org()) then raise exception 'AUTH: Hanya Admin menerbitkan nilai';end if;
   perform 1 from public.exams where id=(input->>'exam_id')::uuid for update;
-  select * into prior from private.grading_requests where actor_id=auth.uid() and request_id=(input->>'request_id')::uuid;if found then if prior.input<>input then raise exception 'IDEMPOTENCY_CONFLICT';end if;return prior.result;end if;
+  select * into prior from private.grading_requests where actor_id=auth.uid() and request_id=(results_command.input->>'request_id')::uuid;if found then if prior.input<>input then raise exception 'IDEMPOTENCY_CONFLICT';end if;return prior.result;end if;
   if (input->>'published')::boolean and exists(select 1 from private.grade_moderations m join public.exam_attempts a on a.id=m.attempt_id where a.exam_id=(input->>'exam_id')::uuid and m.state='pending') then raise exception 'Selesaikan moderasi sebelum publikasi';end if;
  end if;
  if input->>'action'='grade_batch' then perform set_config('edutara.grade_context',input::text,true);end if;result:=private.results_command_before_bank(input);if input->>'action'='grade_batch' then perform set_config('edutara.grade_context','',true);end if;

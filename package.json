@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
-    "test:database": "node scripts/stage4-integration.mjs && node scripts/stage5-integration.mjs && node scripts/stage6-integration.mjs && node scripts/release/rollback-drill.mjs && node scripts/acceptance/retention-integration.mjs && node scripts/answer-session-integration.mjs && node scripts/durable-recovery-integration.mjs && node scripts/workflow-integration.mjs",
+    "test:database": "node scripts/stage4-integration.mjs && node scripts/stage5-integration.mjs && node scripts/stage6-integration.mjs && node scripts/release/rollback-drill.mjs && node scripts/acceptance/retention-integration.mjs && node scripts/answer-session-integration.mjs && node scripts/durable-recovery-integration.mjs && node scripts/workflow-integration.mjs && node scripts/bank-assessment-integration.mjs",
     "release:check": "node scripts/release/gate.mjs"
   },
   "dependencies": {

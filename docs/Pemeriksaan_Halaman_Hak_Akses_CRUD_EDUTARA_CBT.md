@@ -1,10 +1,30 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.4 — Alur persiapan dan pelaksanaan ujian.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.5 — Bank soal dan penilaian.
+
+## Pembaruan Tahap 4 — Bank soal dan penilaian
+
+Inventaris saat ini **21 halaman produksi**, dengan tambahan `/dashboard/bank` dan `/dashboard/grading`. Bagian Tahap 1–3 di bawah merupakan catatan historis; matriks dan ketentuan Tahap 4 ini berlaku untuk implementasi terbaru.
+
+| Area/objek | Fungsi dan tujuan | Hak akses dan CRUD |
+|---|---|---|
+| Bank soal `/dashboard/bank` | Taksonomi mapel, kelas, materi, indikator, kesulitan dan C1–C6; pencarian, impor, versi, review dan kualitas butir | Admin organisasi C/R/U. Guru C/R dalam **seluruh** kelas–mapel penugasan; U konten milik sendiri, Admin dapat U konten organisasi. Perubahan membuat versi draf. Tidak ada D permanen; pemilik/Admin dapat mengarsipkan |
+| Review bank | Draf → Disetujui / Perlu revisi; arsip dan pembukaan kembali | Guru peninjau dalam cakupan tidak dapat menyetujui soal sendiri; Admin dapat meninjau soal organisasi. Versi dan alasan wajib. Pengawas/Siswa tidak mendapat akses |
+| Kisi-kisi dan paket | Distribusi tipe/jumlah/bobot, materi, kesulitan, kognitif; sampling acak dari versi disetujui | Admin/Guru C paket hanya pada ujian draf dalam cakupan authoring, maksimal 3 ujian, 20 kelompok dan 200 soal/paket. Semua kelas sasaran harus tercakup. Kegagalan kuota/stok/duplikat membatalkan transaksi seluruh paket. Bobot esai mengikuti rubrik sumber. Kesamaan komposisi bukan jaminan kesetaraan psikometrik |
+| Media/versi/pemakaian | Validasi lampiran dan kunci, pelacakan pemakaian versi, deteksi duplikat persis dan kemiripan stem | R sesuai cakupan bank; lampiran yang direferensikan versi bank tidak dapat dihapus. Versi soal dan snapshot attempt lama tidak diubah saat bank diperbarui |
+| Koreksi `/dashboard/grading` | Antrean dengan kode peserta, rubrik per kriteria, umpan balik dan alasan revisi | Admin/Guru R/C/U nilai resmi pada attempt final sesuai kewenangan penilaian lama: Guru memiliki penugasan pada setidaknya satu kelas snapshot untuk mapel ujian. Bukan cakupan authoring seluruh kelas. Tidak ada D nilai/riwayat |
+| Mode anonim | Menyembunyikan identitas pada antrean/detail alur koreksi | Bukan pembatas tambahan terhadap hak melihat identitas di modul Hasil. Kunci/rubrik/kriteria tidak dikirim ke DTO siswa |
+| Moderasi | Usulan nilai, keputusan penilai kedua, riwayat alasan | Penilai berizin C usulan; penilai lain dalam cakupan U keputusan. Pengusul tidak dapat memutuskan sendiri termasuk Admin. Usulan tidak mengubah nilai resmi sampai disetujui. Revisi dasar usang tidak dapat disetujui |
+| Publikasi terjadwal | Penerbitan setelah akhir ujian, semua koreksi final dan moderasi selesai | **Hanya Admin** C/U jadwal, pembatalan dan publikasi langsung. Worker tiap menit memeriksa kembali status, revisi dan kewenangan Admin pembuat. Revisi nilai berikutnya menyembunyikan hasil dan memblokir jadwal; perlu tinjauan/publikasi ulang |
+| Analisis dan laporan | Kesulitan, daya pembeda, distraktor, rincian rubrik di PDF/XLSX dan alasan revisi | R sesuai cakupan hasil. Sampel <30 ditandai kecil, <4 belum cukup data untuk interpretasi daya pembeda. Riwayat pemakaian bank membatasi butir yang dianalisis. AI tetap adaptor tidak aktif; keputusan nilai pada manusia |
+
+Endpoint baru `/api/bank` dan `/api/assessment` memerlukan Admin/Guru konteks staf. RPC mengulang pemeriksaan organisasi, role, kepemilikan/penugasan, versi, status dan idempotensi. Tabel bank, moderasi dan jadwal publikasi berada di schema private dengan RLS dan tanpa grant tabel langsung kepada anon/authenticated. Tidak ada izin halaman baru bagi Siswa/Pengawas.
+
+Migrasi: `20261030052445_bank_assessment_stage4.sql`. Catatan penerapan dan bukti verifikasi dicatat di `docs/stage4-bank-assessment.md`. Pemeriksaan browser menggunakan data simulasi; bukan UAT akun produksi atau perangkat fisik.
 
 ## Pembaruan Tahap 3 — Alur persiapan dan pelaksanaan
 
-Implementasi branch `feat/stage3-preparation-operations`, berbasis main `8c34f8f6c9a81dc58d80b5ac3b3ee646b7016ce8`. Inventaris terbaru **19 halaman produksi**. Bagian Tahap 1/2 di bawah adalah catatan historis pada versinya; tambahan dan perubahan izin terbaru di bagian ini serta matriks berlaku saat ini.
+Implementasi branch `feat/stage3-preparation-operations`, berbasis main `8c34f8f6c9a81dc58d80b5ac3b3ee646b7016ce8`. Inventaris saat Tahap 3 **19 halaman produksi**. Bagian Tahap 1/2 di bawah adalah catatan historis pada versinya; tambahan dan perubahan izin terbaru di bagian ini serta matriks berlaku saat ini.
 
 | Area/objek | Fungsi terbaru | Izin CRUD dan batasan |
 |---|---|---|
@@ -134,6 +154,8 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 17 | Portal siswa / player ujian | `/student` | Daftar ujian sendiri, mulai/lanjut ujian, jawaban/canvas, sinkronisasi, submit, hasil yang diizinkan, kotak pesan dan permintaan bantuan. | Siswa dalam konteks siswa | C attempt/jawaban sendiri; R sendiri; U jawaban selama ujian terbuka dan status baca pesan; tidak ada D attempt/hasil. |
 | 18 | Portal pengawas | `/supervisor` | Monitoring peserta dan intervensi pada ruang/sesi tugas efektif; pesan, bantuan/tanggapan, indikator koneksi, riwayat, serta kartu peserta dalam panel tambahan. | Pengawas atau Guru dalam konteks pengawas dengan penugasan sah | R peserta tugas, U reset/unlock/diskualifikasi beralasan, C pesan/kartu dalam cakupan; tidak mengelola ruang/penugasan. |
 | 19 | Persiapan ujian | `/dashboard/preparation` | Wizard pembuatan draf, checklist kesiapan, siklus ujian dan publikasi jadwal. | Admin, Guru konteks staf | Admin C/R/U draf dan U publikasi jadwal setelah pemeriksaan; Guru R kesiapan dalam cakupan authoring. Tidak ada D permanen. |
+| 20 | Bank soal | `/dashboard/bank` | Taksonomi, versi, review, impor, kisi-kisi, paket dan kualitas butir. | Admin, Guru konteks staf | C/R sesuai organisasi/seluruh kelas–mapel; U konten pemilik/Admin, review penilai lain; arsip tanpa D permanen. |
+| 21 | Koreksi dan moderasi | `/dashboard/grading` | Koreksi anonim, rubrik kriteria, moderasi dan jadwal publikasi. | Admin, Guru konteks staf | C/R/U penilaian dalam cakupan snapshot; keputusan moderasi oleh penilai lain; publikasi dan jadwal hanya Admin; tanpa D riwayat. |
 
 `/auth/confirm` merupakan route handler konfirmasi email/token, bukan halaman `page.tsx`. File loading/error dashboard merupakan tampilan status, bukan halaman navigasi tersendiri. Modal soal, pratinjau, detail hasil, impor, kartu, inbox dan form pemulihan tidak memiliki route halaman tersendiri dalam inventaris ini.
 
@@ -209,7 +231,7 @@ Media milik Guru dan media organisasi untuk Admin memiliki pembatasan rujukan. M
 
 Halaman pengaturan menyimpan nilai setting serta referensi secret. Status keberadaan secret dapat dibaca; nilai secret tidak dikembalikan. Pengaturan retensi/reminder/SMTP dan tombol otomasi tidak membuktikan worker telah diaktifkan di produksi: kode memiliki pemeriksaan kapabilitas worker.
 
-Pembatalan backup dan penyelesaian status email tidak pasti membutuhkan alasan/konfirmasi yang divalidasi. Unduh backup memerlukan pekerjaan selesai. Tidak ditemukan alur restore database umum pada 19 halaman ini; jangan menjanjikan restore melalui halaman jobs. Log audit dan ledger tidak memiliki tombol hapus/edit umum.
+Pembatalan backup dan penyelesaian status email tidak pasti membutuhkan alasan/konfirmasi yang divalidasi. Unduh backup memerlukan pekerjaan selesai. Tidak ditemukan alur restore database umum pada halaman yang diperiksa; jangan menjanjikan restore melalui halaman jobs. Log audit dan ledger tidak memiliki tombol hapus/edit umum.
 
 ## 5. Peta endpoint untuk pengembangan
 
@@ -222,6 +244,8 @@ Endpoint bukan tambahan halaman. Daftar ini membantu menelusuri kontrol server d
 | Penyusunan | `/api/authoring`, `/api/authoring/media` | Actor staf; authoring_command dan author_guard. |
 | Ujian siswa | `/api/attempts`, `/api/attempts/canvas`, `/api/attempts/latex`, `/api/attempts/media` | Konteks Siswa, ownership, epoch/versi, status dan deadline. |
 | Alur persiapan/pelaksanaan | `/api/workflow` | Staf untuk kesiapan/preflight, Siswa untuk bantuan sendiri, petugas sesuai monitoring/penugasan untuk indikator/tanggapan; publikasi dan dispensasi hanya Admin staf. |
+| Bank soal | `/api/bank` | Admin/Guru staf; scope seluruh kelas–mapel, ownership, review dan versi. |
+| Koreksi/moderasi | `/api/assessment` | Admin/Guru staf dalam cakupan penilaian; jadwal/cancel hanya Admin. |
 | Peninjauan | `/api/review` | Admin staf atau konteks Pengawas; cakupan attempt SQL. |
 | Operasional | `/api/operations`, `/api/operations/live` | Operator dan ops_command; baca/tulis dibedakan. |
 | Hasil | `/api/results`, `/api/results/media`, `/api/grading/ai` | Admin/Guru staf; can_grade dan pembatasan publikasi. |
@@ -249,7 +273,7 @@ Semua path relatif terhadap repositori pada commit di awal dokumen.
 
 | Bukti | Lokasi |
 |---|---|
-| Inventaris 19 halaman | `app/**/page.tsx` dan `app/page.tsx` |
+| Inventaris 21 halaman | `app/**/page.tsx` dan `app/page.tsx` |
 | Pagar dashboard dan menu Admin | `app/dashboard/layout.tsx`; halaman rooms/settings/audit/jobs |
 | Tahap 3 persiapan/pelaksanaan | `components/workflow`, `app/dashboard/preparation/page.tsx`, `app/api/workflow/route.ts`, `lib/workflow/schema.ts`, migrasi `20261030033230_preparation_execution_workflow.sql` |
 | Role/konteks dan akun aktif | `lib/domain/validation.ts`, `lib/auth/actor.ts` |
