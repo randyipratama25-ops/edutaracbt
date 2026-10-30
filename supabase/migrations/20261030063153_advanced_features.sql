@@ -10,6 +10,7 @@ create table private.advanced_evaluations(
  evidence_ref text not null check(length(evidence_ref) between 5 and 200 and evidence_ref ~ '^[a-zA-Z0-9_./ -]+$'),
  recorded_at timestamptz not null default clock_timestamp(),unique(actor_id,request_id)
 );
+create index advanced_evaluations_org_time on private.advanced_evaluations(organization_id,recorded_at desc,id);
 alter table private.advanced_evaluations enable row level security;
 revoke all on private.advanced_evaluations from public,anon,authenticated;
 create function private.advanced_immutable() returns trigger language plpgsql set search_path='' as $$begin raise exception 'Riwayat evaluasi tidak dapat diubah/dihapus';end$$;

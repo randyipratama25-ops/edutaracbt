@@ -131,7 +131,7 @@ export function AdvancedPanel() {
         <h2>Asisten koreksi AI</h2>
         <span className="role-badge">Nonaktif</span>
         <p>
-          Sesuai pilihan pengelola, jawaban tidak dikirim ke penyedia AI.
+          Penyedia AI belum dikonfigurasi; jawaban tidak dikirim ke layanan AI.
           Koreksi rubrik dan moderasi tetap tersedia.
         </p>
         <p className="muted">

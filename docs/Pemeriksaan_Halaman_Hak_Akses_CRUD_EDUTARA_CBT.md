@@ -4,14 +4,14 @@ Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.7 — Fitur lanjuta
 
 ## Pembaruan Tahap 6 — Fitur lanjutan
 
-Inventaris terbaru **23 halaman produksi**, dengan tambahan `/dashboard/advanced`. Pilihan pengelola: AI belum diaktifkan; pertukaran nilai menggunakan XLSX dan PDF. Tahap sebelumnya merupakan catatan historis pada masing-masing versi.
+Inventaris terbaru **23 halaman produksi**, dengan tambahan `/dashboard/advanced`. AI belum diaktifkan karena penyedia belum dikonfigurasi; pertukaran nilai menggunakan XLSX dan PDF. Tahap sebelumnya merupakan catatan historis pada masing-masing versi.
 
 | Area | Fungsi dan tujuan | Izin CRUD dan batasan |
 |---|---|---|
 | Fitur lanjutan `/dashboard/advanced` | Status AI, konfigurasi uji SEB, pemeriksaan browser lokal dan riwayat evaluasi perangkat | Hanya Admin staf aktif. R status/riwayat organisasi sendiri; C hasil pengamatan. Tidak ada U/D riwayat. Guru/Pengawas/Siswa tidak mendapat halaman baru |
 | Evaluasi perangkat | Enam skenario login, soal/rumus, media, canvas, pemulihan dan submit; SHA kandidat, platform/versi, catatan serta referensi artefak | Admin C dengan validasi server, request idempoten, dan audit. R maksimal 50 per halaman. Hasil manual bukan sertifikasi atau pengesahan cutover; pengujian ulang menambah catatan baru |
 | Konfigurasi SEB | Unduh berkas `.seb` XML tidak terenkripsi untuk akun/perangkat uji, membuka login HTTPS aplikasi, dapat ditutup | Admin R/unduh saja; bukan konfigurasi ujian terkunci. Tidak ada pemaksaan SEB, validasi Browser Exam Key/Config Key, atau perluasan akses attempt. Pemeriksaan API browser/UA bukan bukti keamanan |
-| AI | Status nonaktif sesuai pilihan pengelola | Endpoint web mengembalikan 503 tanpa memanggil penyedia atau mencatat permintaan koreksi baru. Koreksi manual/moderasi tetap berjalan. Aktivasi kelak membutuhkan pilihan penyedia, evaluasi dan persetujuan data; nilai resmi tetap membutuhkan keputusan penilai |
+| AI | Status nonaktif; penyedia belum dikonfigurasi | Endpoint web mengembalikan 503 tanpa memanggil penyedia atau mencatat permintaan koreksi baru. Koreksi manual/moderasi tetap berjalan. Aktivasi kelak membutuhkan pilihan penyedia, evaluasi dan persetujuan data; nilai resmi tetap membutuhkan keputusan penilai |
 | Pertukaran nilai | Jenis laporan `exchange` pada Hasil/Analitik, format XLSX/PDF dengan ID peserta/ujian/attempt, kelas, revisi ledger, status, nilai final dan kelulusan | Admin/Guru C/R pekerjaan ekspor milik sendiri dalam cakupan can_grade snapshot. Revisi dipatok saat job dibuat; izin diperiksa ulang saat proses/unduh. Nilai belum final/diskualifikasi kosong, nol final tetap numerik 0. Tidak ada push ke LMS, CSV, atau CRUD nilai melalui ekspor |
 
 Endpoint baru `/api/advanced` (GET daftar, POST pencatatan Admin) dan `/api/advanced/seb` (GET unduhan Admin). Tabel `private.advanced_evaluations` RLS tanpa grant tabel langsung anon/authenticated; trigger menolak U/D. Backup otomatis yang memakai cakupan organisasi dan inventaris rollback mencakup catatan evaluasi. Migrasi `20261030063153_advanced_features.sql` tidak mengubah jawaban, nilai atau deadline historis. Bukti implementasi: `docs/stage6-advanced-features.md`.

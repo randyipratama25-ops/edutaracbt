@@ -1,6 +1,6 @@
 # Saran Tahap 6 — Fitur lanjutan terkendali
 
-Baseline `f488dbaeabfe0cb19c8726d0bf605e3639a4aed9`, 30 Oktober 2026. Pilihan eksplisit pengelola: AI belum diaktifkan; ekspor nilai XLSX dan PDF.
+Baseline `f488dbaeabfe0cb19c8726d0bf605e3639a4aed9`, 30 Oktober 2026. AI belum diaktifkan karena penyedia belum dikonfigurasi; ekspor nilai tersedia dalam XLSX dan PDF.
 
 ## Implementasi
 
@@ -26,3 +26,9 @@ Bukan UAT klien SEB fisik atau pengesahan keamanan lockdown. Windows/macOS/iOS m
 - https://safeexambrowser.org/developer/seb-file-format.html — struktur konfigurasi.
 - https://safeexambrowser.org/developer/seb-config-key.html — BEK/CK serta perbedaan header/JavaScript API.
 - https://supabase.com/docs/guides/database/functions — fungsi terkontrol dan grant.
+
+## Hasil penerapan 30 Oktober 2026
+
+- Migrasi identik (MD5 `326e4a00470f7cc14466edf49de8c910`) diverifikasi di staging (riwayat `20261030064320`) dan diterapkan ke produksi. Tabel evaluasi memiliki RLS; anon/authenticated tidak memiliki SELECT tabel langsung.
+- Lint, TypeScript, 159 tes (3 dilewati), build produksi, seluruh regresi database dan browser fixture empat ukuran layar lulus. Pemeriksaan komponen menggunakan panduan React.
+- Dokumen pemeriksaan versi 1.7 mencakup 23 halaman. Hasil pilot bukan pengesahan perangkat SEB fisik.
