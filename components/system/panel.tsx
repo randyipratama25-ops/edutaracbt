@@ -416,7 +416,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
               Ekspor CSV
             </Button>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel administrasi; geser untuk melihat kolom lain">
             <table>
               <thead>
                 <tr>
@@ -480,7 +480,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
             akun memerlukan aktivasi ulang. Dump PostgreSQL/PITR dan escrow
             secret tetap dikelola terpisah.
           </p>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel administrasi; geser untuk melihat kolom lain">
             <table>
               <thead>
                 <tr>

@@ -150,7 +150,7 @@ export function MasterPanel() {
           </Button>
         </div>
         <p role="status">{message}</p>
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel data akademik; geser untuk melihat kolom lain">
           <table>
             <thead>
               <tr>
@@ -316,7 +316,7 @@ export function MasterPanel() {
       ) : null}
       <section className="panel">
         <h2>Daftar penugasan guru</h2>
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel data akademik; geser untuk melihat kolom lain">
           <table>
             <thead>
               <tr>

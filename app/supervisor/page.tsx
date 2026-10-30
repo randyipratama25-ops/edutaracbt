@@ -8,15 +8,13 @@ export default async function Supervisor() {
   const a = await actor();
   if (!a || a.context !== "supervisor") redirect("/login");
   return (
-    <main className="workspace">
-      <p className="eyebrow">PENGAWAS UJIAN</p>
-      <h1>Selamat datang, {a.full_name}</h1>
+    <main id="main-content" tabIndex={-1} className="workspace supervisor-workspace">
+      <header className="student-portal-heading"><div><p className="eyebrow">PENGAWAS UJIAN</p><h1>Ruang pengawasan</h1><p className="muted">{a.full_name}</p></div><LogoutButton /></header>
       <OperationsPanel />
       <details>
         <summary>Kartu peserta</summary>
         <CardsPanel />
       </details>
-      <LogoutButton />
     </main>
   );
 }

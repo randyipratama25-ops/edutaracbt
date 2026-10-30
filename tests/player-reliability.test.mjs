@@ -5,7 +5,7 @@ vi.mock("../components/auth/logout-button", () => ({ LogoutButton: () => null })
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("../components/attempts/integrity", () => ({ useIntegrity: () => "" }));
 vi.mock("../components/ui/dialog", () => ({ Dialog: ({ open, children }) => open ? React.createElement("section", null, children) : null }));
-import { ExamPlayer } from "../components/attempts/player";
+import { ExamPlayer, StudentPortal } from "../components/attempts/player";
 let root, onUpdate, storage;
 const attempt = {
   id: "attempt", exam_id: "exam", title: "Ujian uji", status: "in_progress",
@@ -85,6 +85,15 @@ describe("student submission fault flow", () => {
     await mount();await act(async()=>root.root.findByType("input").props.onChange());
     await act(async()=>button("Pindah perangkat").props.onClick());await act(async()=>button("Simpan dan periksa kesiapan").props.onClick());
     expect(calls[0].action).toBe("save");expect(JSON.stringify(root.toJSON())).toContain("Jawaban saat persiapan sudah diakui server");
+  });
+
+  it("clears the portal error after a successful list retry", async () => {
+    vi.stubGlobal("fetch",vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({error:{message:"Koneksi uji terputus"}}),{status:503})).mockResolvedValueOnce(response({exams:[]})));
+    await act(async()=>{root=create(React.createElement(StudentPortal,{studentId:"student"}));});
+    expect(JSON.stringify(root.toJSON())).toContain("Daftar ujian belum dapat dimuat");
+    await act(async()=>button("Coba muat ulang").props.onClick());
+    expect(JSON.stringify(root.toJSON())).toContain("Belum ada ujian");
+    expect(JSON.stringify(root.toJSON())).not.toContain("Koneksi uji terputus");
   });
 
 });

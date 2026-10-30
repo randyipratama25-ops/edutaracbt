@@ -402,7 +402,7 @@ export function UsersPanel() {
           </Button>
         </div>
         {preview.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel pengguna; geser untuk melihat kolom lain">
             <table>
               <thead>
                 <tr>

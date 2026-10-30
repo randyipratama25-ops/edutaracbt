@@ -28,8 +28,8 @@ export function Inbox() {
   useLive(load, true);
   const unread = items.filter((m) => !m.read_at).length;
   return (
-    <section className="panel">
-      <Button variant="outline" onClick={() => setOpen(!open)}>
+    <section className="panel inbox-panel" aria-label="Pesan petugas">
+      <Button variant="outline" aria-expanded={open} onClick={() => setOpen(!open)}>
         Pesan petugas {unread > 0 ? `(${unread} belum dibaca)` : ""}
       </Button>
       <p role="status">{error}</p>

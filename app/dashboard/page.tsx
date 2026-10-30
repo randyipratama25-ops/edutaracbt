@@ -1,6 +1,7 @@
 import { actor } from "../../lib/auth/actor";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Button } from "../../components/ui/button";
 export default async function Dashboard() {
   const a = await actor();
   if (!a) redirect("/login");
@@ -24,14 +25,14 @@ export default async function Dashboard() {
         ))}
       </div>
       <section className="panel">
-        <h2>Mulai dari data yang rapi</h2>
+        <h2>Kelola kegiatan ujian</h2>
         <p>
-          Kelola akun, kelas, mata pelajaran, dan penugasan guru sebelum
-          menyusun ujian.
+          Akses data akademik dan penyusunan ujian dari satu ruang kerja.
         </p>
         <div className="actions">
-          <Link href="/dashboard/users">Kelola pengguna →</Link>
-          <Link href="/dashboard/master-data">Kelola data master →</Link>
+          <Button asChild><Link href="/dashboard/exams">Ujian & bank soal</Link></Button>
+          <Button asChild variant="outline"><Link href="/dashboard/master-data">Data akademik</Link></Button>
+          <Button asChild variant="outline"><Link href="/dashboard/users">Pengguna</Link></Button>
         </div>
       </section>
     </>

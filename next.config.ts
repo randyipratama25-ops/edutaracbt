@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  // Isolate the temporary UI verification server from normal dev/build caches.
+  distDir: process.env.EDUTARA_UI_TEST_DIST || ".next",
   serverExternalPackages: [
     "@sparticuz/chromium",
     "puppeteer-core",

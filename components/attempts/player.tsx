@@ -1,6 +1,9 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { Bookmark, CheckCircle2, ChevronDown, ListOrdered, Type, Wifi, WifiOff, ClipboardList } from "lucide-react";
+import { completion, progressSummary, questionTypeLabels } from "../../lib/attempts/presentation";
+import { QuestionNavigation } from "./question-navigation";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { LogoutButton } from "../auth/logout-button";
@@ -62,7 +65,9 @@ export function StudentPortal({ studentId }: { studentId: string }) {
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [takeover, setTakeover] = useState(""),
-    [reloadKey, setReloadKey] = useState(0);
+    [reloadKey, setReloadKey] = useState(0),
+    [listVersion, setListVersion] = useState(0),
+    [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
   useEffect(() => {
     try {
       let id = sessionStorage.getItem("edutara_attempt_client");
@@ -74,14 +79,22 @@ export function StudentPortal({ studentId }: { studentId: string }) {
     } catch {
       setClient(crypto.randomUUID());
     }
-    fetch("/api/attempts")
+  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    setListState("loading");
+    fetch("/api/attempts", { signal: controller.signal })
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) throw Error(j.error?.message);
+        if (!Array.isArray(j.data?.exams)) throw Error("Daftar ujian belum dapat dimuat. Coba lagi.");
         setExams(j.data.exams);
+        setMessage("");
+        setListState("ready");
       })
-      .catch((e) => setMessage(e.message));
-  }, []);
+      .catch((e) => { if (!controller.signal.aborted) { setMessage(e.message); setListState("error"); } });
+    return () => controller.abort();
+  }, [listVersion]);
   async function open(input: unknown, id?: string) {
     setBusy(true);
     setMessage("");
@@ -132,21 +145,21 @@ export function StudentPortal({ studentId }: { studentId: string }) {
       </>
     );
   return (
-    <main className="workspace student-shell">
-      <h1>Ujian saya</h1>
-      <p>
-        Pilih ujian yang sesuai, lalu masukkan PIN dari pengawas. Jadwal
-        ditentukan server.
-      </p>
+    <main id="main-content" tabIndex={-1} className="workspace student-shell">
+      <header className="student-portal-heading"><div><p className="eyebrow">PORTAL SISWA</p><h1>Ujian saya</h1><p className="muted">Pilih ujian dan gunakan PIN dari pengawas.</p></div><LogoutButton /></header>
       <p role="status">{message}</p>
-      {exams.length === 0 && <p>Belum ada ujian untuk kelas Anda.</p>}
-      {exams.map((e) => (
-        <section className="panel stack" key={e.id}>
+      {listState === "loading" && <section aria-busy="true" aria-label="Memuat daftar ujian" className="stack"><div className="skeleton skeleton-card" /><p role="status">Memuat ujian…</p></section>}
+      {listState === "error" && <section className="empty-state"><h2>Daftar ujian belum dapat dimuat</h2><p>Periksa koneksi, lalu coba kembali.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Coba muat ulang</Button></section>}
+      {listState === "ready" && exams.length === 0 && <section className="empty-state"><ClipboardList size={40} aria-hidden="true" /><h2>Belum ada ujian</h2><p>Ujian untuk kelas Anda akan muncul di sini setelah dijadwalkan.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Periksa lagi</Button></section>}
+      <div className="student-exam-list">
+      {listState === "ready" && exams.map((e) => (
+        <section className="panel stack exam-card" key={e.id}>
+          <div className="actions"><span className="question-type">{e.attempt?.finalized_at ? "Selesai" : e.attempt ? "Sudah dimulai" : e.status === "active" ? "Berlangsung" : e.status === "closed" ? "Ditutup" : "Terjadwal"}</span><span className="muted">{e.duration_minutes} menit</span></div>
           <h2>{e.title}</h2>
-          <p>
-            {new Date(e.starts_at).toLocaleString("id-ID")} –{" "}
-            {new Date(e.ends_at).toLocaleString("id-ID")} · {e.duration_minutes}{" "}
-            menit
+          <p className="muted">
+            {new Date(e.starts_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} –{" "}
+            {new Date(e.ends_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} · {e.duration_minutes}{" "}
+            menit · WIB
           </p>
           {e.attempt ? (
             <Button
@@ -194,6 +207,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
           )}
         </section>
       ))}
+      </div>
       {takeover && (
         <section className="panel">
           <p>
@@ -215,7 +229,6 @@ export function StudentPortal({ studentId }: { studentId: string }) {
           </Button>
         </section>
       )}
-      <LogoutButton />
     </main>
   );
 }
@@ -261,7 +274,23 @@ export function ExamPlayer({
     [submitUncertain, setSubmitUncertain] = useState(false),
     [connected, setConnected] = useState(true),
     [flagged, setFlagged] = useState<string[]>([]),
+    [fontSize, setFontSize] = useState(18),
+    [headerHeight, setHeaderHeight] = useState(150),
+    [preferencesLoaded, setPreferencesLoaded] = useState(false),
+    [mapOpen, setMapOpen] = useState(false),
     [recoveryChoices, setRecoveryChoices] = useState<{ id: string; questionId: string; value: AnswerValue; revision: number; label: string }[]>([]);
+  const questionHeading = useRef<HTMLHeadingElement>(null), examHeader = useRef<HTMLElement>(null), previousIndex = useRef(0), mapSelection = useRef(false);
+  const focusQuestion = useCallback(() => {
+    questionHeading.current?.focus({ preventScroll: true });
+    questionHeading.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, []);
+  useEffect(() => {
+    const header = examHeader.current;
+    if (!header || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setHeaderHeight(Math.ceil(header.getBoundingClientRect().height)));
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [active]);
   const started = useRef({
       server: Date.parse(a.server_now),
       local: 0,
@@ -418,10 +447,33 @@ export function ExamPlayer({
     for (const d of a.recovery?.drafts || []) choices.push({ id: `cloud:${d.client_id}:${d.epoch}:${d.question_id}`, questionId: d.question_id, value: d.value, revision: d.revision, label: "Cadangan draf server" });
     setRecoveryChoices(choices);
   }, [active, studentId, a.id, a.epoch, a.questions, a.answers, a.recovery, clientId]);
+  useEffect(() => {
+    if (!active) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`edutara:player-ui:v1:${studentId}:${a.id}`) || "null");
+      if (saved) {
+        if ([16,18,20,22].includes(saved.fontSize)) setFontSize(saved.fontSize);
+        if (Array.isArray(saved.flagged)) setFlagged(saved.flagged.filter((id: string) => a.questions.some(q => q.id === id)));
+        const position = a.questions.findIndex(q => q.id === saved.questionId);
+        if (position >= 0) setIndex(position);
+      }
+    } catch { /* Display preferences never block an exam. */ }
+    setPreferencesLoaded(true);
+  }, [active, studentId, a.id, a.questions]);
+  useEffect(() => {
+    if (!preferencesLoaded || !active) return;
+    try { localStorage.setItem(`edutara:player-ui:v1:${studentId}:${a.id}`, JSON.stringify({ fontSize, flagged, questionId: a.questions[index]?.id })); } catch { /* Preferences are optional. */ }
+  }, [preferencesLoaded, active, studentId, a.id, a.questions, index, fontSize, flagged]);
+  useEffect(() => {
+    if (previousIndex.current !== index) focusQuestion();
+    previousIndex.current = index;
+  }, [index, focusQuestion]);
+  const summary = progressSummary(a.questions, queue.values, flagged);
+  const navigationItems = a.questions.map(q => ({ id: q.id, state: completion(q.payload, queue.values[q.id]), flagged: flagged.includes(q.id) }));
   const receipt = receiptOf(a);
   if (!active)
     return (
-      <main className="workspace student-shell">
+      <main id="main-content" tabIndex={-1} className="workspace student-shell">
         <section className="panel stack">
           <h1>{a.title}</h1>
           <p>
@@ -489,10 +541,11 @@ export function ExamPlayer({
   function changePage(next: number) {
     if (mediaDirty) {
       setMessage("Simpan canvas terlebih dahulu sebelum berpindah soal.");
-      return;
+      return false;
     }
     setIndex(next);
     setMessage("");
+    return true;
   }
   async function fullscreen() {
     try {
@@ -512,54 +565,35 @@ export function ExamPlayer({
     }
   }
   return (
-    <main className="student-shell workspace">
-      <header className="exam-top panel">
-        <div>
-          <h1>{a.title}</h1>
-          <p role="timer" aria-label="Sisa waktu">
-            {Math.floor(remaining / 3600)
-              .toString()
-              .padStart(2, "0")}
-            :
-            {Math.floor((remaining % 3600) / 60)
-              .toString()
-              .padStart(2, "0")}
-            :{(remaining % 60).toString().padStart(2, "0")}
-          </p>
+    <main id="main-content" tabIndex={-1} className="student-shell workspace" style={{ "--exam-header-height": `${headerHeight+16}px` } as import("react").CSSProperties}>
+      <header ref={examHeader} className="exam-top panel">
+        <div><p className="eyebrow">RUANG UJIAN</p><h1>{a.title}</h1><small>Soal {index+1} dari {a.questions.length}</small></div>
+        <div className={`exam-clock${remaining <= 300 ? " is-urgent" : ""}`}><span>Sisa waktu</span>
+          <p role="timer" aria-label="Sisa waktu">{Math.floor(remaining/3600).toString().padStart(2,"0")}:{Math.floor((remaining%3600)/60).toString().padStart(2,"0")}:{(remaining%60).toString().padStart(2,"0")}</p>
         </div>
         <div className="actions">
-          <Button variant="outline" onClick={() => void fullscreen()}>
-            Fullscreen / landscape
-          </Button>
-          <Button variant="outline" onClick={() => setReloadConfirm(true)}>
-            Muat status server
-          </Button>
-          <Button variant="outline" disabled={submitting || transferring || submitUncertain} onClick={() => { setTransferMessage(""); setTransferOpen(true); }}>Pindah perangkat</Button>
-          <Button disabled={submitting || transferring} onClick={() => setConfirm(true)}>
-            Akhiri ujian
-          </Button>
+          <Button className="player-mobile-map" variant="outline" onClick={() => setMapOpen(true)}><ListOrdered size={17} aria-hidden="true" />Daftar soal</Button>
+          <details className="exam-tools"><summary className="button button-outline" aria-label="Alat ujian">Alat<ChevronDown size={15} aria-hidden="true" /></summary>
+            <div className="exam-tools-menu">
+              <label><span><Type size={16} aria-hidden="true" /> Ukuran tulisan soal</span><select value={fontSize} onChange={event => setFontSize(Number(event.target.value))}>{[16,18,20,22].map(size => <option value={size} key={size}>{size === 18 ? "Normal" : size < 18 ? "Ringkas" : size === 20 ? "Besar" : "Sangat besar"}</option>)}</select></label>
+              <Button variant="outline" onClick={() => void fullscreen()}>Fullscreen / landscape</Button>
+              <Button variant="outline" onClick={() => setReloadConfirm(true)}>Muat status server</Button>
+              <Button variant="outline" disabled={submitting || transferring || submitUncertain} onClick={() => { setTransferMessage(""); setTransferOpen(true); }}>Pindah perangkat</Button>
+              <p className="muted">Perubahan fokus dicatat untuk peninjauan. Waktu tetap berjalan.</p>
+            </div>
+          </details>
+          <Button disabled={submitting || transferring} onClick={() => setConfirm(true)}>Akhiri ujian</Button>
         </div>
       </header>
-      <p className="notice">
-        Perubahan fokus dicatat untuk peninjauan. Fullscreen, landscape, dan
-        wake lock mengikuti dukungan perangkat; alat ini tidak dapat mencegah
-        seluruh bentuk kecurangan.
-      </p>
-      <p role="status">{connected ? "Terhubung ke server" : "Koneksi/status server belum tersedia; waktu ujian tetap berjalan."}</p>
-      {queue.lastSavedAt && <p>Respons simpan terakhir diterima: {new Date(queue.lastSavedAt).toLocaleTimeString("id-ID")}</p>}
+      <div className="exam-status">
+        <span className={`status-pill${!connected ? " is-pending" : ""}`}>{connected ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}{connected ? "Terhubung" : "Koneksi terputus"}</span>
+        <p role="status">{mediaDirty ? "Canvas belum tersimpan" : Object.keys(queue.conflicts).length ? "Ada konflik jawaban" : queue.pendingCount ? `${queue.pendingCount} jawaban menunggu simpan` : <><CheckCircle2 size={14} aria-hidden="true" style={{ display: "inline", verticalAlign: "middle" }} /> Semua perubahan tersimpan</>}</p>
+        {queue.lastSavedAt && <small>Respons terakhir {new Date(queue.lastSavedAt).toLocaleTimeString("id-ID")}</small>}
+      </div>
+      {remaining > 0 && remaining <= 300 && <p className="notice" role="status">Waktu tersisa 5 menit atau kurang. Periksa jawaban dan status penyimpanan.</p>}
       {queue.recoveryMessage && <p role="status" className="notice">{queue.recoveryMessage}</p>}
-      {submitUncertain && <section className="notice">
-        <p>Menunggu kepastian pengumpulan. Jangan berpindah perangkat.</p>
-        <Button disabled={submitting} onClick={() => void submit(submitMode.current)}>Periksa / ulangi pengumpulan</Button>
-      </section>}
-      <p role="status">
-        {mediaDirty
-          ? "Canvas belum tersimpan; tunggu unggahan dan pengakuan server."
-          : queue.status}{" "}
-        {queue.pendingCount > 0
-          ? `${queue.pendingCount} soal belum diakui server.`
-          : ""}
-      </p>
+      {submitUncertain && <section className="notice"><p>Menunggu kepastian pengumpulan. Jangan berpindah perangkat.</p><Button disabled={submitting} onClick={() => void submit(submitMode.current)}>Periksa / ulangi pengumpulan</Button></section>}
+      {(queue.pendingCount > 0 || Object.keys(queue.conflicts).length > 0) && <p className="muted">{queue.status}</p>}
       {queue.pendingCount > 0 && (
         <Button variant="outline" onClick={queue.retry}>
           Coba simpan lagi
@@ -604,29 +638,16 @@ export function ExamPlayer({
           }}>Gunakan canvas yang diunggah</Button>
         </section>)}
       </details>}
-      <nav aria-label="Navigasi soal" className="question-nav">
-        {a.questions.map((q, i) => (
-          <button
-            type="button"
-            className={
-              i === index ? "question-number selected" : "question-number"
-            }
-            key={q.id}
-            aria-current={i === index ? "step" : undefined}
-            onClick={() => changePage(i)}
-          >
-            {i + 1}
-            {flagged.includes(q.id) ? " ★" : queue.values[q.id] ? " ✓" : ""}
-          </button>
-        ))}
-      </nav>
-      <section className="panel stack">
-        <h2>
-          Soal {index + 1} / {a.questions.length} · {q.type}
-        </h2>
+      <div className="player-grid">
+      <div className="player-main">
+      <section className="panel stack question-reading" style={{ "--question-font-size": `${fontSize}px` } as import("react").CSSProperties}>
+        <div className="question-heading"><h2 ref={questionHeading} tabIndex={-1}>Soal {index+1} <span className="muted">/ {a.questions.length}</span></h2><span className="question-type">{questionTypeLabels[q.type] || q.type}</span></div>
+        <p className="muted" style={{ fontSize: ".8rem", margin: 0 }}>{q.points} poin · {q.required ? "Wajib dijawab" : "Opsional"}</p>
         <Preview
           question={preview}
           showKey={false}
+          showOptions={false}
+          showMeta={false}
           attachmentBaseUrl="/api/attempts/media"
         />
         {q.type === "PG" || q.type === "PG_KOMPLEKS" ? (
@@ -661,7 +682,7 @@ export function ExamPlayer({
           <fieldset disabled={disabled}>
             <legend>Jawaban per pernyataan</legend>
             {q.options.map((o) => (
-              <label key={o.id}>
+              <label className="statement-answer" key={o.id}>
                 {o.text}
                 <select
                   value={record[o.id] || ""}
@@ -790,7 +811,7 @@ export function ExamPlayer({
             </Button>
           </>
         )}
-        <div className="actions">
+        <div className="player-actions">
           <Button
             variant="outline"
             disabled={!index}
@@ -800,6 +821,8 @@ export function ExamPlayer({
           </Button>
           <Button
             variant="outline"
+            aria-pressed={flagged.includes(item.id)}
+            aria-label={flagged.includes(item.id) ? "Hapus tanda ragu" : "Tandai ragu"}
             onClick={() =>
               setFlagged((f) =>
                 f.includes(item.id)
@@ -808,7 +831,7 @@ export function ExamPlayer({
               )
             }
           >
-            {flagged.includes(item.id) ? "Hapus tanda ragu" : "Tandai ragu"}
+            <Bookmark size={16} aria-hidden="true" fill={flagged.includes(item.id) ? "currentColor" : "none"} /><span className="flag-label">{flagged.includes(item.id) ? "Hapus tanda ragu" : "Tandai ragu"}</span>
           </Button>
           <Button
             disabled={index === a.questions.length - 1}
@@ -818,6 +841,9 @@ export function ExamPlayer({
           </Button>
         </div>
       </section>
+      </div>
+      <aside className="exam-side panel" aria-label="Peta soal"><QuestionNavigation items={navigationItems} index={index} onSelect={changePage} /></aside>
+      </div>
       {remaining === 0 && (
         <section className="notice">
           <p>
@@ -841,14 +867,27 @@ export function ExamPlayer({
         {mediaDirty && <p>Simpan canvas sebelum menyiapkan perpindahan perangkat.</p>}
         <p role="status">{transferMessage}</p>
       </Dialog>
+      <Dialog open={mapOpen} onOpenChange={setMapOpen} title="Daftar soal ujian" description="Pilih nomor soal. Status jawaban dan tanda ragu ditampilkan pada setiap nomor." onCloseAutoFocus={event => {
+        if (mapSelection.current) { event.preventDefault(); mapSelection.current = false; focusQuestion(); }
+      }}>
+        <QuestionNavigation items={navigationItems} index={index} onSelect={next => { if (changePage(next)) { mapSelection.current = true; setMapOpen(false); } }} />
+        {mediaDirty && <p role="status">Simpan canvas sebelum berpindah soal.</p>}
+      </Dialog>
       <Dialog
         open={confirm}
         onOpenChange={setConfirm}
+        onCloseAutoFocus={event => { if (mapSelection.current) { event.preventDefault(); mapSelection.current = false; focusQuestion(); } }}
         title="Akhiri ujian?"
         description="Jawaban wajib akan diperiksa oleh server. Jawaban yang belum diakui server harus disimpan terlebih dahulu."
       >
+        <div className="submission-counts" aria-label="Ringkasan jawaban"><div><strong>{summary.complete}</strong><span>Terjawab</span></div><div><strong>{summary.empty+summary.partial}</strong><span>Belum lengkap</span></div><div><strong>{summary.flagged}</strong><span>Ditandai ragu</span></div></div>
+        {summary.requiredMissing > 0 && <p className="notice">{summary.requiredMissing} soal wajib belum lengkap. Pemeriksaan akhir tetap dilakukan server.</p>}
+        {(summary.empty+summary.partial > 0) && <Button variant="outline" onClick={() => {
+          const next = a.questions.findIndex(q => completion(q.payload, queue.values[q.id]) !== "complete");
+          if (next >= 0 && changePage(next)) { mapSelection.current = true; setConfirm(false); }
+        }}>Periksa jawaban yang belum lengkap</Button>}
         <Button
-          disabled={submitting}
+          disabled={submitting || mediaDirty}
           onClick={() => void submit(remaining === 0 ? "timeout" : "manual")}
         >
           {submitting ? "Memproses…" : "Ya, akhiri ujian"}

@@ -375,7 +375,7 @@ export function AuthoringPanel() {
             onChange={(e) => setExamSearch(e.target.value)}
           />
         </label>
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel ujian dan soal; geser untuk melihat kolom lain">
           <table>
             <thead>
               <tr>
@@ -592,7 +592,7 @@ export function AuthoringPanel() {
               }}
             />
           </label>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel ujian dan soal; geser untuk melihat kolom lain">
             <table>
               <thead>
                 <tr>

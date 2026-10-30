@@ -172,7 +172,7 @@ export function MediaPanel() {
         </Button>
       </div>
       {view === "table" ? (
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel media soal; geser untuk melihat kolom lain">
           <table>
             <thead>
               <tr>
