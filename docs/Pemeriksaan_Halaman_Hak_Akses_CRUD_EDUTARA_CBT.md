@@ -20,7 +20,7 @@ Inventaris saat ini **21 halaman produksi**, dengan tambahan `/dashboard/bank` d
 
 Endpoint baru `/api/bank` dan `/api/assessment` memerlukan Admin/Guru konteks staf. RPC mengulang pemeriksaan organisasi, role, kepemilikan/penugasan, versi, status dan idempotensi. Tabel bank, moderasi dan jadwal publikasi berada di schema private dengan RLS dan tanpa grant tabel langsung kepada anon/authenticated. Tidak ada izin halaman baru bagi Siswa/Pengawas.
 
-Migrasi: `20261030052445_bank_assessment_stage4.sql`. Catatan penerapan dan bukti verifikasi dicatat di `docs/stage4-bank-assessment.md`. Pemeriksaan browser menggunakan data simulasi; bukan UAT akun produksi atau perangkat fisik.
+Migrasi `20261030052445_bank_assessment_stage4.sql` telah diterapkan dan diverifikasi di staging serta produksi. Catatan penerapan dan bukti verifikasi dicatat di `docs/stage4-bank-assessment.md`. Pemeriksaan browser menggunakan data simulasi; bukan UAT akun produksi atau perangkat fisik.
 
 ## Pembaruan Tahap 3 — Alur persiapan dan pelaksanaan
 

@@ -7,7 +7,7 @@ const id="00000000-0000-4000-8000-000000000001";
 const criteria=[{id:"reason",label:"Penalaran",maxPoints:6},{id:"conclusion",label:"Kesimpulan",maxPoints:4}];
 describe("bank and assessment boundaries",()=>{
  it("accepts weighted criteria and removes them from the student projection",()=>{
-  const q=questionSchema.parse({...templates.Esai,points:10,rubricCriteria:criteria});
+  const q=questionSchema.parse({...questionSchema.parse(templates.Esai),points:10,rubricCriteria:criteria});
   expect(studentQuestion(q)).not.toHaveProperty("rubricCriteria");
  });
  it.each([
@@ -15,10 +15,10 @@ describe("bank and assessment boundaries",()=>{
   [criteria[0],{...criteria[1],id:"reason"}],
   [{...criteria[0],maxPoints:0},criteria[1]],
  ])("rejects invalid rubric weights or repeated identifiers",(rubricCriteria)=>{
-  expect(questionSchema.safeParse({...templates.Esai,points:10,rubricCriteria}).success).toBe(false);
+  expect(questionSchema.safeParse({...questionSchema.parse(templates.Esai),points:10,rubricCriteria}).success).toBe(false);
  });
  it("rejects grading criteria on an objective question",()=>{
-  expect(questionSchema.safeParse({...templates.PG,points:10,rubricCriteria:criteria}).success).toBe(false);
+  expect(questionSchema.safeParse({...questionSchema.parse(templates.PG),points:10,rubricCriteria:criteria}).success).toBe(false);
  });
  it("enforces package target and question limits",()=>{
   const command={action:"assemble",request_id:id,exam_ids:[id],rules:[{type:"PG",count:100,points:2},{type:"Esai",count:100,points:10}]};
