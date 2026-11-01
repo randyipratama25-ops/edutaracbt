@@ -1,18 +1,20 @@
 "use client";
 import { useEffect, useRef } from "react";
-export async function api<T>(url: string, input?: object): Promise<T> {
+export async function api<T>(url: string, input?: object, options?: {signal?: AbortSignal; validateEnvelope?: boolean}): Promise<T> {
   const r = await fetch(
     url,
     input
       ? {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: options?.signal,
           body: JSON.stringify(input),
         }
-      : { cache: "no-store" },
+      : { cache: "no-store", signal: options?.signal },
   );
   const j = await r.json();
   if (!r.ok) throw Error(j.error?.message || "Permintaan gagal.");
+  if (options?.validateEnvelope && (!j || typeof j !== "object" || j.success !== true || !("data" in j))) throw Error("Respons tidak valid.");
   return j.data as T;
 }
 export function useLive(load: () => Promise<void>, inbox = false) {

@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.20 — Audit Atur password akun.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.21 — Audit Ringkasan madrasah.
+
+## Audit Ringkasan madrasah — 1 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard` tetap R ringkasan untuk Admin/Guru konteks staf, tanpa C/U/D data akademik. Page memeriksa konteks sebelum mengambil ringkasan, selain pagar layout; siswa/pengawas dialihkan ke portal masing-masing. Total Admin memakai client/RLS yang sama dengan filter organisasi eksplisit, tetap menghitung seluruh data termasuk nonaktif. Gagal/null/timeout ditampilkan sebagai tidak tersedia, bukan nol; kegagalan satu total tidak mematikan total lainnya. Tidak ada API, role, skema atau migrasi database baru.
+
+Agenda memakai GET `/api/workflow` dan koreksi Guru GET `/api/results?state=pending&page=1` yang sudah ada. Snapshot divalidasi, mempunyai deadline 15 detik, pembatalan saat unmount dan tombol pembaruan yang tidak bertumpuk. Kegagalan pembaruan mempertahankan data terakhir dengan penanda; error teknis backend tidak ditampilkan mentah. Status Berlangsung/Draf/Terjadwal/Selesai tetap bersumber dari backend, bukan jam perangkat. Hitungan selesai mencakup Selesai, Dinilai dan Dipublikasikan; seluruh kartu/agenda mengecualikan arsip. Enam agenda teratas diurutkan berdasarkan prioritas dan waktu absolut, disertai jumlah total, waktu snapshot WIB dan empty state khusus semua arsip.
+
+UI tetap mempertahankan identitas hijau, pintasan peran, statistik, agenda, koreksi dan bantuan. Hierarki judul, wrapping, kartu adaptif, target sentuh, feedback dan fokus setelah menu ditutup saat orientasi berubah diperbaiki. Layar pendek/zoom memakai scroll dokumen alami agar tidak memotong konten. Detail dan batas pengujian dicatat dalam `docs/dashboard-audit.md`; browser memakai komponen produksi dengan data/API simulasi, bukan UAT akun produksi.
 
 ## Audit Atur password akun — 1 November 2026
 
@@ -270,7 +278,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 1 | Beranda | `/` | Pintu masuk publik; tombol masuk, bantuan kontekstual dan panduan peran. Callback aktivasi fragment, kode PKCE, dan token hash email diteruskan ke handler autentikasi lama; kesalahan dibersihkan dari URL dengan pesan aman. | Publik | R informasi publik; tidak ada CRUD akademik. |
 | 2 | Login dan bantuan pemulihan | `/login` | Login username/password berdasarkan konteks; validasi, feedback aktivasi dan bantuan pemulihan melalui modal yang dapat dibuka kembali tanpa mengirim ulang request berjalan. Branding memiliki fallback/deadline. | Publik | Membuat sesi/permintaan pemulihan; bukan membuat akun sendiri. |
 | 3 | Atur password akun | `/auth/reset` | Memeriksa sesi/tautan, menetapkan password 12–128 karakter dan menampilkan hasil perubahan serta status pengakhiran sesi secara jujur. | Halaman publik; perubahan memerlukan sesi/token sah | U password akun terkait; tidak dapat mengubah akun lain. |
-| 4 | Ringkasan madrasah | `/dashboard` | Statistik pengguna, kelas, dan mapel sesuai akses; tautan ke pengelolaan dasar. | Admin, Guru dalam konteks staf | R statistik; C/U/D melalui modul terkait. |
+| 4 | Ringkasan madrasah | `/dashboard` | Total organisasi untuk Admin; prioritas koreksi untuk Guru; agenda nonarsip, waktu snapshot dan pintasan sesuai peran. | Admin, Guru dalam konteks staf | R total/agenda/koreksi dan pembaruan snapshot; C/U/D tetap melalui modul terkait. |
 | 5 | Pengguna | `/dashboard/users` | Cari/filter/sort/paginasi pengguna; tambah akun, impor, edit nama, status/arsip, serta kirim ulang undangan. | Admin, Guru dalam konteks staf | Admin C/R/U dan arsip; Guru C/R/U terbatas pada siswa berizin; tidak ada D permanen pengguna. |
 | 6 | Data master | `/dashboard/master-data` | Mengelola kelas, mapel, penugasan guru dan keanggotaan kelas siswa sebagai dasar cakupan akses. | Admin, Guru dalam konteks staf | Admin C/R/U; Guru R sesuai cakupan; D tidak disediakan endpoint ini. |
 | 7 | Ujian dan bank soal | `/dashboard/exams` | Jadwal, kelas peserta, PIN, konfigurasi tipe soal, periode input, penyusunan/impor/salin soal, versi dan pratinjau. | Admin, Guru dalam konteks staf | Admin mengelola ujian dan soal; Guru mengelola soal pada ujian berizin. Arsip terpisah dari D. |

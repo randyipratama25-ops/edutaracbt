@@ -1,83 +1,121 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "../operations/shared";
 import { Button } from "../ui/button";
-import type { WorkflowData } from "../../lib/workflow/schema";
-export function Workbench({role="admin"}:{role?:"admin"|"teacher"}) {
-  const [data, setData] = useState<WorkflowData | null>(null),
-    [error, setError] = useState("");
-  useEffect(() => {
-    let live = true;
-    void api<WorkflowData>("/api/workflow")
-      .then((d) => {
-        if (live) setData(d);
-      })
-      .catch((e) => {
-        if (live) setError(e.message);
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
+import { useSummary } from "../dashboard/use-summary";
+import {
+  agendaSchema,
+  summarizeAgenda,
+  formatAgendaTime,
+  formatCount,
+} from "../../lib/dashboard/summary";
+export function Workbench({ role = "admin" }: { role?: "admin" | "teacher" }) {
+  const { data, loading, error, refresh } = useSummary(
+    "/api/workflow",
+    agendaSchema,
+  );
+  const summary = data ? summarizeAgenda(data.exams) : null;
   return (
-    <section className="panel stack">
-      <h2>{role === "admin" ? "Agenda dan kesiapan ujian" : "Agenda penyusunan soal"}</h2>
-      {error ? (
-        <p role="status">
-          {error} <Link href="/dashboard/preparation">Periksa kembali</Link>
-        </p>
-      ) : !data ? (
-        <p role="status">Memuat agenda…</p>
-      ) : (
+    <section
+      className="panel stack dashboard-agenda"
+      aria-labelledby="agenda-title"
+    >
+      <div className="summary-heading">
+        <h2 id="agenda-title">
+          {role === "admin"
+            ? "Agenda dan kesiapan ujian"
+            : "Agenda penyusunan soal"}
+        </h2>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={loading}
+          onClick={refresh}
+          aria-label="Perbarui agenda ujian"
+        >
+          {loading ? "Memuat…" : "Perbarui"}
+        </Button>
+      </div>
+      <div role="status">
+        {loading ? (
+          <p>Memuat agenda…</p>
+        ) : error ? (
+          <p>
+            Agenda belum dapat dimuat. Coba perbarui atau buka Persiapan ujian.
+          </p>
+        ) : null}
+      </div>
+      {data && summary && (
         <>
-          <p className="muted">{role === "admin" ? "Ringkasan ujian organisasi." : "Ujian yang seluruh kelas dan mapelnya berada dalam cakupan penyusunan Anda. Antrean koreksi dapat memiliki cakupan berbeda."}</p>
-          <div className="cards">
-            <div>
-              <b>
-                {data.exams.filter((e) => e.lifecycle === "Berlangsung").length}
-              </b>
-              <p>Ujian berlangsung</p>
+          <p className="muted summary-caption">
+            {role === "admin"
+              ? "Ujian nonarsip dalam organisasi."
+              : "Ujian dalam cakupan penyusunan Anda. Cakupan koreksi dapat berbeda."}
+          </p>
+          <p className="muted summary-caption">
+            Data per{" "}
+            <time dateTime={data.server_now}>
+              {formatAgendaTime(data.server_now)}
+            </time>
+            {loading || error
+              ? " · Menampilkan data terakhir yang berhasil dimuat."
+              : ""}
+          </p>
+          <dl className="cards agenda-counts">
+            {[
+              ["Ujian berlangsung", summary.running],
+              ["Draf perlu dilengkapi", summary.incomplete],
+              ["Ujian selesai", summary.finished],
+            ].map(([label, count]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{formatCount(Number(count))}</dd>
+              </div>
+            ))}
+          </dl>
+          {summary.visible > 0 ? (
+            <>
+              <p className="muted summary-caption">
+                Menampilkan {summary.agenda.length} dari{" "}
+                {formatCount(summary.visible)} ujian nonarsip. Prioritas:
+                berlangsung, draf, lalu terjadwal.
+              </p>
+              <ul className="agenda-list">
+                {summary.agenda.map((e) => (
+                  <li key={e.id}>
+                    <div>
+                      <strong>{e.title}</strong>
+                      <span className="muted">
+                        <time dateTime={e.starts_at}>
+                          {formatAgendaTime(e.starts_at)}
+                        </time>{" "}
+                        · {e.lifecycle}
+                      </span>
+                    </div>
+                    <Link
+                      className="summary-link"
+                      aria-label={`Lihat kesiapan ${e.title}`}
+                      href={`/dashboard/preparation?exam=${encodeURIComponent(e.id)}`}
+                    >
+                      Lihat kesiapan<span aria-hidden="true"> →</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <div className="empty-state">
+              <p>
+                {data.exams.length
+                  ? "Semua ujian dalam cakupan Anda sudah diarsipkan."
+                  : "Belum ada ujian dalam cakupan Anda."}
+              </p>
+              <p className="muted">
+                {role === "admin"
+                  ? "Buka Persiapan ujian untuk menyiapkan ujian."
+                  : "Periksa penugasan kelas dan mata pelajaran bersama Admin."}
+              </p>
             </div>
-            <div>
-              <b>
-                {
-                  data.exams.filter((e) => e.status === "draft" && !e.ready)
-                    .length
-                }
-              </b>
-              <p>Draf perlu dilengkapi</p>
-            </div>
-            <div>
-              <b>
-                {data.exams.filter((e) => e.lifecycle === "Selesai").length}
-              </b>
-              <p>Ujian selesai</p>
-            </div>
-          </div>
-          <ul className="agenda-list">
-            {data.exams
-              .filter((e) => e.status !== "archived")
-              .sort((a, b) => {const rank=(e: typeof a)=>e.lifecycle === "Berlangsung" ? 0 : e.status === "draft" ? 1 : e.lifecycle === "Terjadwal" ? 2 : 3;return rank(a)-rank(b) || (rank(a)===3 ? b.starts_at.localeCompare(a.starts_at) : a.starts_at.localeCompare(b.starts_at));})
-              .slice(0, 6)
-              .map((e) => (
-                <li key={e.id}>
-                  <div>
-                    <strong>{e.title}</strong>
-                    <span className="muted">
-                      {new Date(e.starts_at).toLocaleString("id-ID", {
-                        timeZone: "Asia/Jakarta",
-                      })}{" "}
-                      WIB · {e.lifecycle}
-                    </span>
-                  </div>
-                  <Link href={`/dashboard/preparation?exam=${e.id}`}>
-                    Lihat kesiapan
-                  </Link>
-                </li>
-              ))}
-          </ul>
-          {!data.exams.length && <p>Belum ada ujian dalam cakupan Anda.</p>}
+          )}
         </>
       )}
       <div className="actions">
@@ -85,7 +123,13 @@ export function Workbench({role="admin"}:{role?:"admin"|"teacher"}) {
           <Link href="/dashboard/preparation">Persiapan ujian</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href={role === "admin" ? "/dashboard/monitor" : "/dashboard/grading"}>{role === "admin" ? "Pantau pelaksanaan" : "Buka koreksi"}</Link>
+          <Link
+            href={
+              role === "admin" ? "/dashboard/monitor" : "/dashboard/grading"
+            }
+          >
+            {role === "admin" ? "Pantau pelaksanaan" : "Buka koreksi"}
+          </Link>
         </Button>
       </div>
     </section>

@@ -1,8 +1,55 @@
 "use client";
-import {useEffect,useState} from "react";
 import Link from "next/link";
-import {api} from "../operations/shared";
-export function GradingPriority(){const [total,setTotal]=useState<number|null>(null),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
-useEffect(()=>{let live=true;setError('');setTotal(null);void api<{total:number}>("/api/results?state=pending&page=1").then(d=>{if(live&&Number.isFinite(d.total))setTotal(d.total);else if(live)setError('Ringkasan koreksi belum tersedia.');}).catch(()=>{if(live)setError('Ringkasan koreksi belum dapat dimuat.');});return()=>{live=false;};},[refresh]);
-return <section className="panel stack"><h2>Koreksi dalam cakupan Anda</h2>{error?<p role="status">{error} <button type="button" onClick={()=>setRefresh(v=>v+1)}>Coba lagi</button></p>:total===null?<p role="status">Memuat koreksi tertunda…</p>:<p><strong className="metric">{total}</strong> hasil peserta masih menunggu koreksi esai.</p>}<Link href="/dashboard/grading">Buka antrean koreksi</Link></section>;
+import { Button } from "../ui/button";
+import { useSummary } from "./use-summary";
+import { pendingSchema, formatCount } from "../../lib/dashboard/summary";
+export function GradingPriority() {
+  const { data, loading, error, refresh } = useSummary(
+    "/api/results?state=pending&page=1",
+    pendingSchema,
+  );
+  return (
+    <section
+      className="panel stack grading-summary"
+      aria-labelledby="grading-summary-title"
+    >
+      <div className="summary-heading">
+        <h2 id="grading-summary-title">Koreksi dalam cakupan Anda</h2>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={loading}
+          onClick={refresh}
+          aria-label="Perbarui ringkasan koreksi"
+        >
+          {loading ? "Memuat…" : "Perbarui"}
+        </Button>
+      </div>
+      <div role="status">
+        {loading ? (
+          <p>Memuat koreksi tertunda…</p>
+        ) : error ? (
+          <p>Ringkasan koreksi belum dapat dimuat. Coba perbarui.</p>
+        ) : null}
+      </div>
+      {data && (
+        <>
+          <p>
+            <strong className="metric">{formatCount(data.total)}</strong>
+            {data.total === 0
+              ? "Tidak ada hasil peserta yang menunggu koreksi esai."
+              : "hasil peserta masih menunggu koreksi esai."}
+          </p>
+          {(loading || error) && (
+            <p className="muted">
+              Menampilkan data terakhir yang berhasil dimuat.
+            </p>
+          )}
+        </>
+      )}
+      <Link href="/dashboard/grading" className="summary-link">
+        Buka antrean koreksi
+      </Link>
+    </section>
+  );
 }
