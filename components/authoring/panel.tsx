@@ -3,6 +3,9 @@ import {ListFilters, SearchField} from "../ui/list-filters";
 import {matchesSearch} from "../../lib/lists/search";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
+import { z } from "zod";
+import { clientRequest, ClientRequestError } from "../../lib/client/request";
+import { authoringDataSchema, commandResultFor, questionLock } from "../../lib/authoring/contracts";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -48,18 +51,7 @@ type Row = {
   current_version: number;
   payload: Question;
 };
-type Data = {
-  exams: Exam[];
-  examClasses: { exam_id: string; class_id: string }[];
-  configs: (Config & { exam_id: string })[];
-  classes: { id: string; name: string }[];
-  subjects: { id: string; name: string }[];
-  period: { enabled: boolean; starts_at: string; ends_at: string } | null;
-  questions: Row[];
-  history: { question_id: string; version: number; payload: Question }[];
-  canManage: boolean;
-  serverNow: string;
-};
+type Data = z.infer<typeof authoringDataSchema>;
 const defaultConfigs = (): Config[] =>
   types.map((type) => ({
     type,
@@ -75,16 +67,6 @@ const local = (s: string) => {
     .slice(0, 16);
 };
 const iso = (s: string) => new Date(s).toISOString();
-async function post(input: unknown) {
-  const r = await fetch("/api/authoring", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  const j = await r.json();
-  if (!r.ok) throw Error(j.error?.message || "Penyimpanan gagal.");
-  return j.data;
-}
 export function AuthoringPanel() {
   const [data, setData] = useState<Data | null>(null),
     [examId, setExamId] = useState(""),
@@ -106,60 +88,59 @@ export function AuthoringPanel() {
     [history, setHistory] = useState<Question | null>(null),
     [importText, setImportText] = useState(""),
     [preview, setPreview] = useState<Preview[]>([]),
-    [requestId, setRequestId] = useState(""),
+    [importRequestId, setImportRequestId] = useState(""),
     [copyTarget, setCopyTarget] = useState("");
   const [examSearch, setExamSearch] = useState(""),
     [questionSearch, setQuestionSearch] = useState(""),
     [page, setPage] = useState(1);
-  const loadSequence = useRef(0);
+  const loadSequence = useRef(0), loadController = useRef<AbortController | null>(null),
+    controllers = useRef(new Set<AbortController>()), mounted = useRef(true), operation = useRef(false);
+  const [readError,setReadError]=useState(""),[uncertain,setUncertain]=useState(false),[clock,setClock]=useState(0);
+  const [serverOffset,setServerOffset]=useState(0),[loadedExam,setLoadedExam]=useState("");
+  const savedQuestionRequest=useRef({signature:"",id:""});
+  async function post(input: object) {
+    const c=new AbortController();controllers.current.add(c);
+    try { const result=await clientRequest('/api/authoring',input,commandResultFor('action' in input?input.action:undefined),c,{mutation:true}); if(!mounted.current)throw Error('Permintaan dibatalkan.'); return result as {id:string;saved:number|boolean;skipped:number;details?:{saved:boolean;block:number;error?:string}[]}; }
+    finally{controllers.current.delete(c);}
+  }
   async function load(id = examId) {
-    const sequence = ++loadSequence.current;
-    setLoading(true);
-    try {
-      const r = await fetch("/api/authoring" + (id ? "?exam=" + id : ""));
-      const j = await r.json();
-      if (!r.ok) throw Error(j.error?.message);
-      if (sequence === loadSequence.current) setData(j.data);
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Data gagal dimuat.");
-    } finally {
-      if (sequence === loadSequence.current) setLoading(false);
-    }
+    const sequence=++loadSequence.current;
+    loadController.current?.abort();
+    const c=new AbortController();loadController.current=c;
+    setLoading(true);setReadError("");
+    try{
+      const result=await clientRequest('/api/authoring'+(id?'?exam='+encodeURIComponent(id):''),undefined,authoringDataSchema,c);
+      if(!mounted.current||sequence!==loadSequence.current)return;
+      setServerOffset(Date.parse(result.serverNow)-Date.now());setClock(Date.now());
+      setLoadedExam(id);setData(result);setUncertain(false);
+      setSelectedExams(xs=>xs.filter(x=>result.exams.some(e=>e.id===x)));
+      setSelectedQuestions(xs=>xs.filter(x=>result.questions.some(q=>q.id===x)));
+    }catch(e){if(mounted.current&&sequence===loadSequence.current)setReadError(e instanceof Error?e.message:'Data gagal dimuat.');}
+    finally{if(mounted.current&&sequence===loadSequence.current)setLoading(false);}
   }
-  useEffect(() => {
-    let live = true;
-    const requested = new URLSearchParams(location.search).get("exam");
-    if (requested) setExamId(requested);
-    fetch("/api/authoring" + (requested ? "?exam=" + encodeURIComponent(requested) : ""))
-      .then(async (r) => {
-        const j = await r.json();
-        if (!r.ok) throw Error(j.error?.message);
-        if (live) setData(j.data);
-      })
-      .catch((e) => {
-        if (live) setMessage(e.message);
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
-  async function run(fn: () => Promise<void>) {
-    setBusy(true);
-    setMessage("");
-    try {
-      await fn();
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Permintaan gagal.");
-    } finally {
-      setBusy(false);
-    }
+  useEffect(()=>{
+    mounted.current=true;
+    const activeControllers=controllers.current;
+    const requested=new URLSearchParams(location.search).get('exam')||'';
+    setExamId(requested);void load(requested);
+    const timer=setInterval(()=>setClock(Date.now()),1000);
+    return()=>{mounted.current=false;loadController.current?.abort();activeControllers.forEach(c=>c.abort());clearInterval(timer);};
+    // Initial URL is read once; choosing an exam explicitly loads its bank.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+  async function run(fn:()=>Promise<void>){
+    if(operation.current||loading||readError||uncertain)return;
+    operation.current=true;setBusy(true);setMessage('');
+    try{await fn();}catch(e){if(mounted.current){setMessage(e instanceof z.ZodError?e.issues.map(i=>i.message).join('; '):e instanceof Error?e.message:'Permintaan gagal.');if(e instanceof ClientRequestError&&e.uncertain)setUncertain(true);}}
+    finally{operation.current=false;if(mounted.current)setBusy(false);}
   }
+  const now=clock+serverOffset;
+  const blocked=busy||loading||!!readError||uncertain;
   const exam = data?.exams.find((e) => e.id === examId);
+  const locked=exam?questionLock(exam,data?.period||null,data?.canManage||false,now):"";
   function editExam(e: Exam | null) {
-    setEditing(e);
+    if(blocked)return;
+    setMessage("");setEditing(e);
     setClassIds(
       e
         ? data!.examClasses
@@ -168,11 +149,12 @@ export function AuthoringPanel() {
         : [],
     );
     setConfigs(
-      e ? data!.configs.filter((c) => c.exam_id === e.id) : defaultConfigs(),
+      e ? defaultConfigs().map(c=>data!.configs.find(x=>x.exam_id===e.id&&x.type===c.type)||c) : defaultConfigs(),
     );
     setExamOpen(true);
   }
   function editQuestion(q: Row | null, type: Kind = "PG") {
+    if(blocked||locked)return;
     const conf = data!.configs.find(
       (c) => c.exam_id === examId && c.type === (q?.type || type),
     );
@@ -193,13 +175,13 @@ export function AuthoringPanel() {
             }
           : {}),
       });
-    setEditingQ(q);
+    setMessage("");setEditingQ(q);
     setDraft(d);
     setOptionText(d.options.map((o) => `${o.id}|${o.text}`).join("\n"));
     setKeyText(d.key.join("\n"));
     setQuestionError("");
     setQuestionOpen(true);
-    setRequestId(crypto.randomUUID());
+    savedQuestionRequest.current={signature:"",id:""};
   }
   function currentQuestion() {
     return questionSchema.parse({
@@ -261,10 +243,12 @@ export function AuthoringPanel() {
     setQuestionError("");
     await run(async () => {
       const q = currentQuestion();
+      const signature=JSON.stringify({examId,editingQ,q});
+      if(savedQuestionRequest.current.signature!==signature)savedQuestionRequest.current={signature,id:crypto.randomUUID()};
       const result = await post({
         action: "questions",
         exam_id: examId,
-        request_id: requestId,
+        request_id: savedQuestionRequest.current.id,
         ...(editingQ
           ? {
               question_id: editingQ.id,
@@ -311,11 +295,12 @@ export function AuthoringPanel() {
     link.href = url;
     link.download = "template-soal-edutara.xlsx";
     link.click();
-    URL.revokeObjectURL(url);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   async function readFile(file: File) {
+    setPreview([]);setImportRequestId("");
     if (file.size > 5_000_000) throw Error("Maksimal 5 MB.");
-    let text = await file.text();
+    let text = /\.xlsx$/i.test(file.name)?"":await file.text();
     if (/\.xlsx$/i.test(file.name)) {
       const ExcelJS = await import("exceljs");
       const wb = new ExcelJS.Workbook();
@@ -331,7 +316,7 @@ export function AuthoringPanel() {
     } else {
       try {
         const obj = JSON.parse(text);
-        if (!Array.isArray(obj) && obj.items) {
+        if (obj && typeof obj === "object" && !Array.isArray(obj) && obj.items) {
           const { fromGoogleExport } = await import(
             "../../lib/authoring/google-export"
           );
@@ -341,30 +326,34 @@ export function AuthoringPanel() {
         if (/\.json$/i.test(file.name)) throw e;
       }
     }
+    if(!mounted.current)return;
     setImportText(text);
     setPreview(previewImport(text));
-    setRequestId(crypto.randomUUID());
+    setImportRequestId(crypto.randomUUID());
   }
   const toggle = (xs: string[], id: string) =>
-    xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id];
-  const shown = (data?.questions || []).filter((q) =>
+    xs.includes(id) ? xs.filter((x) => x !== id) : xs.length<500 ? [...xs, id] : xs;
+  const shown = (loadedExam===examId?data?.questions || []:[]).filter((q) =>
     matchesSearch(q.payload?.stem||"",questionSearch),
   );
+  const currentPage=Math.min(page,Math.max(1,Math.ceil(shown.length/20)));
   if (!data)
     return (
       <>
         <p role="status">
-          {loading ? "Memuat…" : message || "Data belum tersedia."}
+          {loading ? "Memuat…" : readError || message || "Data belum tersedia."}
         </p>
-        <Button onClick={() => void load()}>Coba lagi</Button>
+        <Button disabled={loading} onClick={() => void load()}>Coba lagi</Button>
       </>
     );
   return (
-    <div className="stack">
+    <div className="stack authoring-page" aria-busy={busy || loading}>
       <p role="status" aria-live="polite">
         {message}
       </p>
       {loading && <p role="status">Memuat data…</p>}
+      {(readError||uncertain)&&<div className="notice" role="alert"><p>{readError||'Periksa hasil perubahan sebelum melanjutkan.'}</p><Button disabled={busy||loading} onClick={()=>void load()}>Muat ulang data</Button></div>}
+      <fieldset className="authoring-controls stack" disabled={blocked}>
       <section className="panel stack">
         <div className="actions">
           <Button asChild variant="outline"><a href="/dashboard/preparation">Persiapan & checklist</a></Button>
@@ -393,14 +382,14 @@ export function AuthoringPanel() {
                   matchesSearch(e.title,examSearch),
                 )
                 .map((e) => {
-                  const now = Date.parse(data.serverNow);
+                  const time = now;
                   const status = ["draft", "closed", "archived"].includes(
                     e.status,
                   )
                     ? e.status
-                    : now >= Date.parse(e.ends_at)
+                    : time >= Date.parse(e.ends_at)
                       ? "closed"
-                      : e.status === "active" || now >= Date.parse(e.starts_at)
+                      : e.status === "active" || time >= Date.parse(e.starts_at)
                         ? "active"
                         : "scheduled";
                   return (
@@ -415,7 +404,7 @@ export function AuthoringPanel() {
                           }
                         />
                       </td>
-                      <td>{e.title}</td>
+                      <td><strong>{e.title}</strong></td>
                       <td>
                         {new Date(e.starts_at).toLocaleString("id-ID")} –{" "}
                         {new Date(e.ends_at).toLocaleString("id-ID")}
@@ -426,6 +415,8 @@ export function AuthoringPanel() {
                           <Button
                             variant="outline"
                             onClick={() => {
+                              if(blocked)return;
+                              setImportText('');setPreview([]);setImportRequestId('');setCopyTarget('');setQuestionSearch('');setMessage('');
                               setExamId(e.id);
                               setSelectedQuestions([]);
                               setPage(1);
@@ -450,13 +441,14 @@ export function AuthoringPanel() {
             </tbody>
           </table>
         </div>
-        {!data.exams.length && <p>Belum ada ujian.</p>}
+        {!data.exams.length ? <p>Belum ada ujian. Admin dapat menambahkan jadwal baru.</p> : !data.exams.some(e=>matchesSearch(e.title,examSearch)) && <p>Tidak ada ujian sesuai pencarian. Ubah atau hapus kata pencarian.</p>}
         {data.canManage && selectedExams.length > 0 && (
           <Button
             disabled={busy}
             variant="destructive"
             onClick={() =>
               void run(async () => {
+                if(!window.confirm(`Arsipkan ${selectedExams.length} ujian terpilih? Ujian dan soal tetap tersimpan.`))return;
                 await post({ action: "archive_exams", ids: selectedExams });
                 setSelectedExams([]);
                 await load();
@@ -472,6 +464,7 @@ export function AuthoringPanel() {
         <details className="panel">
           <summary>Periode input soal Guru</summary>
           <form
+            key={JSON.stringify(data.period)}
             className="stack"
             onSubmit={(e) => {
               e.preventDefault();
@@ -522,9 +515,10 @@ export function AuthoringPanel() {
           </form>
         </details>
       )}
-      {exam && (
+      {exam && loadedExam===examId && (
         <section className="panel stack">
-          <h2>Bank soal — {exam.title}</h2>
+          <h2 tabIndex={-1} id="authoring-bank-title">Bank soal — {exam.title}</h2>
+          {locked&&<p className="notice" role="status">{locked} Pratinjau dan riwayat tetap tersedia.</p>}
           <p>
             Waktu server: {new Date(data.serverNow).toLocaleString("id-ID")}.
             Soal dikunci saat ujian mulai.
@@ -542,7 +536,7 @@ export function AuthoringPanel() {
                   </p>
                   <Button
                     variant="outline"
-                    disabled={busy || !c.enabled}
+                    disabled={blocked || !!locked || !c.enabled || (c.max_questions>0 && data.questions.filter(q=>q.type===c.type).length>=c.max_questions)}
                     onClick={() => editQuestion(null, c.type)}
                   >
                     Tambah {c.type}
@@ -595,7 +589,7 @@ export function AuthoringPanel() {
                 </tr>
               </thead>
               <tbody>
-                {shown.slice((page - 1) * 20, page * 20).map((q) => (
+                {shown.slice((currentPage - 1) * 20, currentPage * 20).map((q) => (
                   <tr key={q.id}>
                     <td>
                       <input
@@ -614,7 +608,7 @@ export function AuthoringPanel() {
                       {q.payload?.stem.replace(/<[^>]*>/g, "").slice(0, 140)}
                     </td>
                     <td>
-                      <Button variant="outline" onClick={() => editQuestion(q)}>
+                      <Button variant="outline" onClick={() => locked?setHistory(q.payload):editQuestion(q)}>
                         Ubah / pratinjau
                       </Button>
                       <details>
@@ -639,26 +633,27 @@ export function AuthoringPanel() {
           </div>
           {!shown.length && <p>Belum ada soal sesuai pencarian.</p>}
           <div className="actions">
-            <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
+            <Button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
               Sebelumnya
             </Button>
             <span>
-              Halaman {page} · {shown.length} soal
+              Halaman {currentPage} · {shown.length} soal
             </span>
             <Button
-              disabled={page * 20 >= shown.length}
-              onClick={() => setPage(page + 1)}
+              disabled={currentPage * 20 >= shown.length}
+              onClick={() => setPage(currentPage + 1)}
             >
               Berikutnya
             </Button>
           </div>
-          {selectedQuestions.length > 0 && (
+          {!locked && selectedQuestions.length > 0 && (
             <>
               <Button
                 variant="destructive"
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
+                    if(!window.confirm(`Arsipkan ${selectedQuestions.length} soal terpilih? Versi soal tetap tersimpan.`))return;
                     await post({
                       action: "archive_questions",
                       exam_id: examId,
@@ -704,7 +699,7 @@ export function AuthoringPanel() {
                         (r.details || [])
                           .filter((x: { saved: boolean }) => !x.saved)
                           .map(
-                            (x: { block: number; error: string }) =>
+                            (x: { block: number; error?: string }) =>
                               `Blok ${x.block}: ${x.error}`,
                           )
                           .join("; "),
@@ -718,6 +713,7 @@ export function AuthoringPanel() {
           )}
           <details>
             <summary>Impor soal dan template</summary>
+            <fieldset className="authoring-controls" disabled={!!locked}>
             <div className="stack">
               <HelpDisclosure><p>
                 Maksimal 500 soal / 5 MB. Excel: kolom A berisi JSON soal, baris
@@ -790,7 +786,7 @@ export function AuthoringPanel() {
                 onClick={() => {
                   try {
                     setPreview(previewImport(importText));
-                    setRequestId(crypto.randomUUID());
+                    setImportRequestId(crypto.randomUUID());
                     setMessage(
                       "Pratinjau selesai. Server akan memeriksa kuota dan periode kembali.",
                     );
@@ -817,18 +813,19 @@ export function AuthoringPanel() {
                     const r = await post({
                       action: "questions",
                       exam_id: examId,
-                      request_id: requestId,
+                      request_id: importRequestId,
                       items: preview
                         .filter((p) => p.question)
                         .map((p) => p.question),
                     });
+                    setPreview([]);setImportRequestId('');
                     await load();
                     setMessage(
                       `Tersimpan: ${r.saved}; dilewati: ${r.skipped}. ` +
                         (r.details || [])
                           .filter((x: { saved: boolean }) => !x.saved)
                           .map(
-                            (x: { block: number; error: string }) =>
+                            (x: { block: number; error?: string }) =>
                               `Blok ${x.block}: ${x.error}`,
                           )
                           .join("; "),
@@ -838,17 +835,19 @@ export function AuthoringPanel() {
               >
                 Impor blok valid
               </Button>
-            </div>
+            </div></fieldset>
           </details>
         </section>
       )}
+      </fieldset>
       <Dialog
+        className="authoring-dialog"
         open={examOpen}
-        onOpenChange={setExamOpen}
+        onOpenChange={open=>{if(!operation.current)setExamOpen(open);}}
         title={editing ? "Ubah ujian" : "Tambah ujian"}
         description="Waktu menggunakan zona waktu perangkat. PIN disimpan sebagai hash."
       >
-        <form onSubmit={saveExam} className="stack">
+        <form onSubmit={saveExam} className="stack"><fieldset className="authoring-controls stack" disabled={blocked}>
           <label>
             Judul
             <input
@@ -866,7 +865,7 @@ export function AuthoringPanel() {
               defaultValue={editing?.subject_id}
             >
               <option value="">Pilih mapel</option>
-              {data.subjects.map((s) => (
+              {data.subjects.filter(s=>s.active!==false||s.id===editing?.subject_id).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
@@ -875,7 +874,7 @@ export function AuthoringPanel() {
           </label>
           <fieldset>
             <legend>Kelas peserta (pilih satu atau lebih)</legend>
-            {data.classes.map((c) => (
+            {data.classes.filter(c=>c.active!==false||classIds.includes(c.id)).map((c) => (
               <label className="check" key={c.id}>
                 <input
                   type="checkbox"
@@ -1024,21 +1023,29 @@ export function AuthoringPanel() {
             </fieldset>
           ))}
           <Button disabled={busy}>Simpan jadwal</Button>
-          <p role="status">{message}</p>
+          <p role="status">{message || readError}</p></fieldset>
+          {(uncertain||readError)&&<Button type="button" disabled={busy||loading} onClick={()=>void load()}>Muat ulang data</Button>}
         </form>
       </Dialog>
       <Dialog
+        className="authoring-dialog"
         open={questionOpen}
-        onOpenChange={setQuestionOpen}
+        onOpenChange={open=>{if(!operation.current)setQuestionOpen(open);}}
         title={editingQ ? "Ubah soal" : "Tambah soal"}
         description="Gunakan ID opsi stabil. Kunci dan rubrik hanya terlihat oleh staf berizin."
       >
-        <form onSubmit={saveQuestion} className="stack">
+        <form onSubmit={saveQuestion} className="stack"><fieldset className="authoring-controls stack" disabled={blocked || !!locked}>
           <label>
             Tipe
             <select
               value={draft.type}
-              onChange={(e) => editQuestion(null, e.target.value as Kind)}
+              disabled={blocked}
+              onChange={(e) => {
+                const original=editingQ;
+                editQuestion(null,e.target.value as Kind);
+                setEditingQ(original);
+                setDraft(next=>({...next,stem:draft.stem,explanation:draft.explanation,attachments:draft.attachments,points:draft.points,required:draft.required,direction:draft.direction}));
+              }}
             >
               {types.map((t) => (
                 <option key={t}>{t}</option>
@@ -1207,18 +1214,22 @@ export function AuthoringPanel() {
                 const f = e.target.files?.[0];
                 if (f)
                   void run(async () => {
+                    if(draft.attachments.length>=10)throw Error("Maksimal 10 lampiran.");
                     if (f.size > 5242880) throw Error("Maksimal 5 MB.");
                     const form = new FormData();
                     form.set("file", f);
-                    const r = await fetch("/api/authoring/media", {
-                      method: "POST",
-                      body: form,
-                    });
-                    const j = await r.json();
-                    if (!r.ok) throw Error(j.error.message);
+                    const c=new AbortController();controllers.current.add(c);
+                    let media:{id:string};
+                    try{
+                      const r=await fetch('/api/authoring/media',{method:'POST',body:form,signal:AbortSignal.any([c.signal,AbortSignal.timeout(35000)])});
+                      const j=await r.json();
+                      if(!r.ok||!j.success)throw Error('Lampiran belum dapat diunggah.');
+                      media=z.object({id:z.uuid()}).parse(j.data);
+                    }finally{controllers.current.delete(c);}
+                    if(!mounted.current)return;
                     setDraft((d) => ({
                       ...d,
-                      attachments: [...d.attachments, j.data.id],
+                      attachments: [...d.attachments, media.id],
                     }));
                   });
                 e.target.value = "";
@@ -1244,8 +1255,9 @@ export function AuthoringPanel() {
             </Button>
             <Button disabled={busy}>Simpan versi soal</Button>
           </div>
-          <p role="alert">{questionError || message}</p>
-          <QuestionPreview question={draft} />
+          <p role="alert">{questionError || message || readError || locked}</p>
+          <QuestionPreview question={draft} /></fieldset>
+          {(uncertain||readError)&&<Button type="button" disabled={busy||loading} onClick={()=>void load()}>Muat ulang data</Button>}
         </form>
       </Dialog>
       <Dialog

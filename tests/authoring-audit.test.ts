@@ -1,0 +1,29 @@
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+vi.mock('../lib/auth/actor',()=>({actor:vi.fn()}));
+import {actor} from '../lib/auth/actor';
+import {GET,POST} from '../app/api/authoring/route';
+import {readAuthoring} from '../lib/authoring/read';
+import {authoringDataSchema,commandResultFor,questionLock} from '../lib/authoring/contracts';
+import {previewImport,templates} from '../lib/authoring/imports';
+const id=(n:number)=>`04000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+let records:Record<string,Record<string,unknown>[]>,failed:string|undefined;
+const calls:{table:string;range:number[];filters:unknown[]}[]=[];
+let rpc=vi.fn();
+function client(){return {rpc,from(table:string){let range=[0,499];const filters:unknown[]=[];const q={select:vi.fn(()=>q),eq:vi.fn((...x)=>{filters.push(x);return q;}),is:vi.fn((...x)=>{filters.push(x);return q;}),in:vi.fn((...x)=>{filters.push(x);return q;}),order:vi.fn(()=>q),range:vi.fn((a,b)=>{range=[a,b];return q;}),abortSignal:vi.fn(()=>q),overrideTypes:vi.fn(async()=>{calls.push({table,range,filters});return {data:failed===table?null:(records[table]||[]).slice(range[0],range[1]+1),error:failed===table?{message:'SQL_SECRET'}:null};})};return q;}};}
+function a(role='admin',context='staff'){return {role,context,organization_id:id(90),client:client()} as unknown as NonNullable<Awaited<ReturnType<typeof actor>>>;}
+const post=(value:unknown)=>POST(new Request('https://app.test/api/authoring',{method:'POST',headers:{origin:'https://app.test','content-type':'application/json'},body:JSON.stringify(value)}));
+beforeEach(()=>{calls.length=0;records={};failed=undefined;rpc=vi.fn(async()=>({data:{saved:true},error:null}));vi.mocked(actor).mockResolvedValue(a());});
+describe('authoring audit',()=>{
+ it('rejects anonymous, non-author and non-staff contexts',async()=>{for(const actorValue of [null,a('student'),a('admin','supervisor')]){vi.mocked(actor).mockResolvedValue(actorValue);expect((await GET(new Request('https://app.test/api/authoring'))).status).toBe(401);}});
+ it('validates requested UUID before fetching any table',async()=>{expect((await GET(new Request('https://app.test/api/authoring?exam=no'))).status).toBe(422);expect(calls).toHaveLength(0);});
+ it('reads beyond 1000 with stable page boundaries and retains scope',async()=>{records.exams=Array.from({length:1001},(_,i)=>({id:id(i)}));const r=await readAuthoring(a(),'exams','id',['id'],new AbortController().signal,[{column:'organization_id',value:id(90)}]);expect(r).toHaveLength(1001);expect(calls.map(x=>x.range)).toEqual([[0,499],[500,999],[1000,1499]]);expect(calls.every(x=>JSON.stringify(x.filters).includes(id(90)))).toBe(true);});
+ it('does not present failed dependencies as empty successful data',async()=>{failed='subjects';const r=await GET(new Request('https://app.test/api/authoring'));expect(r.status).toBe(503);expect(await r.text()).not.toContain('SQL_SECRET');});
+ it('rejects inaccessible exam instead of returning a misleading empty bank',async()=>{expect((await GET(new Request('https://app.test/api/authoring?exam='+id(1)))).status).toBe(404);});
+ it('fails closed if current question version is missing',async()=>{records.exams=[{id:id(1)}];records.questions=[{id:id(2),current_version:2}];records.question_versions=[{question_id:id(2),version:1,payload:templates.PG}];expect((await GET(new Request('https://app.test/api/authoring?exam='+id(1)))).status).toBe(503);});
+ it('validates enabled periods and malformed objects before RPC',async()=>{for(const input of [null,[],{action:'period',enabled:true,starts_at:null,ends_at:null},{action:'period',enabled:true,starts_at:'2030-01-02T00:00:00Z',ends_at:'2030-01-01T00:00:00Z'}])expect((await post(input)).status).toBe(422);expect(rpc).not.toHaveBeenCalled();});
+ it('keeps disabled periods nullable and delegates transactions to existing RPC',async()=>{const r=await post({action:'period',enabled:false,starts_at:null,ends_at:null});expect(r.status).toBe(200);expect(rpc).toHaveBeenCalledWith('authoring_command',{input:{action:'period',enabled:false,starts_at:null,ends_at:null}});});
+ it('treats missing receipt and transport failures as uncertain, without leaking SQL',async()=>{rpc.mockResolvedValueOnce({data:null,error:null});expect((await post({action:'archive_exams',ids:[id(1)]})).status).toBe(503);rpc.mockResolvedValueOnce({data:null,error:{message:'SQL_SECRET',code:'08006'}});const r=await post({action:'archive_exams',ids:[id(1)]});expect(r.status).toBe(503);expect(await r.text()).not.toContain('SQL_SECRET');});
+ it('rejects wrong command receipts before changing UI state',()=>{expect(commandResultFor('exam').safeParse({saved:true}).success).toBe(false);expect(commandResultFor('period').safeParse({saved:false}).success).toBe(false);expect(commandResultFor('questions').safeParse({saved:true}).success).toBe(false);expect(commandResultFor('exam').safeParse({id:id(1)}).success).toBe(true);});
+ it('rejects invalid read contracts and byte-oversized imports',()=>{expect(authoringDataSchema.safeParse({questions:[{payload:null}]}).success).toBe(false);expect(()=>previewImport('ب'.repeat(2_500_001))).toThrow('5 MB');});
+ it('mirrors server question locks for status, start time, teacher period and bypass',()=>{const e={starts_at:'2030-01-02T00:00:00Z',status:'draft',bypass_period:false} as Parameters<typeof questionLock>[0];const before=Date.parse('2030-01-01T00:00:00Z');expect(questionLock(e,null,false,before)).toBe('');expect(questionLock(e,null,true,Date.parse(e.starts_at))).toContain('terkunci');expect(questionLock({...e,status:'archived'},null,true,before)).toContain('terkunci');const period={enabled:true,starts_at:'2030-01-03T00:00:00Z',ends_at:'2030-01-04T00:00:00Z'};expect(questionLock(e,period,false,before)).toContain('periode');expect(questionLock(e,period,true,before)).toBe('');expect(questionLock({...e,bypass_period:true},period,false,before)).toBe('');});
+});
