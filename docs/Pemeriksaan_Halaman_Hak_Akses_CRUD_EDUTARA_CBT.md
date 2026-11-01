@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.11 — Penyempurnaan pengaturan AI.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.12 — Pemeriksaan perangkat sebelum ujian.
+
+## Pemeriksaan perangkat sebelum ujian — 1 November 2026
+
+Inventaris tetap **23 halaman**. Pada `/student`, Siswa konteks siswa aktif menjalankan pemeriksaan sebelum memulai ujian baru: HTTPS/identitas sesi, tulis–baca–hapus penyimpanan lokal dan tab, canvas, lebar layar, serta koneksi dan sesi siswa melalui endpoint R `/api/attempts/preflight`. Endpoint hanya mengembalikan kesiapan sesi, tidak membuat attempt, mengubah deadline atau menulis data ujian. Anonim serta peran/konteks lain ditolak; respons no-store.
+
+UI mengaktifkan Mulai setelah hasil terkini dan konfirmasi siswa. Hasil berlaku 5 menit pada tab tersebut dan dibatalkan ketika offline; handler memeriksa umur hasil kembali saat mulai. Kegagalan koneksi/sesi atau kemampuan identitas sesi menghalangi Mulai di UI. Penyimpanan, canvas, layar sempit atau respons lambat adalah peringatan dengan petunjuk dan konfirmasi; bukan penolakan perangkat otomatis. Lanjutkan/lihat status serta pengambilalihan attempt lama tetap tersedia tanpa menunggu pemeriksaan ini.
+
+Contoh teks/rumus, gambar, nada audio, ketik serta goresan canvas tersedia lokal tanpa unggahan atau penyimpanan jawaban contoh. Siswa memastikan daya dan mencoba media yang diperlukan. Uji satu permintaan bukan jaminan internet stabil; tidak menguji media ujian sebenarnya atau mengesahkan SEB/antikecurangan. Hak mulai, PIN, jadwal, deadline dan kepemilikan tetap diverifikasi server pada perintah attempt yang sudah ada; pemeriksaan UI bukan kontrol keamanan server.
+
+Tidak ada halaman, tabel, skema, hak CRUD data ujian atau migrasi database baru. Laporan perangkat hanya state browser; tidak membuat fingerprint/riwayat identitas perangkat. Probe penyimpanan memakai key acak tersendiri dan tidak membersihkan draf siswa. Bukti implementasi: `docs/device-preflight.md`.
 
 ## Penyempurnaan pengaturan AI — 1 November 2026
 
