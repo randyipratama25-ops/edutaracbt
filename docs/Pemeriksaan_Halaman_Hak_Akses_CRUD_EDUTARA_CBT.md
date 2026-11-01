@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.18 — Audit dan penyempurnaan Beranda.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.19 — Audit Login dan bantuan pemulihan.
+
+## Audit Login dan bantuan pemulihan — 1 November 2026
+
+Inventaris tetap **23 halaman**. `/login` tetap publik: C sesi melalui username/password/konteks dan C permintaan pemulihan; bukan registrasi akun atau CRUD akademik. Tidak ada perubahan endpoint, database, rate limit, RLS atau aturan hak akses. Tidak diperlukan migrasi.
+
+Form memakai satu lock login/pemulihan, validasi username bersama backend, pembacaan nilai autofill aktual, POST native, timeout klien 35 detik/no retry, validasi envelope dan destination tetap sesuai konteks. Password tidak dinormalisasi atau disimpan; penyimpanan username bersifat opsional dan kegagalannya tidak menghalangi login. Modal pemulihan boleh ditutup/dibuka lagi tanpa pengiriman ganda, mempertahankan hasil dan fokus. Respons tetap generik untuk menjaga privasi keberadaan akun.
+
+Kegagalan aktivasi dari query whitelist ditampilkan dengan pesan aman. Branding memiliki deadline 6 detik dan fallback nilai/logo. UI mempertahankan identitas aplikasi, menambah navigasi Beranda/Bantuan dan feedback aksesibel. Layar pendek memakai scroll dokumen alami; dialog tetap dibatasi viewport. Rincian temuan dan batas uji ada pada `docs/login-audit.md`; API autentikasi disimulasikan dalam pengujian browser.
+
+Audit LOGIN pada identity-gateway kini memakai organisasi profil akun, bukan ID statis. Perubahan hanya berlaku untuk pencatatan login baru; riwayat audit lama tidak ditulis ulang. Verifikasi JWT gateway dan pemeriksaan sesi/peran tetap mengikuti konfigurasi lama.
 
 ## Audit dan penyempurnaan Beranda — 1 November 2026
 
@@ -250,7 +260,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | No. | Halaman | URL | Fungsi dan tujuan | Izin masuk | Ringkasan CRUD |
 |---|---|---|---|---|---|
 | 1 | Beranda | `/` | Pintu masuk publik; tombol masuk, bantuan kontekstual dan panduan peran. Callback aktivasi fragment, kode PKCE, dan token hash email diteruskan ke handler autentikasi lama; kesalahan dibersihkan dari URL dengan pesan aman. | Publik | R informasi publik; tidak ada CRUD akademik. |
-| 2 | Login dan bantuan pemulihan | `/login` | Login username/password berdasarkan konteks staf, pengawas, atau siswa; permintaan pemulihan akun berada dalam form login. | Publik | Membuat sesi/permintaan pemulihan; bukan membuat akun sendiri. |
+| 2 | Login dan bantuan pemulihan | `/login` | Login username/password berdasarkan konteks; validasi, feedback aktivasi dan bantuan pemulihan melalui modal yang dapat dibuka kembali tanpa mengirim ulang request berjalan. Branding memiliki fallback/deadline. | Publik | Membuat sesi/permintaan pemulihan; bukan membuat akun sendiri. |
 | 3 | Atur password akun | `/auth/reset` | Menetapkan password melalui tautan aktivasi atau pemulihan. | Halaman publik; perubahan memerlukan sesi/token sah | U password akun terkait; tidak dapat mengubah akun lain. |
 | 4 | Ringkasan madrasah | `/dashboard` | Statistik pengguna, kelas, dan mapel sesuai akses; tautan ke pengelolaan dasar. | Admin, Guru dalam konteks staf | R statistik; C/U/D melalui modul terkait. |
 | 5 | Pengguna | `/dashboard/users` | Cari/filter/sort/paginasi pengguna; tambah akun, impor, edit nama, status/arsip, serta kirim ulang undangan. | Admin, Guru dalam konteks staf | Admin C/R/U dan arsip; Guru C/R/U terbatas pada siswa berizin; tidak ada D permanen pengguna. |

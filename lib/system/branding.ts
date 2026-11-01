@@ -10,14 +10,17 @@ export async function branding() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
     key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return fallback;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
   try {
     const client = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => fetch(input, { ...init, signal: controller.signal }) },
     });
     const r = await client.rpc("app_branding");
     if (r.error || !r.data) return fallback;
     const get = async (id: string | null) => {
-      if (!id) return "";
+      if (typeof id !== "string" || !/^[a-f0-9-]{36}$/i.test(id)) return "";
       const m = await client
         .from("media_assets")
         .select("object_path")
@@ -34,12 +37,12 @@ export async function branding() {
       get(r.data.background_id),
     ]);
     return {
-      name: r.data.name || fallback.name,
-      subtitle: r.data.subtitle || fallback.subtitle,
+      name: typeof r.data.name === "string" && r.data.name.trim() && r.data.name.length <= 100 ? r.data.name : fallback.name,
+      subtitle: typeof r.data.subtitle === "string" && r.data.subtitle.trim() && r.data.subtitle.length <= 200 ? r.data.subtitle : fallback.subtitle,
       logo,
       background,
     };
   } catch {
     return fallback;
-  }
+  } finally { clearTimeout(timer); }
 }
