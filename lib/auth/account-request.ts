@@ -9,23 +9,38 @@ export function loginDestination(context: string) {
       ? "/student"
       : "/dashboard";
 }
-export class AccountRequestError extends Error {}
-const uncertain = (action: "login" | "recover") =>
-  action === "recover"
-    ? "Hasil permintaan belum dapat dipastikan. Periksa inbox dan spam sebelum mencoba kembali."
-    : "Hasil login belum dapat dipastikan. Muat ulang halaman atau coba masuk kembali.";
+export class AccountRequestError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+  ) {
+    super(message);
+  }
+}
+type AccountAction = "login" | "recover" | "activate" | "password";
+const uncertain = (action: AccountAction, readOnly = false) =>
+  readOnly
+    ? "Sesi belum dapat diperiksa. Periksa koneksi dan coba periksa sesi lagi."
+    : action === "activate"
+      ? "Verifikasi tautan belum dapat dipastikan. Gunakan tautan terbaru atau minta tautan baru."
+      : action === "password"
+        ? "Hasil perubahan password belum dapat dipastikan. Coba masuk dengan password baru sebelum mengulang."
+        : action === "recover"
+          ? "Hasil permintaan belum dapat dipastikan. Periksa inbox dan spam sebelum mencoba kembali."
+          : "Hasil login belum dapat dipastikan. Muat ulang halaman atau coba masuk kembali.";
 /** One request, no automatic retry: recovery may already have sent an email. */
 export async function accountRequest(
-  action: "login" | "recover",
-  input: object,
+  action: AccountAction,
+  input: object | undefined,
   controller: AbortController,
 ) {
   const timer = setTimeout(() => controller.abort(), 35000);
   try {
     const response = await fetch(`/api/auth/${action}`, {
-      method: "POST",
+      method: input === undefined ? "GET" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: input === undefined ? undefined : JSON.stringify(input),
+      cache: "no-store",
       signal: controller.signal,
     });
     let result: {
@@ -36,7 +51,7 @@ export async function accountRequest(
     try {
       result = await response.json();
     } catch {
-      throw new AccountRequestError(uncertain(action));
+      throw new AccountRequestError(uncertain(action, input === undefined));
     }
     if (!response.ok) {
       const message = result?.error?.message;
@@ -44,6 +59,7 @@ export async function accountRequest(
         typeof message === "string" && message.trim() && message.length <= 500
           ? message
           : "Layanan akun belum dapat memproses permintaan. Coba lagi nanti.",
+        response.status,
       );
     }
     if (
@@ -52,11 +68,11 @@ export async function accountRequest(
       typeof result.data !== "object" ||
       Array.isArray(result.data)
     )
-      throw new AccountRequestError(uncertain(action));
+      throw new AccountRequestError(uncertain(action, input === undefined));
     return result.data as Record<string, unknown>;
   } catch (error) {
     if (error instanceof AccountRequestError) throw error;
-    throw new AccountRequestError(uncertain(action));
+    throw new AccountRequestError(uncertain(action, input === undefined));
   } finally {
     clearTimeout(timer);
   }

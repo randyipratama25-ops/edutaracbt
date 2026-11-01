@@ -1,20 +1,25 @@
-import { z } from "zod";
 import { db } from "../../../../lib/supabase/server";
-import { body, failure, json, requireOrigin } from "../../../../lib/http";
+import { activationTokensSchema } from "../../../../lib/auth/password";
+import {
+  body,
+  failure,
+  HttpError,
+  json,
+  requireOrigin,
+} from "../../../../lib/http";
 export async function POST(request: Request) {
   try {
     requireOrigin(request);
-    const x = z
-      .object({
-        access_token: z.string().min(10).max(10000),
-        refresh_token: z.string().min(10).max(10000),
-      })
-      .parse(await body(request));
+    const input = activationTokensSchema.parse(await body(request));
     const client = await db();
-    const { error } = await client.auth.setSession(x);
-    if (error) throw error;
+    const { error } = await client.auth.setSession(input);
+    if (error)
+      throw new HttpError(
+        error.status && error.status >= 500 ? 503 : 401,
+        "Tautan aktivasi tidak valid atau sudah kedaluwarsa. Gunakan tautan terbaru atau minta tautan baru.",
+      );
     return json({ ready: true });
-  } catch (e) {
-    return failure(e);
+  } catch (error) {
+    return failure(error);
   }
 }
