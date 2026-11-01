@@ -29,7 +29,7 @@ export default async function Login() {
           />
         )}
         <p className="eyebrow">{b.name}</p>
-        <h1>Selamat datang kembali</h1>
+        <h1>Masuk ke EDUTARA</h1>
         <p className="muted">{b.subtitle}</p>
         <LoginForm />
       </section>

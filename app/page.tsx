@@ -8,9 +8,9 @@ export default function Home() {
       <section className="panel hero">
         <p className="eyebrow">EDUTARA CBT</p>
         <h1>
-          Ujian yang terstruktur.
+          Ujian madrasah.
           <br />
-          Pengelolaan yang terarah.
+          Lebih terarah.
         </h1>
         <p>Platform asesmen dan pengelolaan ujian madrasah.</p>
         <p className="notice">

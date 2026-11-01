@@ -1,4 +1,6 @@
 "use client";
+import { HelpDisclosure } from "../ui/help-disclosure";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "../ui/button";
@@ -115,11 +117,11 @@ export function AcceptancePanel() {
       )}
       <section className="panel stack">
         <h2>Bukti penerimaan yang wajib dilengkapi</h2>
-        <p>
+        <HelpDisclosure><p>
           Setiap bukti mencantumkan kandidat SHA, lingkungan, waktu, penguji,
           hasil aktual dan lokasi artefak. Tidak ada skenario yang dianggap
           lulus hanya karena fiturnya tersedia.
-        </p>
+        </p></HelpDisclosure>
         <ol className="stack">
           {humanChecks.map((c) => (
             <li key={c.id}>
@@ -131,12 +133,12 @@ export function AcceptancePanel() {
       </section>
       <section className="panel stack">
         <h2>Jika terjadi gangguan</h2>
-        <p>
+        <HelpDisclosure><p>
           Hentikan publikasi hasil yang meragukan, amankan jawaban dan
           inventaris terbaru, catat waktu serta dampak, lalu hubungi penanggung
           jawab. Rollback aplikasi harus mempertahankan database dan jawaban
           terbaru.
-        </p>
+        </p></HelpDisclosure>
         <div className="actions">
           <Link href="/dashboard/monitor">Monitoring peserta</Link>
           <Link href="/dashboard/jobs">Pekerjaan dan backup</Link>

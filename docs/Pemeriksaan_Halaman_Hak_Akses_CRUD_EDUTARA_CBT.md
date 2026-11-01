@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.7 — Fitur lanjutan terkendali.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.9 — Penyederhanaan UI global.
+
+## Penyederhanaan UI global — 1 November 2026
+
+Inventaris tetap 23 halaman. Header 18 halaman dashboard diseragamkan; petunjuk tambahan pada pengguna, penyusunan soal, bank, penilaian, persiapan, penerimaan, sistem dan fitur lanjutan tersedia melalui panel Panduan dengan keyboard native. Beranda, login, pengaturan password serta header portal siswa/pengawas diringkas. Jarak dan tipografi workspace disesuaikan untuk layar kecil. Status, validasi, izin data dan konfirmasi tindakan tetap terlihat. Tidak ada perubahan role, endpoint, CRUD, skema atau migrasi database.
+
+## Pembaruan AI — 1 November 2026
+
+Jumlah halaman tetap 23. Pada `/dashboard/advanced`, Admin dapat C/R/U konfigurasi model, izin data, batas permintaan dan API key untuk OpenAI, Anthropic, Google Gemini, DeepSeek, Mistral, Groq, xAI serta OpenRouter. Key disimpan di Vault; tidak dapat dibaca kembali oleh browser. Uji koneksi memakai soal sintetis dan mengaktifkan penyedia jika izin data diberikan. Perubahan konfigurasi menonaktifkan penyedia sampai diuji ulang.
+
+Pada `/dashboard/results`, Admin/Guru dapat memilih penyedia aktif dan meminta saran untuk maksimal lima esai teks dalam cakupan penilaiannya. Worker menambahkan saran pending tanpa mengubah nilai resmi. Persetujuan/edit/penolakan memakai izin dan pemeriksaan revisi penilaian yang sudah ada. Canvas, lampiran dan rubrik per kriteria tetap manual. Tidak ada fallback otomatis ke penyedia lain.
+
+Endpoint `/api/ai/providers` hanya Admin untuk pengaturan; `/api/grading/ai` Admin/Guru staf. Worker memverifikasi JWT pengguna dan cakupan database; akses worker berprivilege hanya layanan. Migrasi dan worker telah diterapkan ke staging/produksi, PR #16 digabung. Uji key asli dan akurasi model belum dilakukan. Bagian AI nonaktif pada catatan Tahap 6 di bawah adalah historis.
 
 ## Pembaruan Tahap 6 — Fitur lanjutan
 

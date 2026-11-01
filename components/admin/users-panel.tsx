@@ -1,4 +1,6 @@
 "use client";
+import { HelpDisclosure } from "../ui/help-disclosure";
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -453,11 +455,11 @@ export function UsersPanel() {
           Tempel data tab-separated dari spreadsheet. Maksimal 200 baris. Setiap
           akun baru menerima undangan aktivasi.
         </p>
-        <p className="muted">
+        <HelpDisclosure><p>
           Kolom class_id memakai ID kelas dari Data akademik. Guru hanya dapat
           mengimpor siswa pada kelas penugasannya. Username duplikat akan
           ditandai pada pratinjau.
-        </p>
+        </p></HelpDisclosure>
         <a
           download="referensi-kelas.tsv"
           href={

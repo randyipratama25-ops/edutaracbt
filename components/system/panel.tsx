@@ -1,4 +1,6 @@
 "use client";
+import { HelpDisclosure } from "../ui/help-disclosure";
+
 import {
   useCallback,
   useEffect,
@@ -474,12 +476,12 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
               Muat ulang
             </Button>
           </div>
-          <p>
+          <HelpDisclosure><p>
             Backup mencakup data aplikasi, konfigurasi/template dan bytes media.
             Kredensial Auth, sesi dan nilai secret tidak diekspor; pemulihan
             akun memerlukan aktivasi ulang. Dump PostgreSQL/PITR dan escrow
             secret tetap dikelola terpisah.
-          </p>
+          </p></HelpDisclosure>
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel administrasi; geser untuk melihat kolom lain">
             <table>
               <thead>

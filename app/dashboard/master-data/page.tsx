@@ -1,11 +1,9 @@
+import { PageHeading } from "../../../components/layout/page-heading";
 import { MasterPanel } from "../../../components/admin/master-panel";
 export default function Master() {
   return (
     <>
-      <h1>Data master</h1>
-      <p className="muted">
-        Kelas, mata pelajaran, dan penugasan menggunakan identitas yang pasti.
-      </p>
+      <PageHeading title="Data master" description="Kelas, mata pelajaran, dan penugasan menggunakan identitas yang pasti." />
       <MasterPanel />
     </>
   );

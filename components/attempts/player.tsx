@@ -147,7 +147,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
     );
   return (
     <main id="main-content" tabIndex={-1} className="workspace student-shell">
-      <header className="student-portal-heading"><div><p className="eyebrow">PORTAL SISWA</p><h1>Ujian saya</h1><p className="muted">Pilih ujian dan gunakan PIN dari pengawas.</p></div><LogoutButton /></header>
+      <header className="student-portal-heading"><div><h1>Ujian saya</h1><p className="muted">Pilih ujian. Siapkan PIN dari pengawas.</p></div><LogoutButton /></header>
       <p role="status">{message}</p>
       {listState === "loading" && <section aria-busy="true" aria-label="Memuat daftar ujian" className="stack"><div className="skeleton skeleton-card" /><p role="status">Memuat ujian…</p></section>}
       {listState === "error" && <section className="empty-state"><h2>Daftar ujian belum dapat dimuat</h2><p>Periksa koneksi, lalu coba kembali.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Coba muat ulang</Button></section>}
