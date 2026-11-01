@@ -348,3 +348,13 @@ progress::-moz-progress-bar { background: var(--primary); border-radius: 20px; }
 .device-samples audio { display:block; width:100%; max-width:360px; }
 .device-preflight .check { align-items:flex-start; }
 @media(max-width:600px) { .device-check-list { grid-template-columns:1fr; } }
+
+.context-help-dialog { width:min(720px,calc(100vw - 24px)); overflow-wrap:anywhere; }
+.help-topic-list { display:grid; gap:.65rem; }
+.help-topic { border:1px solid var(--border); padding:.8rem; border-radius:.65rem; min-width:0; }
+.help-topic summary { font-weight:650; cursor:pointer; }
+.help-topic ol { padding-left:1.3rem; }
+.help-topic li + li { margin-top:.5rem; }
+.workspace-header > .breadcrumbs { flex:1; min-width:0; }
+.workspace-header > .role-badge { margin-left:0; }
+@media(max-width:600px) { .workspace-header > .role-badge { display:none; } .context-help-dialog .form-grid { grid-template-columns:1fr; } }

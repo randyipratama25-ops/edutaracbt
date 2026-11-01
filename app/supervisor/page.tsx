@@ -1,3 +1,4 @@
+import { ContextHelp } from "../../components/help/context-help";
 import { RoleActions } from "../../components/dashboard/role-actions";
 import { CardsPanel } from "../../components/operations/cards";
 import { OperationsPanel } from "../../components/operations/panel";
@@ -10,7 +11,7 @@ export default async function Supervisor() {
   if (!a || a.context !== "supervisor") redirect("/login");
   return (
     <main id="main-content" tabIndex={-1} className="workspace supervisor-workspace">
-      <header className="student-portal-heading"><div><h1>Ruang pengawasan</h1><p className="muted">{a.full_name}</p></div><LogoutButton /></header>
+      <header className="student-portal-heading"><div><h1>Ruang pengawasan</h1><p className="muted">{a.full_name}</p></div><div className="actions"><ContextHelp audience="supervisor" page="/supervisor" /><LogoutButton /></div></header>
       <RoleActions role="supervisor" />
       <section id="pelaksanaan" aria-label="Pelaksanaan ujian"><OperationsPanel /></section>
       <details id="kartu-peserta">

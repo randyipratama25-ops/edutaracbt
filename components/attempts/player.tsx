@@ -1,4 +1,5 @@
 "use client";
+import { ContextHelp } from "../help/context-help";
 import { DevicePreflight } from "./device-preflight";
 import { StudentHelp } from "../workflow/help";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -155,7 +156,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
     );
   return (
     <main id="main-content" tabIndex={-1} className="workspace student-shell">
-      <header className="student-portal-heading"><div><h1>Ujian saya</h1><p className="muted">Pilih ujian. Siapkan PIN dari pengawas.</p></div><LogoutButton /></header>
+      <header className="student-portal-heading"><div><h1>Ujian saya</h1><p className="muted">Pilih ujian. Siapkan PIN dari pengawas.</p></div><div className="actions"><ContextHelp audience="student" page="/student" /><LogoutButton /></div></header>
       <p role="status">{message}</p>
       {listState === "loading" && <section aria-busy="true" aria-label="Memuat daftar ujian" className="stack"><div className="skeleton skeleton-card" /><p role="status">Memuat ujian…</p></section>}
       {listState === "error" && <section className="empty-state"><h2>Daftar ujian belum dapat dimuat</h2><p>Periksa koneksi, lalu coba kembali.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Coba muat ulang</Button></section>}
@@ -537,12 +538,13 @@ export function ExamPlayer({
               )}
             </>
           )}
+          <ContextHelp audience="student" page={a.finalized_at ? "student-result" : "student-exam"} duringExam={!a.finalized_at} />
           <LogoutButton />
         </section>
       </main>
     );
   const item = a.questions[index];
-  if (!item) return <p>Snapshot soal tidak tersedia. Hubungi pengawas.</p>;
+  if (!item) return <main id="main-content" className="workspace stack"><p>Snapshot soal tidak tersedia. Hubungi pengawas.</p><ContextHelp audience="student" page="student-exam" duringExam /></main>;
   const q = item.payload;
   const answer =
     queue.values[item.id] || (["PG", "PG_KOMPLEKS"].includes(q.type) ? [] : {});
@@ -594,6 +596,7 @@ export function ExamPlayer({
           <details className="exam-tools"><summary className="button button-outline" aria-label="Alat ujian">Alat<ChevronDown size={15} aria-hidden="true" /></summary>
             <div className="exam-tools-menu">
               <label><span><Type size={16} aria-hidden="true" /> Ukuran tulisan soal</span><select value={fontSize} onChange={event => setFontSize(Number(event.target.value))}>{[16,18,20,22].map(size => <option value={size} key={size}>{size === 18 ? "Normal" : size < 18 ? "Ringkas" : size === 20 ? "Besar" : "Sangat besar"}</option>)}</select></label>
+              <ContextHelp audience="student" page="student-exam" duringExam />
               <StudentHelp attemptId={a.id} />
               <Button variant="outline" onClick={() => void fullscreen()}>Fullscreen / landscape</Button>
               <Button variant="outline" onClick={() => setReloadConfirm(true)}>Muat status server</Button>

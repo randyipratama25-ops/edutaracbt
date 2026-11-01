@@ -1,3 +1,4 @@
+import { ContextHelp } from "../../components/help/context-help";
 import Image from "next/image";
 import { LoginForm } from "../../components/auth/login-form";
 import { branding } from "../../lib/system/branding";
@@ -32,6 +33,7 @@ export default async function Login() {
         <h1>Masuk ke EDUTARA</h1>
         <p className="muted">{b.subtitle}</p>
         <LoginForm />
+        <ContextHelp audience="public" page="/login" />
       </section>
     </main>
   );

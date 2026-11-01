@@ -1,3 +1,4 @@
+import { ContextHelp } from "../components/help/context-help";
 import Link from "next/link";
 import { ActivationRedirect } from "../components/auth/activation-redirect";
 import { Button } from "../components/ui/button";
@@ -16,6 +17,7 @@ export default function Home() {
         <p className="notice">
           Aplikasi dalam pengembangan. Pelaksanaan ujian belum dibuka.
         </p>
+        <ContextHelp audience="public" page="/" />
         <Button asChild>
           <Link href="/login">Masuk ke aplikasi</Link>
         </Button>
