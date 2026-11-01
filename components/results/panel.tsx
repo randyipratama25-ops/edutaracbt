@@ -147,6 +147,7 @@ export function ResultsPanel({
   async function openDetail(id: string) {
     const d: ResultDetail = await request("/api/results?attempt=" + id);
     setDetail(d);
+    const ai=await request("/api/grading/ai");setAvailableAI(ai);setChosenAI(ai[0]?.provider||"");
     setPoints({});
     setComments({});
     setAiEdit({});
@@ -188,11 +189,14 @@ export function ResultsPanel({
       setMessage("Koreksi disetujui dan nilai resmi dihitung ulang.");
     });
   }
+  const [chosenAI,setChosenAI]=useState("");
+  const [availableAI,setAvailableAI]=useState<{provider:string;model:string}[]>([]);
   async function suggest(items: { attempt_id: string; question_id: string }[]) {
     try {
       await request("/api/grading/ai", {
         request_id: crypto.randomUUID(),
-        items,
+        provider:chosenAI,
+        items:items.slice(0,5),
       });
     } finally {
       if (detail) await openDetail(detail.attempt.id);
@@ -658,6 +662,7 @@ export function ResultsPanel({
                 : detail.attempt.score}{" "}
               · {detail.attempt.pending} esai pending
             </p>
+            <label>Penyedia AI<select value={chosenAI} onChange={e=>setChosenAI(e.target.value)}><option value="">Pilih penyedia aktif</option>{availableAI.map(p=><option key={p.provider} value={p.provider}>{p.provider} · {p.model}</option>)}</select></label>
             {detail.questions.map((q) => (
               <section key={q.id} className="question-preview">
                 <h3>
@@ -737,7 +742,7 @@ export function ResultsPanel({
                           )
                         }
                       >
-                        Minta saran AI (adaptor)
+                        Minta saran AI
                       </Button>
                     </>
                   )}
@@ -764,7 +769,7 @@ export function ResultsPanel({
                 )
               }
             >
-              Saran AI batch (maksimal 50)
+              Saran AI batch (maksimal 5)
             </Button>
             <h3>Riwayat saran AI</h3>
             {detail.suggestions.map((s) => (
