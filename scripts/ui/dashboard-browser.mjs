@@ -80,7 +80,8 @@ try {
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setRequestInterception(true);
-  let hold = null;
+  let hold = null,
+    observedWorkflow = null;
   let mode = "many",
     delay = 0,
     pending = 7,
@@ -113,6 +114,10 @@ try {
       if (u.pathname === "/api/health") return void r.continue();
       if (!u.pathname.startsWith("/api/")) return void r.continue();
       apiCalls.push({ path: u.pathname, method: r.method() });
+      if (u.pathname === "/api/workflow" && observedWorkflow) {
+        observedWorkflow();
+        observedWorkflow = null;
+      }
       assert.equal(r.method(), "GET", "dashboard should not mutate data");
       const currentMode = mode,
         currentDelay = delay;
@@ -400,14 +405,16 @@ try {
       "data terakhir",
     ),
   );
+  console.log(
+    "PASS responsive roles, dialogs, empty/archive, error recovery and stale snapshots",
+  );
   mode = "many";
   let releaseLoading;
   hold = new Promise((resolve) => (releaseLoading = resolve));
-  const start = page.waitForRequest(
-    (r) => new URL(r.url()).pathname === "/api/workflow",
-  );
+  const start = new Promise((resolve) => (observedWorkflow = resolve));
   await click("Perbarui agenda ujian");
   await start;
+  console.log("Loading request intercepted");
   assert(
     await page.$eval(
       'button[aria-label="Perbarui agenda ujian"]',
