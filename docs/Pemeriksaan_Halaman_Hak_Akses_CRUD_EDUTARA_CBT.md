@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.17 — Pemantauan operasional dan pemulihan berkala.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.18 — Audit dan penyempurnaan Beranda.
+
+## Audit dan penyempurnaan Beranda — 1 November 2026
+
+Inventaris tetap **23 halaman**. Beranda `/` adalah halaman publik R informasi saja; tidak memiliki CRUD akademik, daftar peserta, data nilai atau permintaan database. Pemberitahuan statis “ujian belum dibuka” dihapus karena tidak bersumber dari konfigurasi layanan. CTA masuk dan bantuan dipisahkan dengan hierarki yang jelas; panduan peran bersifat informatif dan tidak menggantikan pemeriksaan hak akses pada login/API.
+
+`ActivationRedirect` tetap menangani undangan fragment melalui `/auth/reset`, serta mengenali kode PKCE dan token hash invite/recovery melalui `/auth/confirm`. Callback rusak/error menampilkan pesan umum tanpa nilai penyedia/token, membersihkan parameter autentikasi dari URL, dan menyediakan arahan ke bantuan/login. Perubahan fragment/history pada halaman yang sama diproses dengan listener yang dibersihkan saat unmount. Tidak mengubah endpoint login, aktivasi, reset, sesi atau hak akses.
+
+CSS khusus Beranda memakai kolom intrinsik yang dapat menyusut, CTA sentuh minimal 44 px, wrapping teks, satu kolom pada mobile, dan scroll dokumen alami untuk layar pendek/zoom. Dialog bantuan lama tetap dipakai. Tidak ada migrasi database. Rincian audit dan validasi ada di `docs/home-audit.md`.
 
 ## Pemantauan operasional dan pemulihan berkala — 1 November 2026
 
@@ -241,7 +249,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 
 | No. | Halaman | URL | Fungsi dan tujuan | Izin masuk | Ringkasan CRUD |
 |---|---|---|---|---|---|
-| 1 | Beranda | `/` | Pintu masuk aplikasi; tombol login dan penanganan pengalihan aktivasi. Masih memuat pemberitahuan aplikasi dalam pengembangan. | Publik | R informasi publik; tidak ada CRUD akademik. |
+| 1 | Beranda | `/` | Pintu masuk publik; tombol masuk, bantuan kontekstual dan panduan peran. Callback aktivasi fragment, kode PKCE, dan token hash email diteruskan ke handler autentikasi lama; kesalahan dibersihkan dari URL dengan pesan aman. | Publik | R informasi publik; tidak ada CRUD akademik. |
 | 2 | Login dan bantuan pemulihan | `/login` | Login username/password berdasarkan konteks staf, pengawas, atau siswa; permintaan pemulihan akun berada dalam form login. | Publik | Membuat sesi/permintaan pemulihan; bukan membuat akun sendiri. |
 | 3 | Atur password akun | `/auth/reset` | Menetapkan password melalui tautan aktivasi atau pemulihan. | Halaman publik; perubahan memerlukan sesi/token sah | U password akun terkait; tidak dapat mengubah akun lain. |
 | 4 | Ringkasan madrasah | `/dashboard` | Statistik pengguna, kelas, dan mapel sesuai akses; tautan ke pengelolaan dasar. | Admin, Guru dalam konteks staf | R statistik; C/U/D melalui modul terkait. |
