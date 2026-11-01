@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { staff } from "../../../lib/results/server";
+import { staff, resultData } from "../../../lib/results/server";
 import { failure, HttpError, json, requireOrigin } from "../../../lib/http";
+import {readBounded} from "../../../lib/operations/media";
 const mutation = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("grade_batch"),
@@ -51,8 +52,8 @@ export async function GET(request: Request) {
       ? { action: "detail", attempt_id: z.uuid().parse(id) }
       : {
           action: "list",
-          page: Math.max(1, Number(s.get("page") || 1)),
-          search: (s.get("search") || "").slice(0, 150),
+          page: z.coerce.number().int().min(1).max(100000).parse(s.get("page") || 1),
+          search: (s.get("search") || "").trim().slice(0, 150),
           state: z
             .enum(["all", "pending", "final", "disqualified"])
             .parse(s.get("state") || "all"),
@@ -65,9 +66,8 @@ export async function GET(request: Request) {
             ? z.uuid().parse(s.get("subject"))
             : undefined,
         };
-    const r = await a.client.rpc("results_command", { input });
-    if (r.error) throw new HttpError(422, r.error.message);
-    return json(r.data);
+    const r = await a.client.rpc("results_command", { input }).abortSignal(AbortSignal.timeout(15000));
+    return json(resultData(r));
   } catch (e) {
     return failure(e);
   }
@@ -78,17 +78,15 @@ export async function POST(request: Request) {
     const a = await staff();
     if (Number(request.headers.get("content-length") || 0) > 2_000_000)
       throw new HttpError(413, "Batch terlalu besar.");
-    const raw = await request.text();
-    if (raw.length > 2_000_000)
-      throw new HttpError(413, "Batch terlalu besar.");
-    const input = mutation.parse(JSON.parse(raw));
+    const bytes=await readBounded(request.body,2_000_000).catch(()=>{throw new HttpError(413,"Batch terlalu besar.");});
+    let raw:unknown;try{raw=JSON.parse(new TextDecoder().decode(bytes));}catch{throw new HttpError(400,"Format JSON tidak valid.");}
+    const input = mutation.parse(raw);
+    if(input.action==='publish'&&a.role!=='admin')throw new HttpError(403,'Hanya Admin menerbitkan nilai.');
+    if(input.action==='edit_ai'&&input.points===undefined)throw new HttpError(422,'Nilai saran wajib diisi.');
+    if(input.action==='grade_batch'&&new Set(input.grades.map(g=>g.attempt_id+':'+g.question_id)).size!==input.grades.length)throw new HttpError(422,'Setiap pasangan peserta/soal harus unik.');
+    if(input.action==='recalculate'&&input.ids.some(id=>input.expected[id]===undefined))throw new HttpError(422,'Revisi seluruh hasil wajib disertakan.');
     const r = await a.client.rpc("results_command", { input });
-    if (r.error)
-      throw new HttpError(
-        r.error.message.includes("CONFLICT") ? 409 : 422,
-        r.error.message,
-      );
-    return json(r.data);
+    return json(resultData(r,true));
   } catch (e) {
     return failure(e);
   }

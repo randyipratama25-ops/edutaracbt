@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { staff } from "../../../../lib/results/server";
+import { staff, resultData } from "../../../../lib/results/server";
 import { failure, HttpError } from "../../../../lib/http";
 export async function GET(request: Request) {
   try {
@@ -8,11 +8,12 @@ export async function GET(request: Request) {
     const r = await a.client.rpc("report_command", {
       input: { action: "download", job_id },
     });
-    if (r.error) throw new HttpError(403, r.error.message);
+    resultData(r);
+    const job=z.object({path:z.string().min(1),kind:z.string(),format:z.enum(["pdf","xlsx"])}).parse(r.data);
     const signed = await a.client.storage
       .from("exam-reports")
-      .createSignedUrl(r.data.path, 60, {
-        download: `edutara-${r.data.kind}.${r.data.format}`,
+      .createSignedUrl(job.path, 60, {
+        download: `edutara-${job.kind}.${job.format}`,
       });
     if (signed.error) throw new HttpError(403, "Unduhan tidak tersedia.");
     return Response.redirect(signed.data.signedUrl, 302);

@@ -6,6 +6,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
+import {z} from "zod";
+import {clientRequest,ClientRequestError} from "../../lib/client/request";
+import {resultListSchema,resultDetailSchema,resultMastersSchema,resultSettingsSchema,resultProvidersSchema,reportJobsSchema,resultAnalysisSchema,resultReceipt,loadResultBatch,gradeValue,revisionReason,resultAnswer,canSuggest} from "../../lib/results/contracts";
+import {reportSettingsSchema} from "../../lib/reports/schema";
 import type { ResultDetail, ResultRow } from "../../lib/results/types";
 import type { analyze } from "../../lib/results/analytics";
 import { reportKinds, reportLabels } from "../../lib/reports/schema";
@@ -14,21 +18,6 @@ const Preview = dynamic(
   () => import("../authoring/preview").then((m) => m.QuestionPreview),
   { ssr: false },
 );
-async function request(url: string, input?: unknown) {
-  const r = await fetch(
-    url,
-    input
-      ? {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        }
-      : undefined,
-  );
-  const j = await r.json();
-  if (!r.ok) throw Error(j.error?.message || "Permintaan gagal.");
-  return j.data;
-}
 type Job = {
   id: string;
   kind: string;
@@ -82,11 +71,27 @@ export function ResultsPanel({
     [recalcOpen, setRecalcOpen] = useState(false),
     [reason, setReason] = useState(""),
     [aiEdit, setAiEdit] = useState<Record<string, string>>({});
-  const sequence = useRef(0);
+  const [chosenAI,setChosenAI]=useState("");
+  const [availableAI,setAvailableAI]=useState<{provider:string;model:string}[]>([]);
+  const [aiVersion,setAiVersion]=useState(0),[gradeReason,setGradeReason]=useState('');
+  const sequence = useRef(0), mounted=useRef(true), operation=useRef(false), readController=useRef<AbortController|null>(null), controllers=useRef(new Set<AbortController>()), jobsSequence=useRef(0), jobsFlight=useRef<Promise<boolean>|null>(null), supportSequence=useRef(0);
+  const [uncertain,setUncertain]=useState(false),[supportError,setSupportError]=useState(''),[jobsError,setJobsError]=useState(''),[aiError,setAiError]=useState(''),[aiLoading,setAiLoading]=useState(false),[detailStale,setDetailStale]=useState(false);
+  const [settingsDraft,setSettingsDraft]=useState<typeof settings>(null);
+  async function request<T=unknown>(url:string,input?:object,schema:z.ZodType<T>=resultReceipt(url,input) as z.ZodType<T>){
+    if(!mounted.current)throw Error("Permintaan dibatalkan.");
+    const c=new AbortController();controllers.current.add(c);
+    try{const result=await clientRequest(url,input,schema,c,{mutation:!!input&&!(url==='/api/reports'&&'action' in input&&input.action==='analysis')});if(!mounted.current)throw Error('Permintaan dibatalkan.');return result;}
+    catch(e){if(mounted.current&&e instanceof ClientRequestError&&e.uncertain)setUncertain(true);throw e;}
+    finally{controllers.current.delete(c);}
+  }
+  useEffect(()=>{mounted.current=true;const active=controllers.current;return()=>{mounted.current=false;readController.current?.abort();active.forEach(c=>c.abort());};},[]);
+
   const ids = Object.keys(selected);
-  const invalidateRequests=useCallback(()=>{sequence.current++;},[]);
+  const invalidateRequests=useCallback(()=>{sequence.current++;readController.current?.abort();},[]);
   const load = useCallback(async () => {
+    if(!mounted.current)return false;
     const seq = ++sequence.current;
+    readController.current?.abort();const c=new AbortController();readController.current=c;
     setLoading(true);setListError("");
     try {
       const q = new URLSearchParams({
@@ -98,64 +103,80 @@ export function ResultsPanel({
       if (classId) q.set("class", classId);
       if (subjectId) q.set("subject", subjectId);
       if (examId) q.set("exam", examId);
-      const d = await request("/api/results?" + q);
+      const d = await clientRequest("/api/results?" + q,undefined,resultListSchema,c);
+      if(!mounted.current)return false;
+      const last=Math.max(1,Math.ceil(d.total/25));if(page>last){setRows([]);setTotal(d.total);setPage(last);return false;}
       if (seq === sequence.current) {
         setRows(d.rows);
         setTotal(d.total);
         setCanPublish(d.can_publish);
+        return true;
       }
     } catch (e) {
-      if(seq===sequence.current){setRows([]);setTotal(0);setListError(e instanceof Error ? e.message : "Hasil belum dapat dimuat.");}
+      if(mounted.current&&seq===sequence.current){setListError(e instanceof Error ? e.message : "Hasil belum dapat dimuat.");}
     } finally {
-      if (seq === sequence.current) setLoading(false);
+      if (mounted.current&&seq === sequence.current) setLoading(false);
     }
+    return false;
   }, [page, search, state, sort, classId, subjectId, examId]);
   useEffect(() => {
     setLoading(true);const timer=setTimeout(()=>void load(),250);
     return()=>{clearTimeout(timer);invalidateRequests();};
   }, [load,invalidateRequests]);
-  useEffect(() => {
-    void request("/api/admin/master")
-      .then((d) => setMasters({ classes: d.classes, subjects: d.subjects }))
-      .catch(() => {});
-    void request("/api/reports?settings=1")
-      .then(setSettings)
-      .catch(() => {});
-    void request("/api/reports")
-      .then(setJobs)
-      .catch(() => {});
-  }, []);
-  useEffect(() => {
-    if (!jobs.some((j) => j.status === "queued" || j.status === "running"))
-      return;
-    const timer = setInterval(
-      () =>
-        void request("/api/reports")
-          .then(setJobs)
-          .catch(() => {}),
-      4000,
-    );
-    return () => clearInterval(timer);
-  }, [jobs]);
-  async function run(fn: () => Promise<void>) {
-    setBusy(true);
-    setMessage("");
-    try {
-      await fn();
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Permintaan gagal.");
-    } finally {
-      setBusy(false);
-    }
+  useEffect(()=>{setSelected({});setAnalysis(null);},[search,state,classId,subjectId,examId]);
+  async function loadSupport(){
+    if(!mounted.current)return false;
+    const seq=++supportSequence.current;setSupportError('');
+    const result=await Promise.allSettled([
+      request('/api/admin/master',undefined,resultMastersSchema).then(d=>{if(seq===supportSequence.current)setMasters(d);}),
+      request('/api/reports?settings=1',undefined,resultSettingsSchema).then(d=>{if(seq===supportSequence.current)setSettings(d);}),
+    ]);
+    const ok=result.every(r=>r.status==='fulfilled');if(mounted.current&&seq===supportSequence.current)setSupportError(ok?'':'Sebagian filter atau kop belum dapat dimuat. Coba muat data pendukung.');return ok;
   }
-  async function openDetail(id: string) {
-    const d: ResultDetail = await request("/api/results?attempt=" + id);
-    setDetail(d);
-    const ai=await request("/api/grading/ai");setAvailableAI(ai);setChosenAI(ai[0]?.provider||"");
-    setPoints({});
-    setComments({});
-    setAiEdit({});
+  async function loadJobs(){
+    if(!mounted.current)return false;
+    if(jobsFlight.current)return jobsFlight.current;
+    const seq=++jobsSequence.current;
+    const work=(async()=>{try{const result=await request('/api/reports',undefined,reportJobsSchema);if(mounted.current&&seq===jobsSequence.current){setJobs(result);setJobsError('');}return true;}catch(e){if(mounted.current&&seq===jobsSequence.current)setJobsError(e instanceof Error?e.message:'Status ekspor belum tersedia.');return false;}})();
+    jobsFlight.current=work;
+    try{return await work;}finally{if(jobsFlight.current===work)jobsFlight.current=null;}
   }
+  useEffect(()=>{jobsFlight.current=null;void loadSupport();void loadJobs();
+    // Initial independent dependencies have their own failure/retry state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+  useEffect(()=>{
+    if(!jobs.some(j=>j.status==='queued'||j.status==='running'))return;
+    const timer=setInterval(()=>void loadJobs(),4000);return()=>clearInterval(timer);
+    // Single-flight polling keeps the last known status on failure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[jobs]);
+  async function run(fn:()=>Promise<void>){
+    if(operation.current||uncertain)return;
+    operation.current=true;setBusy(true);setMessage('');
+    try{await fn();}catch(e){if(mounted.current){setMessage(e instanceof z.ZodError?e.issues.map(i=>i.message).join('; '):e instanceof Error?e.message:'Permintaan gagal.');if(e instanceof ClientRequestError&&e.status===409)setDetailStale(true);}}
+    finally{operation.current=false;if(mounted.current)setBusy(false);}
+  }
+  async function openDetail(id:string){
+    try{
+      const d=await request('/api/results?attempt='+id,undefined,resultDetailSchema);
+      setDetail(d);setDetailStale(false);setPoints({});setComments({});setAiEdit({});setGradeReason('');
+    }catch(e){if(mounted.current)setDetailStale(true);throw e;}
+  }
+  const detailId=detail?.attempt.id;
+  useEffect(()=>{
+    if(!detailId)return;
+    let live=true;const c=new AbortController();setAvailableAI([]);setChosenAI('');setAiLoading(true);setAiError('');
+    void clientRequest('/api/grading/ai',undefined,resultProvidersSchema,c).then(ai=>{if(live){setAvailableAI(ai);setChosenAI(ai[0]?.provider||'');}}).catch(()=>{if(live)setAiError('Penyedia AI belum dapat dimuat. Koreksi manual tetap tersedia.');}).finally(()=>{if(live)setAiLoading(false);});
+    return()=>{live=false;c.abort();};
+  },[detailId,aiVersion]);
+  async function recover(){
+    if(operation.current)return;operation.current=true;setBusy(true);
+    try{const ok=await load();if(detail)await openDetail(detail.attempt.id);const jobsOk=await loadJobs();const supportOk=await loadSupport();if(ok&&jobsOk&&supportOk){setUncertain(false);setDetailStale(false);setBatchOpen(false);setRecalcOpen(false);setSettingsOpen(false);setSelected({});setAnalysis(null);setMessage('Data diperbarui. Periksa hasil sebelum mencoba kembali.');}}
+    catch(e){if(mounted.current)setMessage(e instanceof Error?e.message:'Pemulihan belum selesai.');}
+    finally{operation.current=false;if(mounted.current)setBusy(false);}
+  }
+  const selectionBlocked=busy||loading||!!listError||uncertain||detailStale;
   async function saveGrades(e: FormEvent) {
     e.preventDefault();
     if (!detail) return;
@@ -175,9 +196,11 @@ export function ResultsPanel({
           attempt_id: detail.attempt.id,
           question_id: q.id,
           expected_revision: detail.attempt.revision,
-          points: Number(points[q.id] ?? q.earned),
+          points: gradeValue(points[q.id] ?? String(q.earned),q.payload.points),
           comment: comments[q.id] ?? q.comment ?? "",
+          ...(q.earned!==null?{reason:revisionReason(gradeReason||comments[q.id]||q.comment||"")} : {}),
         }));
+      if(detailStale)throw Error("Muat ulang detail sebelum menyimpan.");
       if (!grades.length)
         throw Error(
           "Isi minimal satu nilai. Kolom kosong tetap pending, bukan nol.",
@@ -193,30 +216,35 @@ export function ResultsPanel({
       setMessage("Koreksi disetujui dan nilai resmi dihitung ulang.");
     });
   }
-  const [chosenAI,setChosenAI]=useState("");
-  const [availableAI,setAvailableAI]=useState<{provider:string;model:string}[]>([]);
   async function suggest(items: { attempt_id: string; question_id: string }[]) {
-    try {
-      await request("/api/grading/ai", {
-        request_id: crypto.randomUUID(),
-        provider:chosenAI,
-        items:items.slice(0,5),
-      });
-    } finally {
-      if (detail) await openDetail(detail.attempt.id);
-    }
+    if(!chosenAI||!items.length)throw Error('Pilih penyedia aktif dan esai yang dapat diproses.');
+    await request('/api/grading/ai',{request_id:crypto.randomUUID(),provider:chosenAI,items:items.slice(0,5)});
+    if(detail)await openDetail(detail.attempt.id);
+    setMessage('Permintaan AI selesai. Periksa riwayat; saran tetap memerlukan persetujuan guru.');
+  }
+  async function publishResults(published:boolean){
+    const exams=[...new Set(Object.values(selected).map(r=>r.exam_id))];
+    if(!window.confirm(`${published?'Terbitkan':'Tutup publikasi'} nilai SELURUH peserta pada ${exams.length} ujian terpilih, termasuk peserta yang tidak dicentang?`))return;
+    let done=0;
+    try{for(const exam_id of exams){if(!mounted.current)return;await request('/api/results',{action:'publish',request_id:crypto.randomUUID(),exam_id,published});done++;}}
+    catch(e){if(!mounted.current)return;setSelected({});await load();throw Error(`${done} dari ${exams.length} ujian terkonfirmasi diperbarui. Sisa operasi dihentikan. ${e instanceof Error?e.message:'Periksa hasil sebelum mencoba lagi.'}`);}
+    setSelected({});await load();setMessage(`${done} ujian ${published?'diterbitkan':'ditutup publikasinya'}. Publikasi berlaku untuk seluruh peserta; kunci dan esai pending tetap dilindungi server.`);
   }
   const examOptions = Array.from(
     new Map(
       [...Object.values(selected), ...rows].map((r) => [r.exam_id, r.title]),
     ).entries(),
   );
+  if(examId&&!examOptions.some(([id])=>id===examId))examOptions.push([examId,"Ujian terpilih"]);
   return (
-    <div className="stack">
+    <div className="stack results-page" aria-busy={busy||loading}>
       <div className="actions"><Button asChild variant="outline"><Link href="/dashboard/grading">Koreksi anonim, rubrik & moderasi</Link></Button></div>
       <p role="status" aria-live="polite">
         {message}
       </p>
+      {(uncertain||detailStale)&&<div role="alert" className="notice"><p>{uncertain?"Hasil perubahan belum dapat dipastikan. Periksa ulang data sebelum melanjutkan.":"Detail atau revisi belum dapat dimuat. Periksa ulang data sebelum melanjutkan."}</p><Button disabled={busy||loading} onClick={()=>void recover()}>Periksa ulang data</Button></div>}
+      {supportError&&<div className="notice" role="status"><p>{supportError}</p><Button disabled={busy} onClick={()=>void loadSupport()}>Muat data pendukung</Button></div>}
+      <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
       <section className="panel stack">
         <ListFilters label="hasil ujian" active={[search&&"Pencarian",classId&&"Kelas",subjectId&&"Mapel",examId&&"Ujian",state!=="all"&&"Status",sort!=="name"&&"Urutan"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setClassId("");setSubjectId("");setExamId("");setState("all");setSort("name");setPage(1);}} total={total} loading={loading} error={listError}>
           <SearchField label="Cari siswa/username" value={search} maxLength={150} onChange={value=>{setSearch(value);setPage(1);}} />
@@ -288,7 +316,7 @@ export function ResultsPanel({
           </label>
           <label>
             Urutan
-            <select value={sort} onChange={(e) => setSort(e.target.value)}>
+            <select value={sort} onChange={(e) => {setSort(e.target.value);setPage(1);}}>
               <option value="name">Nama A–Z</option>
               <option value="score_asc">Nilai terendah</option>
               <option value="score_desc">Nilai tertinggi</option>
@@ -301,11 +329,11 @@ export function ResultsPanel({
           </Button>
           <Button
             variant="outline"
-            disabled={loading||!!listError||!rows.length}
+            disabled={selectionBlocked||!rows.length||ids.length>=500}
             onClick={() =>
               setSelected((s) => ({
                 ...s,
-                ...Object.fromEntries(rows.map((r) => [r.id, r])),
+                ...Object.fromEntries(rows.filter(r=>!s[r.id]).slice(0,500-Object.keys(s).length).map((r) => [r.id, r])),
               }))
             }
           >
@@ -336,12 +364,13 @@ export function ResultsPanel({
                     <input
                       type="checkbox"
                       aria-label={"Pilih hasil " + r.student}
+                      disabled={selectionBlocked||(!selected[r.id]&&ids.length>=500)}
                       checked={!!selected[r.id]}
                       onChange={() =>
                         setSelected((s) => {
                           const n = { ...s };
                           if (n[r.id]) delete n[r.id];
-                          else n[r.id] = r;
+                          else if(Object.keys(n).length<500)n[r.id] = r;
                           return n;
                         })
                       }
@@ -410,17 +439,16 @@ export function ResultsPanel({
             : "Koreksi dan laporan terpilih"}
         </h2>
         <p>
+          Terpilih {ids.length} / 500 hasil. Pilihan dipertahankan antar halaman dan dibersihkan saat filter berubah.
           Pilih maksimal 500 hasil. Ekspor mempertahankan revisi ledger saat job
           dibuat.
         </p>
         <div className="actions">
           <Button
-            disabled={busy || !ids.length}
+            disabled={selectionBlocked || !ids.length}
             onClick={() =>
               void run(async () => {
-                const data: ResultDetail[] = await Promise.all(
-                  ids.map((id) => request("/api/results?attempt=" + id)),
-                );
+                const data=await loadResultBatch(ids,id=>request("/api/results?attempt="+id,undefined,resultDetailSchema),()=>mounted.current);
                 setBatch(data);
                 setBatchQuestion("");
                 setBatchPoints({});
@@ -432,17 +460,17 @@ export function ResultsPanel({
           </Button>
           <Button
             variant="outline"
-            disabled={busy || !ids.length}
-            onClick={() => setRecalcOpen(true)}
+            disabled={selectionBlocked || !ids.length}
+            onClick={() => {setReason("");setMessage("");setRecalcOpen(true);}}
           >
             Rekalkulasi berizin
           </Button>
           <Button
-            disabled={busy || !ids.length}
+            disabled={selectionBlocked || !ids.length}
             onClick={() =>
               void run(async () =>
                 setAnalysis(
-                  await request("/api/reports", { action: "analysis", ids }),
+                  await request("/api/reports", { action: "analysis", ids },resultAnalysisSchema),
                 ),
               )
             }
@@ -453,44 +481,18 @@ export function ResultsPanel({
             <>
               <Button
                 variant="outline"
-                disabled={busy || !ids.length}
+                disabled={selectionBlocked || !ids.length}
                 onClick={() =>
-                  void run(async () => {
-                    for (const exam_id of new Set(
-                      Object.values(selected).map((r) => r.exam_id),
-                    ))
-                      await request("/api/results", {
-                        action: "publish",
-                        request_id: crypto.randomUUID(),
-                        exam_id,
-                        published: true,
-                      });
-                    await load();
-                    setMessage(
-                      "Nilai diterbitkan oleh Admin; esai pending dan kunci tetap tidak dikirim ke siswa.",
-                    );
-                  })
+                  void run(()=>publishResults(true))
                 }
               >
                 Terbitkan nilai ujian terpilih
               </Button>
               <Button
                 variant="outline"
-                disabled={busy || !ids.length}
+                disabled={selectionBlocked || !ids.length}
                 onClick={() =>
-                  void run(async () => {
-                    for (const exam_id of new Set(
-                      Object.values(selected).map((r) => r.exam_id),
-                    ))
-                      await request("/api/results", {
-                        action: "publish",
-                        request_id: crypto.randomUUID(),
-                        exam_id,
-                        published: false,
-                      });
-                    await load();
-                    setMessage("Publikasi nilai ditutup.");
-                  })
+                  void run(()=>publishResults(false))
                 }
               >
                 Tutup publikasi
@@ -518,7 +520,7 @@ export function ResultsPanel({
             </select>
           </label>
           <Button
-            disabled={busy || !ids.length}
+            disabled={selectionBlocked || !ids.length}
             onClick={() =>
               void run(async () => {
                 await request("/api/reports", {
@@ -528,7 +530,7 @@ export function ResultsPanel({
                   kind,
                   format,
                 });
-                setJobs(await request("/api/reports"));
+                await loadJobs();
                 setMessage(
                   "Job ekspor dibuat. Unduh setelah progres 100%. PDF dapat dicetak dari pembaca PDF.",
                 );
@@ -538,7 +540,7 @@ export function ResultsPanel({
             Buat laporan / cetak massal
           </Button>
           {settings?.can_manage && (
-            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
+            <Button variant="outline" onClick={() => {setSettingsDraft(settings?{...settings}:null);setSettingsOpen(true);setMessage("");}}>
               Atur kop / logo / pejabat
             </Button>
           )}
@@ -602,12 +604,13 @@ export function ResultsPanel({
         <Button
           variant="outline"
           onClick={() =>
-            void run(async () => setJobs(await request("/api/reports")))
+            void loadJobs()
           }
         >
           Muat status ekspor
         </Button>
-        {!jobs.length && <p>Belum ada job ekspor.</p>}
+        {jobsError&&<p role="alert">{jobsError} Status terakhir tetap ditampilkan.</p>}
+        {!jobsError&&!jobs.length && <p>Belum ada job ekspor.</p>}
         {jobs.map((j) => (
           <div key={j.id}>
             <b>
@@ -627,7 +630,7 @@ export function ResultsPanel({
                 onClick={() =>
                   void run(async () => {
                     await request("/api/reports/run", { job_id: j.id });
-                    setJobs(await request("/api/reports"));
+                    await loadJobs();
                   })
                 }
               >
@@ -639,14 +642,18 @@ export function ResultsPanel({
           </div>
         ))}
       </section>
+      </fieldset>
       <Dialog
+        className="results-dialog"
         open={!!detail}
-        onOpenChange={() => setDetail(null)}
+        onOpenChange={open=>{if(!open&&!operation.current)setDetail(null);}}
         title="Detail hasil dan koreksi"
         description="Nilai resmi hanya berasal dari penilaian server. Kolom kosong mempertahankan status pending."
       >
         {detail && (
           <form className="stack" onSubmit={saveGrades}>
+            {(uncertain||detailStale)&&<div className="notice" role="alert"><p>Muat ulang detail dan periksa revisi sebelum melanjutkan.</p><Button type="button" disabled={busy||loading} onClick={()=>void recover()}>Periksa ulang data</Button></div>}
+            <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
             <h3>
               {detail.attempt.student} — {detail.attempt.title}
             </h3>
@@ -657,7 +664,8 @@ export function ResultsPanel({
                 : detail.attempt.score}{" "}
               · {detail.attempt.pending} esai pending
             </p>
-            <label>Penyedia AI<select value={chosenAI} onChange={e=>setChosenAI(e.target.value)}><option value="">Pilih penyedia aktif</option>{availableAI.map(p=><option key={p.provider} value={p.provider}>{p.provider} · {p.model}</option>)}</select></label>
+            {aiLoading&&<p role="status">Memuat penyedia AI… Koreksi manual tetap tersedia.</p>}{aiError&&<div role="status"><p>{aiError}</p><Button type="button" variant="outline" disabled={aiLoading} onClick={()=>setAiVersion(v=>v+1)}>Muat penyedia AI</Button></div>}
+            <label>Penyedia AI<select disabled={aiLoading||!availableAI.length} value={chosenAI} onChange={e=>setChosenAI(e.target.value)}><option value="">Pilih penyedia aktif</option>{availableAI.map(p=><option key={p.provider} value={p.provider}>{p.provider} · {p.model}</option>)}</select></label>
             {detail.questions.map((q) => (
               <section key={q.id} className="question-preview">
                 <h3>
@@ -669,9 +677,7 @@ export function ResultsPanel({
                 />
                 <h3>Jawaban peserta</h3>
                 <pre className="answer-text">
-                  {typeof q.answer === "object"
-                    ? JSON.stringify(q.answer, null, 2)
-                    : String(q.answer ?? "Belum dijawab")}
+                  {resultAnswer(q.answer)}
                 </pre>
                 {Boolean(q.answer) &&
                   typeof q.answer === "object" &&
@@ -712,6 +718,7 @@ export function ResultsPanel({
                       <label>
                         Catatan guru
                         <textarea
+                          disabled={!!q.payload.rubricCriteria?.length}
                           value={comments[q.id] ?? q.comment ?? ""}
                           maxLength={5000}
                           onChange={(e) =>
@@ -725,7 +732,7 @@ export function ResultsPanel({
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={busy}
+                        disabled={busy||aiLoading||!chosenAI||!canSuggest(q,detail.attempt.status)}
                         onClick={() =>
                           void run(() =>
                             suggest([
@@ -743,19 +750,20 @@ export function ResultsPanel({
                   )}
               </section>
             ))}
+            <label>Alasan revisi nilai (5–1000 karakter bila mengubah nilai yang sudah disetujui)<textarea value={gradeReason} maxLength={1000} onChange={e=>setGradeReason(e.target.value)}/></label>
             <Button disabled={busy || detail.attempt.status === "disqualified"}>
               Simpan persetujuan koreksi
             </Button>
             <Button
               type="button"
               variant="outline"
-              disabled={busy}
+              disabled={busy||aiLoading||!chosenAI||detail.attempt.status==="disqualified"||!detail.questions.some(q=>canSuggest(q,detail.attempt.status))}
               onClick={() =>
                 void run(() =>
                   suggest(
                     detail.questions
-                      .filter((q) => q.payload.type === "Esai" && !q.payload.rubricCriteria?.length)
-                      .slice(0, 50)
+                      .filter((q) => canSuggest(q,detail.attempt.status))
+                      .slice(0, 5)
                       .map((q) => ({
                         attempt_id: detail.attempt.id,
                         question_id: q.id,
@@ -774,13 +782,14 @@ export function ResultsPanel({
                   {s.points === null ? "Tidak ada nilai" : s.points}
                 </p>
                 <p>{s.reason}</p>
-                {s.status === "pending" && (
+                {s.status === "pending" && s.points!==null && s.basis_revision===detail.attempt.revision && detail.attempt.status!=="disqualified" && detail.questions.some(q=>q.id===s.question_id&&q.payload.type==="Esai"&&!q.payload.rubricCriteria?.length) && (
                   <>
                     <label>
                       Ubah nilai saran
                       <input
                         type="number"
                         min={0}
+                        max={detail.questions.find(q=>q.id===s.question_id)?.payload.points}
                         step="any"
                         value={aiEdit[s.id] ?? String(s.points ?? "")}
                         onChange={(e) =>
@@ -805,9 +814,7 @@ export function ResultsPanel({
                                   expected_revision: detail.attempt.revision,
                                   ...(action === "edit_ai"
                                     ? {
-                                        points: Number(
-                                          aiEdit[s.id] ?? s.points,
-                                        ),
+                                        points: gradeValue(aiEdit[s.id] ?? String(s.points??""),detail.questions.find(q=>q.id===s.question_id)?.payload.points??0),
                                       }
                                     : {}),
                                   comment:
@@ -841,13 +848,14 @@ export function ResultsPanel({
                 )}
               </pre>
             </details>
-            <p role="status">{message}</p>
+            <p role="status">{message}</p></fieldset>
           </form>
         )}
       </Dialog>
       <Dialog
+        className="results-dialog"
         open={batchOpen}
-        onOpenChange={setBatchOpen}
+        onOpenChange={open=>{if(!operation.current)setBatchOpen(open);}}
         title="Koreksi per soal"
         description="Setiap nilai mengacu pada versi soal dan revisi hasil peserta. Seluruh batch disimpan dalam satu transaksi."
       >
@@ -859,15 +867,15 @@ export function ResultsPanel({
               const grades = batch
                 .filter(
                   (d) =>
-                    d.questions.some((q) => q.id === batchQuestion) &&
+                    d.attempt.status!=="disqualified" && d.questions.some((q) => q.id+":"+q.version === batchQuestion && !q.payload.rubricCriteria?.length) &&
                     batchPoints[d.attempt.id] !== undefined &&
                     batchPoints[d.attempt.id] !== "",
                 )
                 .map((d) => ({
                   attempt_id: d.attempt.id,
-                  question_id: batchQuestion,
+                  question_id: batchQuestion.split(":")[0],
                   expected_revision: d.attempt.revision,
-                  points: Number(batchPoints[d.attempt.id]),
+                  points: gradeValue(batchPoints[d.attempt.id],d.questions.find(q=>q.id+":"+q.version===batchQuestion)!.payload.points),
                   comment: "Koreksi batch per soal",
                 }));
               if (!grades.length) throw Error("Isi minimal satu nilai.");
@@ -883,6 +891,7 @@ export function ResultsPanel({
             });
           }}
         >
+          <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
           <label>
             Soal esai
             <select
@@ -896,14 +905,14 @@ export function ResultsPanel({
               <option value="">Pilih soal</option>
               {Array.from(
                 new Map(
-                  batch.flatMap((d) =>
+                  batch.filter(d=>d.attempt.status!=="disqualified").flatMap((d) =>
                     d.questions
                       .filter((q) => q.payload.type === "Esai" && !q.payload.rubricCriteria?.length)
-                      .map((q) => [q.id, q] as const),
+                      .map((q) => [q.id+":"+q.version, q] as const),
                   ),
                 ).values(),
               ).map((q) => (
-                <option key={q.id} value={q.id}>
+                <option key={q.id+":"+q.version} value={q.id+":"+q.version}>
                   {q.payload.stem.replace(/<[^>]*>/g, "").slice(0, 80)} · v
                   {q.version}
                 </option>
@@ -911,14 +920,14 @@ export function ResultsPanel({
             </select>
           </label>
           {batch
-            .filter((d) => d.questions.some((q) => q.id === batchQuestion))
+            .filter((d) => d.attempt.status!=="disqualified"&&d.questions.some((q) => q.id+":"+q.version === batchQuestion&&!q.payload.rubricCriteria?.length))
             .map((d) => {
-              const q = d.questions.find((q) => q.id === batchQuestion)!;
+              const q = d.questions.find((q) => q.id+":"+q.version === batchQuestion)!;
               return (
                 <section className="question-preview" key={d.attempt.id}>
                   <b>{d.attempt.student}</b>
                   <pre className="answer-text">
-                    {JSON.stringify(q.answer, null, 2)}
+                    {resultAnswer(q.answer)}
                   </pre>
                   <label>
                     Nilai / {q.payload.points}
@@ -940,12 +949,14 @@ export function ResultsPanel({
               );
             })}
           <Button disabled={busy}>Simpan batch</Button>
-          <p role="status">{message}</p>
+          <p role="status">{message}</p></fieldset>
+          {(uncertain||detailStale)&&<Button type="button" disabled={busy} onClick={()=>void recover()}>Periksa ulang data</Button>}
         </form>
       </Dialog>
       <Dialog
+        className="results-dialog"
         open={recalcOpen}
-        onOpenChange={setRecalcOpen}
+        onOpenChange={open=>{if(!operation.current)setRecalcOpen(open);}}
         title="Rekalkulasi hasil"
         description="Menggunakan snapshot dan engine yang sama; kunci sumber terbaru tidak mengganti snapshot attempt."
       >
@@ -970,6 +981,7 @@ export function ResultsPanel({
             });
           }}
         >
+          <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
           <label>
             Alasan
             <textarea
@@ -981,29 +993,28 @@ export function ResultsPanel({
             />
           </label>
           <Button disabled={busy}>Rekalkulasi terpilih</Button>
-          <p role="status">{message}</p>
+          <p role="status">{message}</p></fieldset>
+          {(uncertain||detailStale)&&<Button type="button" disabled={busy} onClick={()=>void recover()}>Periksa ulang data</Button>}
         </form>
       </Dialog>
       <Dialog
+        className="results-dialog"
         open={settingsOpen}
-        onOpenChange={setSettingsOpen}
+        onOpenChange={open=>{if(!operation.current)setSettingsOpen(open);}}
         title="Kop laporan"
         description="Logo menggunakan ID media privat milik organisasi. Nama pejabat dicetak sebagai identitas, bukan tanda tangan digital."
       >
-        {settings && (
+        {settingsDraft && (
           <form
             className="stack"
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                await request("/api/reports", {
-                  action: "settings",
-                  school: settings.school,
-                  address: settings.address,
-                  official: settings.official,
-                  official_title: settings.official_title,
-                  logo_media_id: settings.logo_media_id || null,
+                const valid=reportSettingsSchema.parse({
+                  action:"settings",school:settingsDraft.school,address:settingsDraft.address,official:settingsDraft.official,official_title:settingsDraft.official_title,logo_media_id:settingsDraft.logo_media_id||null,
                 });
+                await request("/api/reports", valid);
+                setSettings(resultSettingsSchema.parse({...valid,can_manage:settingsDraft.can_manage}));
                 setSettingsOpen(false);
                 setMessage(
                   "Kop disimpan. Job lama tetap menggunakan kop saat dibuat.",
@@ -1011,6 +1022,7 @@ export function ResultsPanel({
               });
             }}
           >
+            <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
             {(
               [
                 "school",
@@ -1031,45 +1043,29 @@ export function ResultsPanel({
                   }[k]
                 }
                 <input
-                  value={settings[k] || ""}
+                  value={settingsDraft[k] || ""}
                   required={k === "school"}
                   onChange={(e) =>
-                    setSettings((s) => (s ? { ...s, [k]: e.target.value } : s))
+                    setSettingsDraft((s) => (s ? { ...s, [k]: e.target.value } : s))
                   }
                 />
               </label>
             ))}
             <Button disabled={busy}>Simpan kop</Button>
-            <p role="status">{message}</p>
+            <p role="status">{message}</p></fieldset>
+            {(uncertain||detailStale)&&<Button type="button" disabled={busy} onClick={()=>void recover()}>Periksa ulang data</Button>}
           </form>
         )}
       </Dialog>
     </div>
   );
 }
-function AnswerImage({ id }: { id: string }) {
-  const [url, setUrl] = useState("");
-  useEffect(() => {
-    let live = true;
-    void request("/api/results/media?id=" + id + "&kind=canvas")
-      .then((d) => {
-        if (live) setUrl(d.url);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [id]);
-  return url ? (
-    <Image
-      src={url}
-      alt="Canvas jawaban peserta"
-      width={1200}
-      height={800}
-      unoptimized
-      style={{ width: "100%", height: "auto" }}
-    />
-  ) : (
-    <p>Memuat canvas / periksa izin lampiran.</p>
-  );
+function AnswerImage({id}:{id:string}){
+ const [url,setUrl]=useState(''),[error,setError]=useState(''),[version,setVersion]=useState(0);
+ useEffect(()=>{let live=true;const c=new AbortController();setUrl('');setError('');
+  void clientRequest('/api/results/media?id='+encodeURIComponent(id)+'&kind=canvas',undefined,z.object({url:z.url()}),c).then(d=>{if(live)setUrl(d.url);}).catch(()=>{if(live)setError('Canvas belum dapat dimuat. Periksa koneksi dan izin lampiran.');});
+  return()=>{live=false;c.abort();};
+ },[id,version]);
+ if(error)return <div className="notice"><p role="status">{error}</p><Button type="button" variant="outline" onClick={()=>setVersion(v=>v+1)}>Coba muat canvas</Button></div>;
+ return url?<Image src={url} alt="Canvas jawaban peserta" width={1200} height={800} unoptimized style={{width:'100%',height:'auto'}} onError={()=>setError('Canvas belum dapat ditampilkan.')}/>:<p role="status">Memuat canvas…</p>;
 }

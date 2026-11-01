@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.24 — Audit Ujian dan bank soal.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.25 — Audit Hasil dan koreksi.
+
+## Audit Hasil dan koreksi — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/results` dan komponen bersama `/dashboard/analytics` mempertahankan R/C/U penilaian dalam can_grade, publikasi hanya Admin, kop laporan hanya Admin, tanpa D ledger. Koreksi tetap memanggil RPC results_command dengan expected_revision dan request_id, tanpa mengganti snapshot soal atau engine nilai. Rubrik per kriteria tetap melalui ruang koreksi/moderasi yang tersedia.
+
+Daftar/detail, filter, kop, job, AI dan lampiran memakai validasi kontrak, batas waktu serta penjagaan lifecycle. Respons list lama ditolak dan error tidak dianggap data kosong. Pilihan dibatasi 500, dipertahankan antar halaman, dibersihkan saat filter berubah; pagination dikoreksi setelah jumlah hasil menyusut dan pilihan ujian aktif tetap memiliki opsi. Operasi memakai lock sinkron, fieldset dan pencegahan tutup modal selama pending. Hasil tak pasti/konflik diarahkan ke refresh terkoordinasi sebelum pengiriman ulang; tidak ada retry mutation otomatis.
+
+Detail/manual tidak bergantung pada suksesnya pembacaan penyedia AI. Nilai kosong tetap pending; nol sah; nilai bukan angka/di luar batas ditolak. Alasan revisi nilai lama kini memiliki field dan validasi sesuai aturan database. AI hanya untuk esai non-rubrik dengan penyedia aktif; saran kedaluwarsa atau peserta diskualifikasi tidak dapat disetujui dari UI. Canvas dan lampiran memiliki feedback gagal/coba ulang.
+
+Koreksi batch membaca detail maksimal empat permintaan bersamaan dan berhenti menjadwalkan saat gagal/unmount; pilihan soal dibedakan menurut ID dan versi snapshot, mengeluarkan diskualifikasi/rubrik kriteria dari koreksi sederhana. Publikasi meminta konfirmasi bahwa efeknya mencakup seluruh peserta pada ujian terkait, bukan hanya baris dicentang; hasil parsial antar ujian dilaporkan dan sisa pengiriman dihentikan saat gagal. Pengaturan kop memakai draft yang dibuang bila dibatalkan. Poll job single-flight mempertahankan status terakhir saat gagal; unduh tetap memeriksa akses server.
+
+API memvalidasi page/JSON/ukuran byte, pasangan nilai unik, revisi wajib untuk rekalkulasi, nilai edit AI wajib dan publikasi Admin sebelum RPC. Respons kosong/transport gagal tidak dianggap sukses, SQL internal disamarkan dan worker tidak dijadwalkan tanpa ID laporan valid. API/receipt bisnis, private ledger, laporan PDF/XLSX, kepemilikan job, audit dan lease/version pinning tetap dipertahankan. Tidak ada halaman, role, dependency, migrasi database atau Edge Function baru. Tabel sticky/scroll internal, reflow toolbar/dialog dan feedback disempurnakan; batas uji ada di `docs/results-audit.md`.
 
 ## Audit Ujian dan bank soal — 1 November 2026
 
@@ -314,7 +326,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 5 | Pengguna | `/dashboard/users` | Cari/filter/sort/paginasi pengguna; tambah akun, impor, edit nama, status/arsip, serta kirim ulang undangan. | Admin, Guru dalam konteks staf | Admin C/R/U dan arsip; Guru C/R/U terbatas pada siswa berizin; tidak ada D permanen pengguna. |
 | 6 | Data master | `/dashboard/master-data` | Mengelola kelas/mapel, penugasan guru dan keanggotaan siswa; pencarian, pagination, status/arsip dan pratinjau tambah massal. | Admin, Guru dalam konteks staf | Admin C/R/U; Guru R sesuai cakupan; D tidak disediakan endpoint ini. |
 | 7 | Ujian dan bank soal | `/dashboard/exams` | Jadwal, kelas peserta, PIN, konfigurasi lima tipe, periode input, penyusunan/impor/salin soal, versi/pratinjau; validasi kontrak, lock operasi, pemulihan error dan tabel/modal responsif. | Admin, Guru dalam konteks staf | Admin mengelola ujian dan soal; Guru mengelola soal pada ujian berizin. Arsip terpisah dari D. |
-| 8 | Hasil dan koreksi | `/dashboard/results` | Daftar/detail hasil, koreksi esai, rekalkulasi, publikasi, riwayat dan saran AI bila tersedia. | Admin, Guru dalam konteks staf | R dan C/U penilaian sesuai cakupan; publikasi hanya Admin; tidak ada D ledger. |
+| 8 | Hasil dan koreksi | `/dashboard/results` | Daftar/detail, koreksi esai dan alasan revisi, batch per versi snapshot, rekalkulasi, publikasi seluruh ujian, riwayat/AI dan pemulihan error; tabel/modal responsif. | Admin, Guru dalam konteks staf | R dan C/U penilaian sesuai cakupan; publikasi hanya Admin; tidak ada D ledger. |
 | 9 | Analitik dan laporan | `/dashboard/analytics` | Analisis kelompok peserta dan pembuatan/unduh laporan PDF/XLSX. Memakai komponen hasil yang sama, dengan analitik didahulukan. | Admin, Guru dalam konteks staf | R analitik, C pekerjaan ekspor; kop laporan C/U hanya Admin. Hak koreksi mengikuti modul hasil yang sama. |
 | 10 | Peninjauan/monitoring ujian | `/dashboard/monitor` | Status peserta, kejadian integritas, tindakan operasional, pesan dan riwayat tindakan. | Admin, Guru dalam konteks staf | R sesuai cakupan; Admin dapat reset/unlock/diskualifikasi; Guru staf biasa tidak otomatis boleh intervensi. C pesan sesuai penerima berizin; R bantuan, U tanggapan sesuai hak pengawas; dispensasi waktu hanya Admin. |
 | 11 | Media soal | `/dashboard/media` | Daftar, unggah/impor sumber media, akses media dan pembersihan berkas yang tidak dirujuk. | Admin, Guru dalam konteks staf | C/R/D bersyarat; Guru atas media miliknya, Admin dalam organisasi. Tidak ada edit isi berkas umum. |
