@@ -1,21 +1,24 @@
+import { RoleActions } from "../../components/dashboard/role-actions";
+import { GradingPriority } from "../../components/dashboard/grading-priority";
 import { PageHeading } from "../../components/layout/page-heading";
 import { Workbench } from "../../components/workflow/workbench";
 import { actor } from "../../lib/auth/actor";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { Button } from "../../components/ui/button";
 export default async function Dashboard() {
   const a = await actor();
   if (!a) redirect("/login");
-  const results = await Promise.all(
+  const admin = a.role === "admin";
+  const results = admin ? await Promise.all(
     ["profiles", "classes", "subjects"].map((t) =>
       a.client.from(t).select("id", { head: true, count: "exact" }),
     ),
-  );
+  ) : [];
   return (
     <>
-      <PageHeading title="Ringkasan madrasah" description="Statistik sesuai cakupan akses akun Anda." />
-      <div className="cards">
+      <PageHeading title={admin ? "Dashboard Admin" : "Dashboard Guru"} description={admin ? "Kesiapan ujian dan layanan madrasah." : "Persiapan soal, koreksi dan hasil dalam penugasan Anda."} />
+      <RoleActions role={admin ? "admin" : "teacher"} />
+      {!admin && <GradingPriority />}
+      {admin && <div className="cards">
         {results.map((r, i) => (
           <section className="panel" key={i}>
             <h2>{["Pengguna", "Kelas", "Mata pelajaran"][i]}</h2>
@@ -23,19 +26,8 @@ export default async function Dashboard() {
             {r.error ? <p>Data belum dapat dimuat.</p> : null}
           </section>
         ))}
-      </div>
-      <Workbench />
-      <section className="panel">
-        <h2>Kelola kegiatan ujian</h2>
-        <p>
-          Akses data akademik dan penyusunan ujian dari satu ruang kerja.
-        </p>
-        <div className="actions">
-          <Button asChild><Link href="/dashboard/exams">Ujian & bank soal</Link></Button>
-          <Button asChild variant="outline"><Link href="/dashboard/master-data">Data akademik</Link></Button>
-          <Button asChild variant="outline"><Link href="/dashboard/users">Pengguna</Link></Button>
-        </div>
-      </section>
+      </div>}
+      <Workbench role={admin ? "admin" : "teacher"} />
     </>
   );
 }

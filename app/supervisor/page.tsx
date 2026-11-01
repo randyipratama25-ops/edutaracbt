@@ -1,3 +1,4 @@
+import { RoleActions } from "../../components/dashboard/role-actions";
 import { CardsPanel } from "../../components/operations/cards";
 import { OperationsPanel } from "../../components/operations/panel";
 import { redirect } from "next/navigation";
@@ -10,8 +11,9 @@ export default async function Supervisor() {
   return (
     <main id="main-content" tabIndex={-1} className="workspace supervisor-workspace">
       <header className="student-portal-heading"><div><h1>Ruang pengawasan</h1><p className="muted">{a.full_name}</p></div><LogoutButton /></header>
-      <OperationsPanel />
-      <details>
+      <RoleActions role="supervisor" />
+      <section id="pelaksanaan" aria-label="Pelaksanaan ujian"><OperationsPanel /></section>
+      <details id="kartu-peserta">
         <summary>Kartu peserta</summary>
         <CardsPanel />
       </details>

@@ -1,6 +1,12 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.9 — Penyederhanaan UI global.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.10 — Dashboard per peran.
+
+## Dashboard per peran — 1 November 2026
+
+Halaman tetap 23. `/dashboard` memisahkan prioritas Admin (persiapan, monitoring, penerimaan operasional dan statistik organisasi) dan Guru (bank soal, koreksi, hasil, jumlah hasil peserta pending sesuai can_grade serta agenda sesuai can_author). Guru tidak menjalankan query statistik organisasi pada halaman ini. Perbedaan cakupan penyusunan seluruh kelas–mapel dan penilaian snapshot dipertahankan.
+
+`/supervisor` menampilkan pintasan pelaksanaan/bantuan/kartu pada modul yang tetap tunduk pada penugasan efektif. `/student` menampilkan ringkasan dari daftar ujian sendiri yang telah diterima: belum dimulai, attempt belum final dan dikumpulkan. Ringkasan bukan izin mulai ujian dan bukan penentu deadline. Loading/error tidak dianggap nol. Tidak ada endpoint, hak CRUD atau skema baru; migrasi tidak diperlukan.
 
 ## Penyederhanaan UI global — 1 November 2026
 

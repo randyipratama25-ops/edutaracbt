@@ -152,6 +152,11 @@ export function StudentPortal({ studentId }: { studentId: string }) {
       {listState === "loading" && <section aria-busy="true" aria-label="Memuat daftar ujian" className="stack"><div className="skeleton skeleton-card" /><p role="status">Memuat ujian…</p></section>}
       {listState === "error" && <section className="empty-state"><h2>Daftar ujian belum dapat dimuat</h2><p>Periksa koneksi, lalu coba kembali.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Coba muat ulang</Button></section>}
       {listState === "ready" && exams.length === 0 && <section className="empty-state"><ClipboardList size={40} aria-hidden="true" /><h2>Belum ada ujian</h2><p>Ujian untuk kelas Anda akan muncul di sini setelah dijadwalkan.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Periksa lagi</Button></section>}
+      {listState === "ready" && exams.length > 0 && <section className="role-actions" aria-label="Ringkasan ujian saya">
+        <div className="role-action"><strong>Belum dimulai</strong><span className="metric">{exams.filter(e=>!e.attempt && e.status!=="closed").length}</span><span>Periksa jadwal dan siapkan PIN pengawas.</span></div>
+        <div className="role-action"><strong>Perlu dilanjutkan</strong><span className="metric">{exams.filter(e=>e.attempt && !e.attempt.finalized_at).length}</span><span>Gunakan tombol Lanjutkan pada kartu ujian.</span></div>
+        <div className="role-action"><strong>Sudah dikumpulkan</strong><span className="metric">{exams.filter(e=>e.attempt?.finalized_at).length}</span><span>Hasil tersedia setelah dipublikasikan.</span></div>
+      </section>}
       <div className="student-exam-list">
       {listState === "ready" && exams.map((e) => (
         <section className="panel stack exam-card" key={e.id}>
