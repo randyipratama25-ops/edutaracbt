@@ -1,4 +1,5 @@
 "use client";
+import { DevicePreflight } from "./device-preflight";
 import { StudentHelp } from "../workflow/help";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -60,6 +61,7 @@ function terminal(data: unknown): data is Attempt {
   return !!data && typeof data === "object" && "id" in data && "status" in data;
 }
 export function StudentPortal({ studentId }: { studentId: string }) {
+  const [deviceReady, setDeviceReady] = useState(false);
   const [exams, setExams] = useState<Exam[]>([]),
     [attempt, setAttempt] = useState<Attempt | null>(null),
     [client, setClient] = useState(""),
@@ -69,7 +71,13 @@ export function StudentPortal({ studentId }: { studentId: string }) {
     [reloadKey, setReloadKey] = useState(0),
     [listVersion, setListVersion] = useState(0),
     [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
+  const deviceUntil = useRef(0);
+  const updateDeviceReady = useCallback((ready: boolean, expiresAt: number) => {
+    deviceUntil.current = expiresAt;
+    setDeviceReady(ready);
+  }, []);
   useEffect(() => {
+    if (typeof crypto?.randomUUID !== "function") { setMessage("Buka aplikasi melalui HTTPS di browser terbaru."); return; }
     try {
       let id = sessionStorage.getItem("edutara_attempt_client");
       if (!id) {
@@ -157,6 +165,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
         <div className="role-action"><strong>Perlu dilanjutkan</strong><span className="metric">{exams.filter(e=>e.attempt && !e.attempt.finalized_at).length}</span><span>Gunakan tombol Lanjutkan pada kartu ujian.</span></div>
         <div className="role-action"><strong>Sudah dikumpulkan</strong><span className="metric">{exams.filter(e=>e.attempt?.finalized_at).length}</span><span>Hasil tersedia setelah dipublikasikan.</span></div>
       </section>}
+      {listState === "ready" && exams.some(e => !e.attempt && e.status !== "closed") && <DevicePreflight onReadyChange={updateDeviceReady} />}
       <div className="student-exam-list">
       {listState === "ready" && exams.map((e) => (
         <section className="panel stack exam-card" key={e.id}>
@@ -188,6 +197,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
               className="toolbar"
               onSubmit={(ev) => {
                 ev.preventDefault();
+                if (!deviceReady || performance.now() >= deviceUntil.current || !navigator.onLine) { setMessage("Selesaikan pemeriksaan perangkat sebelum memulai ujian baru."); return; }
                 const pin = new FormData(ev.currentTarget).get("pin");
                 void open({
                   action: "start",
@@ -208,7 +218,8 @@ export function StudentPortal({ studentId }: { studentId: string }) {
                   autoComplete="off"
                 />
               </label>
-              <Button disabled={busy || !client}>Mulai ujian</Button>
+              <Button disabled={busy || !client || !deviceReady}>Mulai ujian</Button>
+              {!deviceReady && <p className="muted">Selesaikan pemeriksaan perangkat di atas terlebih dahulu.</p>}
             </form>
           )}
         </section>
