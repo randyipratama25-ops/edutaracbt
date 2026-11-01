@@ -1,4 +1,6 @@
 "use client";
+import {ListFilters, SearchField} from "../ui/list-filters";
+import {matchesSearch} from "../../lib/lists/search";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -346,7 +348,7 @@ export function AuthoringPanel() {
   const toggle = (xs: string[], id: string) =>
     xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id];
   const shown = (data?.questions || []).filter((q) =>
-    q.payload?.stem.toLowerCase().includes(questionSearch.toLowerCase()),
+    matchesSearch(q.payload?.stem||"",questionSearch),
   );
   if (!data)
     return (
@@ -373,13 +375,7 @@ export function AuthoringPanel() {
             Muat ulang
           </Button>
         </div>
-        <label>
-          Cari ujian
-          <input
-            value={examSearch}
-            onChange={(e) => setExamSearch(e.target.value)}
-          />
-        </label>
+        <ListFilters label="ujian" active={[examSearch&&"Pencarian"].filter(Boolean) as string[]} onReset={()=>{setExamSearch("");}} total={data.exams.filter(e=>matchesSearch(e.title,examSearch)).length} loading={loading}><SearchField label="Cari ujian" value={examSearch} maxLength={150} onChange={value=>{setExamSearch(value);}} /></ListFilters>
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel ujian dan soal; geser untuk melihat kolom lain">
           <table>
             <thead>
@@ -394,7 +390,7 @@ export function AuthoringPanel() {
             <tbody>
               {data.exams
                 .filter((e) =>
-                  e.title.toLowerCase().includes(examSearch.toLowerCase()),
+                  matchesSearch(e.title,examSearch),
                 )
                 .map((e) => {
                   const now = Date.parse(data.serverNow);
@@ -587,16 +583,7 @@ export function AuthoringPanel() {
               <Button disabled={busy}>Duplikasi jadwal</Button>
             </form>
           )}
-          <label>
-            Cari isi soal
-            <input
-              value={questionSearch}
-              onChange={(e) => {
-                setQuestionSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
+          <ListFilters label="soal ujian" active={[questionSearch&&"Pencarian"].filter(Boolean) as string[]} onReset={()=>{setQuestionSearch("");setPage(1);}} total={shown.length} loading={loading}><SearchField label="Cari isi soal" value={questionSearch} maxLength={150} onChange={value=>{setQuestionSearch(value);setPage(1);}} /></ListFilters>
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel ujian dan soal; geser untuk melihat kolom lain">
             <table>
               <thead>

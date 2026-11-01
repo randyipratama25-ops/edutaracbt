@@ -1,4 +1,6 @@
 "use client";
+import {ListFilters, SearchField} from "../ui/list-filters";
+import {matchesSearch} from "../../lib/lists/search";
 import { IncidentPanel } from "../workflow/incidents";
 import {
   useCallback,
@@ -79,6 +81,7 @@ export function OperationsPanel({
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState(""),
+    [listLoading,setListLoading]=useState(true),[listError,setListError]=useState(""),
     [selected, setSelected] = useState<string[]>([]),
     [page, setPage] = useState(1),
     [dialog, setDialog] = useState(""),
@@ -98,6 +101,7 @@ export function OperationsPanel({
     [history, setHistory] = useState<unknown>(null);
   const seq = useRef(0);
   const retry = useRef<{signature:string;id:string}|null>(null);
+  const invalidateRequests=useCallback(()=>{seq.current++;},[]);
   const load = useCallback(async () => {
     if (!exam) return;
     const s = ++seq.current;
@@ -109,16 +113,16 @@ export function OperationsPanel({
         const d = await api<Row[]>(
           "/api/operations?action=monitor&exam=" + exam,
         );
-        if (s === seq.current) setRows(d);
+        if (s === seq.current) {setRows(d);setListError("");}
       }
     } catch (e) {
       if (s === seq.current) {
         setRows([]);
         setRooms(empty);
         setSelected([]);
-        setMessage(e instanceof Error ? e.message : "Monitor gagal dimuat.");
+        setListError(e instanceof Error ? e.message : "Monitor gagal dimuat.");
       }
-    }
+    }finally{if(s===seq.current)setListLoading(false);}
   }, [exam, mode]);
   useEffect(() => {
     let active = true;
@@ -135,8 +139,8 @@ export function OperationsPanel({
     };
   }, []);
   useEffect(() => {
-    void load();
-  }, [load]);
+    setListLoading(true);void load();return()=>{invalidateRequests();};
+  }, [load,invalidateRequests]);
   useLive(load);
   function open(action: string, id = "") {
     setDialog(action);
@@ -235,12 +239,10 @@ export function OperationsPanel({
   }
   const actionRows=rows.filter(r=>selected.includes(r.student_id)&&r.attempt_id);
   const canAct=actionRows.length>0&&actionRows.length<=100&&actionRows.every(r=>r.can_act);
-  const visible = rows.filter(
+  const visible = (listLoading||listError?[]:rows).filter(
     (r) =>
       (!filter || r.status === filter) &&
-      (r.student + " " + r.username + " " + (r.room || ""))
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+      matchesSearch(r.student + " " + r.username + " " + (r.room || ""),search),
   );
   const shown = visible.slice((page - 1) * 25, page * 25);
   const staffName = (id: string | null) =>
@@ -463,17 +465,8 @@ export function OperationsPanel({
       {mode === "monitor" && exam && (
         <>
           <IncidentPanel key={exam} exam={exam} rows={rows} admin={!!options?.admin} onChanged={load} />
-          <div className="toolbar">
-            <label>
-              Cari siswa/ruang
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </label>
+          <ListFilters label="peserta ujian" active={[search&&"Pencarian",filter&&"Status"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFilter("");setPage(1);}} total={visible.length} loading={listLoading} error={listError}>
+            <SearchField label="Cari siswa/ruang" value={search} maxLength={150} onChange={value=>{setSearch(value);setPage(1);}} />
             <label>
               Status
               <select
@@ -491,7 +484,7 @@ export function OperationsPanel({
                 ))}
               </select>
             </label>
-          </div>
+          </ListFilters>
           <p>
             {visible.length} peserta ·{" "}
             {rows.filter((r) => r.status === "in_progress").length} aktif ·{" "}
@@ -649,7 +642,7 @@ export function OperationsPanel({
               </tbody>
             </table>
           </div>
-          {!visible.length && (
+          {!listLoading&&!listError&&!visible.length && (
             <p>Belum ada peserta dalam cakupan/filter ini.</p>
           )}
           <div className="actions">

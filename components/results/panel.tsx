@@ -1,4 +1,5 @@
 "use client";
+import {ListFilters, SearchField} from "../ui/list-filters";
 import { useEffect, useCallback, useRef, useState, type FormEvent } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -60,6 +61,7 @@ export function ResultsPanel({
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
+    [listError,setListError] = useState(""),
     [canPublish, setCanPublish] = useState(false),
     [points, setPoints] = useState<Record<string, string>>({}),
     [comments, setComments] = useState<Record<string, string>>({});
@@ -82,13 +84,14 @@ export function ResultsPanel({
     [aiEdit, setAiEdit] = useState<Record<string, string>>({});
   const sequence = useRef(0);
   const ids = Object.keys(selected);
+  const invalidateRequests=useCallback(()=>{sequence.current++;},[]);
   const load = useCallback(async () => {
     const seq = ++sequence.current;
-    setLoading(true);
+    setLoading(true);setListError("");
     try {
       const q = new URLSearchParams({
         page: String(page),
-        search,
+        search:search.trim(),
         state,
         sort,
       });
@@ -102,14 +105,15 @@ export function ResultsPanel({
         setCanPublish(d.can_publish);
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Hasil belum dapat dimuat.");
+      if(seq===sequence.current){setRows([]);setTotal(0);setListError(e instanceof Error ? e.message : "Hasil belum dapat dimuat.");}
     } finally {
       if (seq === sequence.current) setLoading(false);
     }
   }, [page, search, state, sort, classId, subjectId, examId]);
   useEffect(() => {
-    void load();
-  }, [load]);
+    setLoading(true);const timer=setTimeout(()=>void load(),250);
+    return()=>{clearTimeout(timer);invalidateRequests();};
+  }, [load,invalidateRequests]);
   useEffect(() => {
     void request("/api/admin/master")
       .then((d) => setMasters({ classes: d.classes, subjects: d.subjects }))
@@ -214,17 +218,8 @@ export function ResultsPanel({
         {message}
       </p>
       <section className="panel stack">
-        <div className="toolbar">
-          <label>
-            Cari siswa/username
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
+        <ListFilters label="hasil ujian" active={[search&&"Pencarian",classId&&"Kelas",subjectId&&"Mapel",examId&&"Ujian",state!=="all"&&"Status",sort!=="name"&&"Urutan"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setClassId("");setSubjectId("");setExamId("");setState("all");setSort("name");setPage(1);}} total={total} loading={loading} error={listError}>
+          <SearchField label="Cari siswa/username" value={search} maxLength={150} onChange={value=>{setSearch(value);setPage(1);}} />
           <label>
             Kelas
             <select
@@ -299,14 +294,14 @@ export function ResultsPanel({
               <option value="score_desc">Nilai tertinggi</option>
             </select>
           </label>
-        </div>
+        </ListFilters>
         <div className="actions">
           <Button variant="outline" onClick={() => void load()}>
             Muat ulang
           </Button>
           <Button
             variant="outline"
-            disabled={!rows.length}
+            disabled={loading||!!listError||!rows.length}
             onClick={() =>
               setSelected((s) => ({
                 ...s,
@@ -335,7 +330,7 @@ export function ResultsPanel({
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {(loading||listError?[]:rows).map((r) => (
                 <tr key={r.id}>
                   <td>
                     <input
@@ -390,18 +385,18 @@ export function ResultsPanel({
             </tbody>
           </table>
         </div>
-        {!loading && !rows.length && (
+        {!loading && !listError && !rows.length && (
           <p>Belum ada hasil sesuai filter dan cakupan akses.</p>
         )}
         <div className="actions">
-          <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
+          <Button disabled={page === 1||loading||!!listError} onClick={() => setPage(page - 1)}>
             Sebelumnya
           </Button>
           <span>
             Halaman {page} · {total} hasil
           </span>
           <Button
-            disabled={page * 25 >= total}
+            disabled={page * 25 >= total||loading||!!listError}
             onClick={() => setPage(page + 1)}
           >
             Berikutnya

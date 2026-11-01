@@ -1,4 +1,6 @@
 "use client";
+import {ListFilters, SearchField} from "../ui/list-filters";
+import {matchesSearch} from "../../lib/lists/search";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -106,12 +108,12 @@ export function MasterPanel() {
     );
   if (!data) return <p role="status">Memuat data master…</p>;
   const rows = data[kind]
-    .filter((x) => x.name.toLocaleLowerCase().includes(q.toLocaleLowerCase()))
+    .filter((x) => matchesSearch(x.name,q))
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div className="stack">
       <section className="panel">
-        <div className="toolbar">
+        <ListFilters label="data akademik" active={[q&&"Pencarian"].filter(Boolean) as string[]} onReset={()=>{setQ("");setPage(1);}} total={rows.length}>
           <label>
             Jenis data
             <select
@@ -125,16 +127,7 @@ export function MasterPanel() {
               <option value="subjects">Mata pelajaran</option>
             </select>
           </label>
-          <label>
-            Pencarian
-            <input
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
+          <SearchField label="Pencarian" value={q} maxLength={150} onChange={value=>{setQ(value);setPage(1);}} />
           {data.canManage ? (
             <Button
               onClick={() => {
@@ -148,7 +141,7 @@ export function MasterPanel() {
           <Button variant="outline" onClick={() => setVersion((v) => v + 1)}>
             Muat ulang
           </Button>
-        </div>
+        </ListFilters>
         <p role="status">{message}</p>
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel data akademik; geser untuk melihat kolom lain">
           <table>

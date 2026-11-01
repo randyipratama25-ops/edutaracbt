@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.13 — Pusat bantuan sesuai konteks.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.14 — Pencarian dan filter yang konsisten.
+
+## Pencarian dan filter yang konsisten — 1 November 2026
+
+Inventaris tetap **23 halaman**. Sepuluh panel daftar memakai kontrol bersama: Pengguna, Data Akademik, Ujian/Soal, Bank Soal, Monitoring (termasuk portal Pengawas), Kartu Peserta (termasuk portal Pengawas), Media, Hasil/Analitik, Audit, serta antrean koreksi. Pencarian bertipe search dengan label, tombol hapus/fokus kembali, batas panjang sesuai endpoint (80/100/150), ringkasan hasil, penanda kategori filter aktif dan Reset filter bertipe button.
+
+Perubahan filter pada daftar berhalaman kembali ke halaman pertama. Reset membersihkan pencarian/filter/urutan pada cakupan daftar; jenis data master, ujian operasional kartu/monitor, serta tampilan/template/format keluaran tidak diubah. Reset tidak mengubah data, jawaban, penilaian atau pilihan massal; tombol pilihan tetap terpisah. Hasil/Analitik dapat mereset kelas, mapel, ujian, status dan urutan ke kondisi awal.
+
+Daftar server Pengguna, Bank, Media, Hasil dan Audit memakai jeda input 250 ms dengan pembatalan/invalidation respons lama. Status memuat, gagal dan hasil kosong dibedakan; baris lama disembunyikan selama pemuatan filter pada daftar server tersebut. Kegagalan tidak dianggap pencarian sukses tanpa hasil. Media kini mengirim pencarian nama/path berkas ke kemampuan endpoint yang sudah tersedia. Pencarian lokal memakai substring literal tanpa membedakan kapital dan mengabaikan spasi awal/akhir. Audit memvalidasi urutan tanggal sebelum permintaan.
+
+Tidak ada halaman, endpoint, tabel, skema, migrasi atau perubahan hak CRUD baru. Query tetap melalui pemeriksaan role/organisasi/cakupan server yang sudah ada; filter UI tidak memperluas akses atau jumlah data yang diizinkan. Tidak ada persistensi/riwayat pencarian baru. Bukti implementasi: `docs/consistent-search-filters.md`.
 
 ## Pusat bantuan sesuai konteks — 1 November 2026
 

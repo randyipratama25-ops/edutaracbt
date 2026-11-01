@@ -1,4 +1,6 @@
 "use client";
+import {ListFilters, SearchField} from "../ui/list-filters";
+import {matchesSearch} from "../../lib/lists/search";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useLive, type Options } from "./shared";
 import { Button } from "../ui/button";
@@ -25,7 +27,8 @@ export function CardsPanel() {
     [jobs, setJobs] = useState<Job[]>([]),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [search, setSearch] = useState("");
+    [search, setSearch] = useState(""),[listLoading,setListLoading]=useState(true),[listError,setListError]=useState("");
+  const sequence=useRef(0);
   useEffect(() => {
     void api<Options>("/api/operations")
       .then((d) => {
@@ -34,23 +37,17 @@ export function CardsPanel() {
       })
       .catch((e) => setMessage(e.message));
   }, []);
+  const invalidateRequests=useCallback(()=>{sequence.current++;},[]);
   const load = useCallback(async () => {
+    const seq=++sequence.current;
     try {
-      const jobs = await api<Job[]>("/api/cards");
-      setJobs(jobs);
-      if (exam)
-        setRows(
-          await api<Student[]>("/api/operations?action=monitor&exam=" + exam),
-        );
-    } catch (e) {
-      setRows([]);
-      setJobs([]);
-      setMessage(e instanceof Error ? e.message : "Data gagal dimuat.");
-    }
+      const [jobs,students]=await Promise.all([api<Job[]>("/api/cards"),exam?api<Student[]>("/api/operations?action=monitor&exam="+exam):Promise.resolve([])]);
+      if(seq!==sequence.current)return;
+      setJobs(jobs);setRows(students);setListError("");
+    } catch(e){if(seq===sequence.current){setRows([]);setJobs([]);setListError(e instanceof Error?e.message:"Data gagal dimuat.");}}
+    finally{if(seq===sequence.current)setListLoading(false);}
   }, [exam]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(()=>{setListLoading(true);void load();return()=>{invalidateRequests();};},[load,invalidateRequests]);
   useLive(load);
   const retry=useRef<{signature:string;id:string}|null>(null);
   async function run(input: object) {
@@ -69,8 +66,8 @@ export function CardsPanel() {
       setBusy(false);
     }
   }
-  const shown = rows.filter((r) =>
-    (r.student + " " + r.username).toLowerCase().includes(search.toLowerCase()),
+  const shown = (listLoading||listError?[]:rows).filter((r) =>
+    matchesSearch(r.student + " " + r.username,search),
   );
   return (
     <section className="panel stack">
@@ -78,7 +75,7 @@ export function CardsPanel() {
         Kartu memuat identitas, username, ruang dan jadwal. Kata sandi akun dan
         PIN tidak dicetak.
       </p>
-      <div className="toolbar">
+      <ListFilters label="kartu peserta" active={[search&&"Pencarian"].filter(Boolean) as string[]} onReset={()=>setSearch("")} total={shown.length} loading={listLoading} error={listError}>
         <label>
           Ujian
           <select
@@ -114,11 +111,8 @@ export function CardsPanel() {
             <option value="zip">ZIP PDF per siswa · maks. 50</option>
           </select>
         </label>
-        <label>
-          Cari siswa
-          <input value={search} onChange={(e) => setSearch(e.target.value)} />
-        </label>
-      </div>
+        <SearchField label="Cari siswa" value={search} maxLength={150} onChange={value=>{setSearch(value);}} />
+      </ListFilters>
       <div className="actions">
         <Button
           variant="outline"
