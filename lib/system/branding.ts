@@ -15,7 +15,10 @@ export async function branding() {
   try {
     const client = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: { fetch: (input, init) => fetch(input, { ...init, signal: controller.signal }) },
+      global: {
+        fetch: (input, init) =>
+          fetch(input, { ...init, signal: controller.signal }),
+      },
     });
     const r = await client.rpc("app_branding");
     if (r.error || !r.data) return fallback;
@@ -37,12 +40,24 @@ export async function branding() {
       get(r.data.background_id),
     ]);
     return {
-      name: typeof r.data.name === "string" && r.data.name.trim() && r.data.name.length <= 100 ? r.data.name : fallback.name,
-      subtitle: typeof r.data.subtitle === "string" && r.data.subtitle.trim() && r.data.subtitle.length <= 200 ? r.data.subtitle : fallback.subtitle,
+      name:
+        typeof r.data.name === "string" &&
+        r.data.name.trim() &&
+        r.data.name.length <= 100
+          ? r.data.name
+          : fallback.name,
+      subtitle:
+        typeof r.data.subtitle === "string" &&
+        r.data.subtitle.trim() &&
+        r.data.subtitle.length <= 200
+          ? r.data.subtitle
+          : fallback.subtitle,
       logo,
       background,
     };
   } catch {
     return fallback;
-  } finally { clearTimeout(timer); }
+  } finally {
+    clearTimeout(timer);
+  }
 }
