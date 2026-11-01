@@ -1,0 +1,28 @@
+name: Weekly isolated recovery drill
+on:
+  schedule:
+    - cron: '0 22 * * 0' # Monday 05:00 WIB; GitHub schedules can be delayed.
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Run isolated restore and operational regressions without production credentials
+        run: npx --yes --package=node@24.10.0 --package=npm@11.9.0 -c 'npm ci --no-audit --no-fund && npm run operations:drill'
+      - name: Publish summary
+        if: always()
+        run: |
+          echo '## Isolated recovery drill' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f artifacts/operations/periodic-drill.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/operations/periodic-drill.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Drill did not finish; inspect workflow logs.' >> "$GITHUB_STEP_SUMMARY"
+          fi

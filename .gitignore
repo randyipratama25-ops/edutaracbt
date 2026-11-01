@@ -11,3 +11,5 @@ legacy-export*.json
 backup-downloads/
 
 .next-stage2-*/
+
+artifacts/operations/

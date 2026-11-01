@@ -400,3 +400,6 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .notification-card h2 { margin-block:.7rem; }
 .inbox-panel [hidden] { display:none; }
 .notification-list { max-height:min(55dvh,32rem); overflow:auto; overscroll-behavior:contain; padding:6px; }
+
+.operational-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:1rem}
+.operational-grid>*{min-width:0}

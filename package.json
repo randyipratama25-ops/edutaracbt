@@ -15,9 +15,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
-    "test:database": "node scripts/stage4-integration.mjs && node scripts/stage5-integration.mjs && node scripts/stage6-integration.mjs && node scripts/release/rollback-drill.mjs && node scripts/acceptance/retention-integration.mjs && node scripts/answer-session-integration.mjs && node scripts/durable-recovery-integration.mjs && node scripts/workflow-integration.mjs && node scripts/bank-assessment-integration.mjs && node scripts/advanced-features-integration.mjs && node scripts/notification-integration.mjs",
+    "test:database": "node scripts/stage4-integration.mjs && node scripts/stage5-integration.mjs && node scripts/stage6-integration.mjs && node scripts/release/rollback-drill.mjs && node scripts/acceptance/retention-integration.mjs && node scripts/answer-session-integration.mjs && node scripts/durable-recovery-integration.mjs && node scripts/workflow-integration.mjs && node scripts/bank-assessment-integration.mjs && node scripts/advanced-features-integration.mjs && node scripts/notification-integration.mjs && node scripts/operations/integration.mjs",
     "release:check": "node scripts/release/gate.mjs",
-    "test:accessibility": "node scripts/ui/accessibility-browser.mjs"
+    "test:accessibility": "node scripts/ui/accessibility-browser.mjs",
+    "operations:drill": "node scripts/operations/periodic-drill.mjs",
+    "operations:restore": "node scripts/operations/restore-artifact.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.3.1",
