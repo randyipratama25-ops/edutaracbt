@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useRef } from "react";
+export class ApiError extends Error {
+  constructor(message: string, public status?: number) { super(message); }
+}
 export async function api<T>(url: string, input?: object, options?: {signal?: AbortSignal; validateEnvelope?: boolean}): Promise<T> {
   const r = await fetch(
     url,
@@ -13,7 +16,7 @@ export async function api<T>(url: string, input?: object, options?: {signal?: Ab
       : { cache: "no-store", signal: options?.signal },
   );
   const j = await r.json();
-  if (!r.ok) throw Error(j.error?.message || "Permintaan gagal.");
+  if (!r.ok) throw new ApiError(typeof j?.error?.message === "string" ? j.error.message : "Permintaan gagal.", r.status);
   if (options?.validateEnvelope && (!j || typeof j !== "object" || j.success !== true || !("data" in j))) throw Error("Respons tidak valid.");
   return j.data as T;
 }

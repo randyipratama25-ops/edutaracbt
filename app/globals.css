@@ -460,3 +460,14 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 /* Short desktop windows must keep every navigation/account action reachable. */
 .sidebar{overflow-y:auto}
 @media(max-height:600px) and (min-width:801px){.sidebar>.dashboard-navigation{flex:none;overflow:visible}}
+
+/* User management keeps wide data inside its own scroll region. */
+.users-page,.users-page>.panel{min-width:0}.users-page :is(p,li,strong,a,td,th),.users-dialog{overflow-wrap:anywhere}.users-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.users-heading h2,.users-import h2{margin:0}.users-page .table-wrap{margin:0}.users-table table{min-width:780px}.users-table th:first-child{width:160px;max-width:210px;white-space:normal}.users-table td:nth-child(2){min-width:180px;max-width:300px}.users-row-actions{min-width:250px;max-width:400px}.users-row-actions>.button{flex:1 1 120px}.users-pagination{justify-content:space-between}.users-pagination>span{font-size:.85rem;overflow-wrap:anywhere}.users-download{display:inline-flex;align-items:center;min-height:44px;padding:4px 0}.users-download[aria-disabled=true]{color:var(--muted);cursor:not-allowed}.users-feedback{margin:0}.users-fields{margin:0;padding:0;border:0;min-width:0}.users-fields>p{font-size:.8rem;margin:0}.users-report{max-height:360px;overflow:auto;overscroll-behavior:contain}.users-dialog .actions>.button{min-width:0}.users-dialog form{margin-top:12px}.users-page input,.users-dialog :is(input,select){min-height:46px}.users-import>p{margin:0}.users-page textarea{resize:vertical;max-height:600px;min-height:120px}
+@media(max-width:600px){.users-heading>.actions{width:100%}.users-heading>.actions>.button{flex:1 1 120px}.users-pagination{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.users-pagination>span{grid-column:1/-1;grid-row:1;text-align:center}.users-table th:first-child{min-width:105px;max-width:130px}.users-dialog .actions>.button{flex:1 1 120px}}
+/* Keep enlarged mobile text from squeezing breadcrumbs into a tall overlay. */
+@media(max-width:480px){.workspace-header{flex-wrap:wrap;gap:8px}.workspace-header>.mobile-menu{flex:none}.workspace-header>.breadcrumbs{order:3;flex-basis:100%}.workspace-header>button:not(.mobile-menu){margin-left:auto;min-width:0;max-width:calc(100% - 60px)}}
+@media(max-width:800px) and (max-height:500px){.workspace-header{position:static}}
+/* At phone widths, one action column fits beside the sticky username. */
+@media(max-width:600px){.users-table th:first-child{width:100px;min-width:90px;max-width:100px;padding-inline:8px}.users-table td:last-child{padding-inline:8px}.users-row-actions{min-width:125px;max-width:140px;flex-direction:column;align-items:stretch}.users-row-actions>.button{flex:none;width:100%;min-width:0;overflow-wrap:anywhere}}
+.users-import>button{justify-self:start}
+@media(max-width:600px){.users-import>button{width:100%;justify-self:stretch}}

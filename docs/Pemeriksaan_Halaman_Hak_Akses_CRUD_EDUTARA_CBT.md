@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.21 — Audit Ringkasan madrasah.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.22 — Audit Pengguna.
+
+## Audit Pengguna — 1 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/users` tetap bagi Admin/Guru konteks staf. Admin C/R akun, U nama/status, arsip/nonaktif dan kirim ulang undangan; Guru C siswa berkelas dalam penugasan dan R/U nama siswa berizin. Tidak ada D permanen, pengubahan password, peran, username atau email melalui edit. GET daftar tetap RLS dengan filter organisasi, 20 baris per halaman; pencarian underscore literal, filter/sort dan pemulihan halaman setelah jumlah hasil berkurang dipertahankan/diperbaiki. POST memvalidasi operasi/ID/isian dan menolak operasi Admin dari Guru sebelum meneruskan gateway; gateway tetap memeriksa kewenangan dan kelas.
+
+Daftar/kelas/kelayakan undangan memakai deadline, pembatalan dan validasi envelope/payload; kegagalan kelas terlihat dan dapat dimuat ulang. Operasi perubahan dan pratinjau memiliki lock sinkron; modal perubahan tidak ditutup di tengah request. Hasil mutation tidak pasti tidak dikirim ulang otomatis: form dikunci dan Admin diarahkan memeriksa daftar/inbox. Undangan tidak dapat tertukar antar akun saat respons lama datang; status kelayakan diperiksa ulang, cooldown lokal melengkapi cooldown/budget server yang tetap otoritatif.
+
+Impor tetap TSV maksimal 200 baris dengan pratinjau server dan laporan per baris. Jumlah kolom serta duplikat username/email diperiksa; hasil pemeriksaan server yang hilang tidak dianggap valid. Impor berjalan berurutan, berhenti pada hasil tak pasti/sesi kedaluwarsa/izin/rate limit dan menandai baris yang belum dikirim. Unmount menghentikan pengiriman berikutnya. Unduhan referensi kelas/hasil menetralkan formula spreadsheet tanpa mengubah data aplikasi.
+
+UI memakai label peran Indonesia, dialog konfirmasi status/arsip, feedback terpisah per operasi, tabel ber-scroll internal dengan kolom username sticky, serta wrapping dan kontrol sentuh. Header mobile tetap terbaca pada teks 200%, tombol aksi tidak tertutup kolom sticky, dan fokus setelah simpan/status kembali ke judul daftar. API, RLS, mekanisme invite Auth/profil/enrollment, budget, aturan Admin aktif terakhir dan semua fitur lama dipertahankan. Tidak ada skema atau migrasi database/Edge Function baru. Pembuatan akun lintas Auth/profil bukan transaksi tunggal dan UI tidak mengklaim exactly-once lintas tab/perangkat; hasil parsial tetap memerlukan pemeriksaan Admin. Rincian dan batas validasi ada di `docs/users-audit.md`; pengujian undangan/mutation memakai simulasi dan tidak mengirim email operasional.
 
 ## Audit Ringkasan madrasah — 1 November 2026
 
