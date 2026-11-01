@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import katex from "katex";
 import Image from "next/image";
 import "katex/dist/katex.min.css";
+import {z} from "zod";
+import {clientRequest} from "../../lib/client/request";
 import { Button } from "../ui/button";
 import { safeHtml, type Question } from "../../lib/authoring/schema";
 export function QuestionPreview({
@@ -68,10 +70,9 @@ function Attachment({ id, baseUrl }: { id: string; baseUrl: string }) {
     let active = true;
     const controller = new AbortController();
     setMedia(null); setError("");
-    fetch(baseUrl + "?id=" + encodeURIComponent(id), { signal: controller.signal })
-      .then(async (r) => { const j = await r.json(); if (!r.ok || !j.success || !j.data?.url) throw Error("Lampiran belum dapat dimuat."); return j; })
-      .then((j) => { if (active) setMedia(j.data); })
-      .catch(() => { if (active && !controller.signal.aborted) setError("Lampiran belum dapat dimuat. Periksa koneksi lalu coba lagi."); });
+    clientRequest(baseUrl + "?id=" + encodeURIComponent(id),undefined,z.object({url:z.url(),mime:z.string()}),controller)
+      .then((media) => { if (active) setMedia(media); })
+      .catch(() => { if (active) setError("Lampiran belum dapat dimuat. Periksa koneksi lalu coba lagi."); });
     return () => { active = false; controller.abort(); };
   }, [id, baseUrl, version]);
   if (error) return <div className="notice"><p role="status">{error}</p><Button type="button" variant="outline" onClick={() => setVersion(v => v+1)}>Coba muat lampiran</Button></div>;

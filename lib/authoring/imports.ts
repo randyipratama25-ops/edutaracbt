@@ -2,6 +2,7 @@ import { parseLegacyBlock } from "./legacy";
 import { questionSchema, type Question } from "./schema";
 export type Preview = { block: number; question?: Question; error?: string };
 export function previewImport(text: string): Preview[] {
+  if(new TextEncoder().encode(text).length>5_000_000) throw Error("Maksimal 5 MB.");
   let rows: unknown[];
   try {
     const value: unknown = JSON.parse(text);

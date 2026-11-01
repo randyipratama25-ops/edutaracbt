@@ -476,3 +476,24 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .master-page,.master-page>.panel{min-width:0}.master-page :is(p,li,th,td,a,strong),.master-dialog{overflow-wrap:anywhere}.master-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.master-heading h2,.master-page h2,.master-feedback{margin:0}.master-page .table-wrap{margin:0}.master-main-table table{min-width:440px}.master-main-table th:first-child{min-width:110px;width:40%;max-width:300px}.master-main-table td:last-child{min-width:150px}.master-fields{border:0;padding:0;margin:0;min-width:0}.master-relations table{min-width:650px}.master-relations th:first-child{min-width:130px;max-width:250px}.master-relations td:last-child{min-width:135px}.master-pagination{justify-content:space-between}.master-pagination span{font-size:.85rem}.master-bulk>button{justify-self:start}.master-page textarea{min-height:110px;max-height:500px;resize:vertical}.master-report,.master-plan{max-height:300px;overflow:auto;overscroll-behavior:contain}.master-report{border:1px solid var(--border);border-radius:9px;padding:12px}.master-report ul{margin:0;padding-left:20px}.master-dialog .actions>.button{min-width:0}.master-page :is(input,select),.master-dialog input{min-height:46px}.master-dialog input[type=checkbox]{min-height:18px}.master-dialog .check{align-items:center}.master-dialog form{margin-top:12px}
 @media(max-width:600px){.master-heading>.actions{width:100%}.master-heading .button{flex:1 1 120px}.master-pagination{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.master-pagination span{grid-column:1/-1;grid-row:1;text-align:center}.master-main-table th:first-child,.master-relations th:first-child{min-width:90px;width:95px;max-width:100px;padding-inline:8px}.master-main-table td:last-child,.master-relations td:last-child{min-width:125px;padding-inline:8px}.master-main-table .button,.master-relations .button{max-width:135px;overflow-wrap:anywhere}.master-bulk>button{width:100%;justify-self:stretch}.master-dialog .actions>.button{flex:1 1 120px}}
 .master-relations .button{min-width:125px}
+
+/* Exam authoring: contain wide data and allow controls to reflow on short/narrow screens. */
+.authoring-page,.authoring-page > *, .authoring-dialog { min-width:0; max-width:100%; }
+.authoring-controls { border:0; padding:0; margin:0; min-width:0; width:100%; }
+.authoring-page .table-wrap { max-width:100%; max-height:65dvh; overflow:auto; }
+.authoring-page table { min-width:650px; table-layout:fixed; }
+.authoring-page td,.authoring-page th { overflow-wrap:anywhere; }
+.authoring-page th { position:sticky; top:0; z-index:2; background:var(--surface,#fff); }
+.authoring-page td:first-child,.authoring-page th:first-child { width:65px; }
+.authoring-page .actions,.authoring-dialog .actions { flex-wrap:wrap; }
+.authoring-page .cards { grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr)); }
+.authoring-page .button,.authoring-dialog .button { min-height:44px; white-space:normal; overflow-wrap:anywhere; }
+.authoring-page :where(input,select,textarea),.authoring-dialog :where(input,select,textarea) { max-width:100%; min-width:0; }
+.authoring-dialog { width:min(calc(100vw - 28px),760px); overflow-x:hidden; }
+.authoring-dialog fieldset { min-width:0; }
+.authoring-dialog .question-preview { max-width:100%; }
+.authoring-page .notice { overflow-wrap:anywhere; }
+@media(max-width:600px){.authoring-page .actions > .button { flex:1 1 140px; }.authoring-dialog { padding:18px; }.authoring-dialog input[type=datetime-local] { width:100%; }}
+@media(max-width:600px){.authoring-page .toolbar{display:grid;grid-template-columns:minmax(0,1fr);}.authoring-page .toolbar>*{width:100%;min-width:0;max-width:100%;flex:none;}.authoring-page .toolbar .button{justify-self:stretch;}.authoring-page .toolbar label{flex:none;}}
+
+.authoring-page :is(h2,strong,li),.authoring-dialog :is(p,li,legend){overflow-wrap:anywhere;}
