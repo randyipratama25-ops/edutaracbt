@@ -27,7 +27,7 @@ export type ResultQuestion = {
   comment: string | null;
   source: string | null;
   criteria?:Record<string,number>;
-  revision_reason?:string;
+  revision_reason?:string | null;
 };
 export type ResultDetail = {
   attempt: {
@@ -42,7 +42,7 @@ export type ResultDetail = {
     passed: boolean | null;
     pending: number;
     class_ids: string[];
-    class_name?: string;
+    class_name?: string | null;
     started_at: string;
     finalized_at: string;
   };
@@ -50,7 +50,7 @@ export type ResultDetail = {
   ledger: {
     revision: number;
     engine_version: string;
-    actor_id: string;
+    actor_id: string | null;
     reason: string;
     score: number | null;
     earned: number;
@@ -65,7 +65,7 @@ export type ResultDetail = {
     action: string;
     points: number | null;
     comment: string | null;
-    source: string;
+    source: string | null;
     created_at: string;
     grade_revision: number;
   }[];

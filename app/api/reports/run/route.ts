@@ -1,10 +1,9 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { staff } from "../../../../lib/results/server";
+import { staff, resultData } from "../../../../lib/results/server";
 import {
   body,
   failure,
-  HttpError,
   json,
   requireOrigin,
 } from "../../../../lib/http";
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
     const r = await a.client.rpc("report_command", {
       input: { action: "status", job_id },
     });
-    if (r.error) throw new HttpError(403, r.error.message);
+    resultData(r);
     after(() => processReport(a.client, job_id));
     return json({ queued: true });
   } catch (e) {

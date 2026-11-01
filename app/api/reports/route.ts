@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { staff } from "../../../lib/results/server";
+import { staff, resultData } from "../../../lib/results/server";
 import {
   body,
   failure,
@@ -25,9 +25,8 @@ export async function GET(request: Request) {
       : s.get("job")
         ? { action: "status", job_id: z.uuid().parse(s.get("job")) }
         : { action: "list" };
-    const r = await a.client.rpc("report_command", { input });
-    if (r.error) throw new HttpError(422, r.error.message);
-    return json(r.data);
+    const r = await a.client.rpc("report_command", { input }).abortSignal(AbortSignal.timeout(15000));
+    return json(resultData(r));
   } catch (e) {
     return failure(e);
   }
@@ -37,6 +36,7 @@ export async function POST(request: Request) {
     requireOrigin(request);
     const a = await staff();
     const raw = await body(request);
+    if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new HttpError(422,"Payload harus berupa objek.");
     const input =
       raw.action === "settings"
         ? reportSettingsSchema.parse(raw)
@@ -49,10 +49,14 @@ export async function POST(request: Request) {
               .parse(raw)
           : createReportSchema.parse(raw);
     const r = await a.client.rpc("report_command", { input });
-    if (r.error) throw new HttpError(422, r.error.message);
+    resultData(r,true);
     if (r.data?.error) throw new HttpError(r.data.status || 422, r.data.error);
-    if (input.action === "create")
-      after(() => processReport(a.client, r.data.id));
+    if (input.action === "create") {
+      const receipt=z.object({id:z.uuid(),status:z.string()}).safeParse(r.data);
+      if(!receipt.success)throw new HttpError(503,"Hasil pembuatan laporan belum dapat dipastikan. Muat status ekspor sebelum mencoba lagi.");
+      after(() => processReport(a.client, receipt.data.id));
+    }
+    if(input.action==='analysis'&&!Array.isArray(r.data))throw new HttpError(503,'Data analisis belum tersedia.');
     return json(input.action === "analysis" ? analyze(r.data) : r.data);
   } catch (e) {
     return failure(e);
