@@ -38,7 +38,9 @@ export function parseUserImport(text: string) {
   if (lines.length > 200) throw new Error("Maksimal 200 baris per impor.");
   if (!text.trim()) return [];
   const seen = new Set<string>();
+  const emails = new Set<string>();
   return lines.map((line, index) => {
+    const columns = line.split("\t");
     const [username, full_name, email, role, class_id] = line
       .split("\t")
       .map((v) => v.trim());
@@ -49,17 +51,29 @@ export function parseUserImport(text: string) {
       role,
       ...(class_id ? { class_id } : {}),
     });
+    const columnError = columns.length < 4 || columns.length > 5;
     const duplicate = result.success && seen.has(result.data.username);
-    if (result.success) seen.add(result.data.username);
+    const emailDuplicate =
+      result.success && emails.has(result.data.email.toLowerCase());
+    if (result.success && !columnError) {
+      seen.add(result.data.username);
+      emails.add(result.data.email.toLowerCase());
+    }
     return {
       row: index + (hasHeader ? 2 : 1),
-      valid: result.success && !duplicate,
+      valid: result.success && !duplicate && !emailDuplicate && !columnError,
       data: result.success ? result.data : null,
-      error: duplicate ? "Username duplikat dalam berkas." : result.success
-        ? ""
-        : result.error.issues
-            .map((i) => `${i.path.join(".")}: ${i.message}`)
-            .join("; "),
+      error: columnError
+        ? "Gunakan 4–5 kolom sesuai template TSV."
+        : duplicate
+          ? "Username duplikat dalam berkas."
+          : emailDuplicate
+            ? "Email duplikat dalam berkas."
+            : result.success
+              ? ""
+              : result.error.issues
+                  .map((i) => `${i.path.join(".")}: ${i.message}`)
+                  .join("; "),
     };
   });
 }
