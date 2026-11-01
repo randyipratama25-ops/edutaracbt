@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.10 — Dashboard per peran.
+Tanggal pemeriksaan: 30 Oktober 2026 (WIB). Versi dokumen: 1.11 — Penyempurnaan pengaturan AI.
+
+## Penyempurnaan pengaturan AI — 1 November 2026
+
+Halaman tetap 23. Pada Fitur Lanjutan, Admin melihat kartu delapan penyedia, konfigurasi tersimpan, status key/uji/aktif, pemakaian esai harian UTC dan waktu uji berhasil terakhir. Pengaturan model memakai ID pada dokumentasi resmi penyedia; bukan katalog model dinamis. Jumlah esai bukan biaya/token; uji koneksi dibatasi terpisah.
+
+Uji koneksi tidak lagi mengaktifkan penyedia. Admin U aktivasi eksplisit setelah key, izin data dan uji konfigurasi terkini tersedia; U nonaktif menolak permintaan baru dan membatalkan status uji. Penggantian konfigurasi tetap menonaktifkan sampai uji/aktivasi ulang. Key tidak dibaca kembali. Perubahan belum disimpan dilindungi saat pergantian penyedia/muat ulang; error/retry tidak dianggap data kosong.
+
+Migrasi `20261101015721_refine_ai_settings.sql` menambah waktu uji terakhir dan indeks penggunaan serta membungkus konfigurasi dengan pengecekan Admin/organisasi/versi. Tidak ada grant klien pada tabel key atau worker. Hak penilaian, esai teks, dan keputusan manusia tetap seperti implementasi AI sebelumnya.
 
 ## Dashboard per peran — 1 November 2026
 
