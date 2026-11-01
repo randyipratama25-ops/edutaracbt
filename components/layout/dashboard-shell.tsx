@@ -53,6 +53,7 @@ export function DashboardShell({ name, role, children }: { name: string; role: "
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const previousPath = useRef(pathname);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
     if (previousPath.current === pathname) return;
@@ -75,7 +76,7 @@ export function DashboardShell({ name, role, children }: { name: string; role: "
     </aside>
     <div className="shell-body">
       <header className="workspace-header">
-        <Button className="mobile-menu" variant="outline" aria-label="Buka navigasi" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={20} aria-hidden="true" /></Button>
+        <Button ref={menuTrigger} className="mobile-menu" variant="outline" aria-label="Buka navigasi" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={20} aria-hidden="true" /></Button>
         <nav aria-label="Jejak navigasi" className="breadcrumbs"><Link href="/dashboard">Ruang kerja</Link><span aria-hidden="true">/</span><span>{page}</span></nav>
         <ContextHelp audience={role} page={pathname} />
         <span className="role-badge">{role === "admin" ? "Admin" : "Guru"}</span>
@@ -84,7 +85,12 @@ export function DashboardShell({ name, role, children }: { name: string; role: "
       <main id="main-content" tabIndex={-1} className="workspace dashboard-workspace">{children}</main>
       <footer className="workspace-footer">EDUTARA CBT<span>Ruang pengelolaan madrasah</span></footer>
     </div>
-    <Dialog open={menuOpen} onOpenChange={setMenuOpen} title="Navigasi aplikasi" description="Pilih halaman ruang kerja Anda." className="navigation-dialog">
+    <Dialog open={menuOpen} onOpenChange={setMenuOpen} title="Navigasi aplikasi" description="Pilih halaman ruang kerja Anda." className="navigation-dialog" onCloseAutoFocus={event=>{
+      // A rotation can hide the mobile trigger while its dialog is open.
+      if(menuTrigger.current && menuTrigger.current.getClientRects().length === 0){
+        event.preventDefault();document.getElementById("main-content")?.focus();
+      }
+    }}>
       <DashboardNavigation role={role} pathname={pathname} onNavigate={() => setMenuOpen(false)} />
       <div className="mobile-account"><p>{name} · {role === "admin" ? "Admin" : "Guru"}</p><LogoutButton /></div>
     </Dialog>
