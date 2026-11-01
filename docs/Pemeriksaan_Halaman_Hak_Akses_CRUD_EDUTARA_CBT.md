@@ -1,6 +1,12 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.16 — Notifikasi yang dapat ditindaklanjuti.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.17 — Pemantauan operasional dan pemulihan berkala.
+
+## Pemantauan operasional dan pemulihan berkala — 1 November 2026
+
+Inventaris tetap **23 halaman**. Halaman `/dashboard/jobs` (Admin) diperluas dengan heartbeat scheduler, usia backup mingguan, antrean bermasalah, indikator latihan 30 hari dan riwayat 10 latihan. Admin R kondisi organisasi aktif; C catatan latihan (ID backup, checksum, waktu/durasi, hasil, bukti, tindak lanjut), tanpa U/D. Catatan append-only, retry idempotent, audit dicatat. Guru/Pengawas/Siswa tidak memiliki akses; API `/api/operational` Admin-only, mutasi wajib same-origin dan validasi database. Tidak ada restore produksi melalui UI.
+
+Migrasi `20261101065304_operational_recovery.sql`: tabel private heartbeat dan bukti latihan, RLS tanpa grant tabel klien, RPC berotorisasi organisasi; scheduler lama diberi heartbeat dan backup mingguan ISO week dengan dedupe/backpressure, mengikuti otomasi aktif serta mendahulukan jendela semester. Bukti latihan ikut backup organisasi. Migrasi lanjutan `20261101070855_weekly_backup_cancelled_guard.sql` memastikan backup dibatalkan tidak memblokir jadwal berikutnya atau dihitung sebagai kegagalan antrean. Tidak menambah Cron. Workflow GitHub mingguan Senin 05.00 WIB menjalankan latihan fixture terisolasi; bukti backup asli tetap dicatat terpisah setiap 30 hari. Lihat `docs/operational-monitoring-recovery.md` untuk prosedur, keterbatasan dan tindak lanjut.
 
 ## Notifikasi yang dapat ditindaklanjuti — 1 November 2026
 
