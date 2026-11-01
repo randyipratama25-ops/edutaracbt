@@ -19,6 +19,7 @@ try{
  assert.ok((await db.query('select last_success_at from private.scheduler_health')).rows[0].last_success_at);
  // No accumulation when a backup is still outstanding next week.
  await db.query('select private.scheduler_tick($1::timestamptz)',['2026-11-09T02:00:00Z']);assert.equal((await db.query("select count(*)::int n from private.work_jobs where kind='backup' and dedupe like 'weekly:%' and organization_id=$1",[org])).rows[0].n,1);
+ await db.query("update private.work_jobs set status='blocked',payload=payload||'{\"outcome\":\"cancelled\"}'::jsonb where organization_id=$1 and kind='backup'",[org]);await actor(1);assert.equal((await rpc({})).job_issues,0);await db.exec('reset role');await db.query('select private.scheduler_tick($1::timestamptz)',['2026-11-09T02:00:00Z']);assert.equal((await db.query("select count(*)::int n from private.work_jobs where kind='backup' and dedupe like 'weekly:%' and organization_id=$1",[org])).rows[0].n,2);
  await db.query('update private.app_settings set automation_enabled=false where organization_id=$1',[org]);
  await db.query("update private.work_jobs set status='succeeded' where organization_id=$1 and kind='backup'",[org]);
  const beforeDisabled=(await db.query("select count(*)::int n from private.work_jobs where organization_id=$1 and kind='backup'",[org])).rows[0].n;await db.query('select private.scheduler_tick($1::timestamptz)',['2026-11-16T02:00:00Z']);assert.equal((await db.query("select count(*)::int n from private.work_jobs where organization_id=$1 and kind='backup'",[org])).rows[0].n,beforeDisabled);
