@@ -96,14 +96,18 @@ export function LoginForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-describedby="login-feedback"
             required
             maxLength={64}
           />
         </label>
-        <label>
+        <label htmlFor="login-password">
           Password
           <span className="password-field"><input
             id="login-password"
+            aria-describedby="login-feedback"
             disabled={busy}
             name="password"
             type={showPassword ? "text" : "password"}
@@ -138,7 +142,7 @@ export function LoginForm() {
         >
           Lupa password
         </Button>
-        <p role="status" aria-live="polite">
+        <p id="login-feedback" role="status" aria-live="polite">
           {message}
         </p>
       </form>

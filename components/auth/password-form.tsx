@@ -28,14 +28,15 @@ export function PasswordForm() {
         .catch(() => setMessage("Tautan aktivasi tidak valid."));
     } else setReady(true);
   }, []);
+  const [mismatch,setMismatch]=useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     try {
       const f = new FormData(e.currentTarget);
       const password = String(f.get("password"));
-      if (password !== f.get("confirm"))
-        throw Error("Konfirmasi password tidak sama.");
+      if (password !== f.get("confirm")) { setMismatch(true);throw Error("Konfirmasi password tidak sama."); }
+      setMismatch(false);
       const r = await fetch("/api/auth/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,6 +59,7 @@ export function PasswordForm() {
         Password baru
         <input
           name="password"
+          onChange={()=>setMismatch(false)}
           type="password"
           aria-describedby="password-policy"
           minLength={12}
@@ -71,6 +73,9 @@ export function PasswordForm() {
         Ulangi password
         <input
           name="confirm"
+          aria-invalid={mismatch||undefined}
+          aria-describedby="password-feedback"
+          onChange={()=>setMismatch(false)}
           type="password"
           minLength={12}
           required
@@ -78,7 +83,7 @@ export function PasswordForm() {
         />
       </label>
       <Button disabled={!ready || busy}>Simpan password</Button>
-      <p role="status">{message}</p>
+      <p id="password-feedback" role={mismatch?"alert":"status"}>{message}</p>
       <a href="/login">Kembali ke login</a>
     </form>
   );
