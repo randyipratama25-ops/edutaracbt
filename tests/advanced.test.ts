@@ -169,7 +169,7 @@ describe("advanced API boundaries", () => {
     ).toBe(403);
     expect(rpc).not.toHaveBeenCalled();
   });
-  it("keeps AI requests disabled without calling any provider or database", async () => {
+  it("rejects AI requests without an explicit provider", async () => {
     const rpc = vi.fn();
     staff.mockResolvedValue({ role: "admin", client: { rpc } });
     const r = await ai(
@@ -182,7 +182,7 @@ describe("advanced API boundaries", () => {
         }),
       }),
     );
-    expect(r.status).toBe(503);
+    expect(r.status).toBe(422);
     expect(rpc).not.toHaveBeenCalled();
   });
 });

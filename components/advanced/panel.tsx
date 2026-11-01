@@ -128,20 +128,6 @@ export function AdvancedPanel() {
         {message}
       </p>
       <section className="panel stack">
-        <h2>Asisten koreksi AI</h2>
-        <span className="role-badge">Nonaktif</span>
-        <p>
-          Penyedia AI belum dikonfigurasi; jawaban tidak dikirim ke layanan AI.
-          Koreksi rubrik dan moderasi tetap tersedia.
-        </p>
-        <p className="muted">
-          Aktivasi di masa depan memerlukan pilihan penyedia, evaluasi hasil dan
-          persetujuan penggunaan data. Saran AI tetap perlu keputusan penilai
-          sebelum menjadi nilai resmi.
-        </p>
-        <Link href="/dashboard/grading">Buka koreksi dan moderasi</Link>
-      </section>
-      <section className="panel stack">
         <h2>Uji kompatibilitas Safe Exam Browser</h2>
         <p>
           Gunakan perangkat uji dan akun simulasi. Konfigurasi ini membuka login
