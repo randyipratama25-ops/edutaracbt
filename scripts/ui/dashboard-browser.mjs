@@ -248,6 +248,22 @@ try {
       await go(role);
       await settled();
       await overflow(role + " " + width + "x" + height);
+      if (width > 800 && height < 600) {
+        assert(
+          await page.$eval(".sidebar", (e) => e.scrollHeight > e.clientHeight),
+          "short sidebar can scroll",
+        );
+        await page.$eval(".sidebar", (e) => (e.scrollTop = e.scrollHeight));
+        assert(
+          await page.$eval(".sidebar>.button", (e) => {
+            const r = e.getBoundingClientRect();
+            return r.top >= 0 && r.bottom <= innerHeight + 1;
+          }),
+          "logout reachable in short desktop",
+        );
+        await page.$eval(".sidebar", (e) => (e.scrollTop = 0));
+      }
+
       assert.equal(
         await page.$$eval(".agenda-list>li", (rows) => rows.length),
         6,

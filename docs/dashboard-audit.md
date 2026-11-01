@@ -14,6 +14,7 @@ Page dan layout memverifikasi actor. Admin membaca total profiles/classes/subjec
 - Total Admin menganggap count null sebagai nol dan rejection satu query dapat menggagalkan seluruh halaman. Setiap query kini menangani error/null/rejection/timeout secara terpisah, tetap memakai head/exact dan RLS, dengan filter organisasi eksplisit. Total tetap menyertakan data nonaktif agar definisi lama tidak berubah. Tombol refresh server tersedia.
 - Layout dan page bisa dirender paralel; guard page kini memeriksa konteks/peran sebelum query, selain layout lama. Tidak ada perubahan hak akses, RLS atau API.
 - Pada orientasi desktop, pemicu menu mobile dapat tersembunyi saat dialog ditutup. Fokus dialihkan ke main bila pemicu tersembunyi, tetap kembali ke pemicu pada mobile.
+- Sidebar desktop pendek dapat kehilangan ruang navigasi/tombol keluar saat identitas panjang. Scroll luar sidebar dan alur navigasi penuh pada tinggi ≤600 px menjaga seluruh menu/keluar tetap terjangkau; tidak menyembunyikan identitas.
 - Heading, data card, label link agenda, feedback, target sentuh dan wrapping diperjelas dengan CSS khusus ringkasan. Sidebar, identity dan semua pintasan lama dipertahankan. Scroll dokumen alami diperbolehkan pada konten panjang/zoom; bukan overflow yang memotong data.
 
 ## Kompatibilitas
@@ -22,7 +23,7 @@ Tetap 23 halaman. Tidak ada migrasi, tabel, endpoint atau dependency baru. GET w
 
 ## Validasi dan batas
 
-Tes guard page, total terisolasi, skema, perhitungan lifecycle, pengurutan timestamp, transport, deadline, retry dan unmount. Browser memuat komponen produksi DashboardShell/DashboardOverview dengan API dan actor/statistik fixture, bukan mem-bypass login produksi: Admin/Guru, 320/390/768/1024/1440 px, layar pendek, orientasi, teks 200%, keyboard, sentuhan, help/menu bounded, axe, empty/arsip/banyak/loading/error, expired/non-JSON/payload rusak, refresh, data terakhir dan timeout. Tidak membuat akun, mengubah password, jawaban, nilai atau ujian produksi. Pemeriksaan axe bukan sertifikasi aksesibilitas; ukuran viewport bukan uji semua perangkat fisik.
+Tes guard page, total terisolasi, skema, perhitungan lifecycle, pengurutan timestamp, transport, deadline, retry dan unmount. Browser memuat komponen produksi DashboardShell/DashboardOverview dengan API dan actor/statistik fixture, bukan mem-bypass login produksi: Admin/Guru, 320/390/768/1024/1440 px, layar pendek, orientasi, teks 200%, keyboard, sentuhan, tombol keluar/scroll sidebar desktop pendek, help/menu bounded, axe, empty/arsip/banyak/loading/error, expired/non-JSON/payload rusak, refresh, data terakhir dan timeout. Tidak membuat akun, mengubah password, jawaban, nilai atau ujian produksi. Pemeriksaan axe bukan sertifikasi aksesibilitas; ukuran viewport bukan uji semua perangkat fisik.
 
 Jalankan `npm run check`, `node scripts/ui/dashboard-browser.mjs`, serta rangkaian integrasi database CI. Gunakan EDUTARA_TEST_CHROME bila Chromium disediakan terpisah. Fixture route dan build cache sementara dibersihkan setelah pengujian. Deployment smoke menguji redirect anonim dan health/API guard tanpa sesi produksi.
 
