@@ -1,4 +1,5 @@
 "use client";
+import {ListFilters, SearchField} from "../ui/list-filters";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
@@ -44,6 +45,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
     [total, setTotal] = useState(0),
     [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
+    [loading,setLoading]=useState(false),[listError,setListError]=useState(""),
     [from, setFrom] = useState(""),
     [until, setUntil] = useState(""),
     [message, setMessage] = useState(""),
@@ -63,10 +65,11 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
     retry = useRef<{ key: string; id: string } | null>(null);
   const auditURL = useCallback(
     (p: number) => {
+      if(from&&until&&new Date(from)>=new Date(until))throw Error("Tanggal Dari harus sebelum tanggal Sebelum.");
       const q = new URLSearchParams({
         action: "audit",
         page: String(p),
-        search,
+        search:search.trim(),
       });
       if (from) q.set("from", new Date(from).toISOString());
       if (until) q.set("until", new Date(until).toISOString());
@@ -74,8 +77,10 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
     },
     [search, from, until],
   );
+  const invalidateRequests=useCallback(()=>{sequence.current++;},[]);
   const load = useCallback(async () => {
     const seq = ++sequence.current;
+    if(mode==="audit"){setLoading(true);setListError("");}
     try {
       if (mode === "settings") {
         const s = await api<AppSettings>("/api/system");
@@ -91,12 +96,13 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
         }
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Data belum dapat dimuat.");
-    }
+      if(seq===sequence.current){if(mode==="audit"){setAudit([]);setTotal(0);setListError(e instanceof Error ? e.message : "Data belum dapat dimuat.");}else setMessage(e instanceof Error ? e.message : "Data belum dapat dimuat.");}
+    }finally{if(seq===sequence.current)setLoading(false);}
   }, [mode, page, auditURL]);
   useEffect(() => {
-    void load();
-  }, [load]);
+    if(mode==="audit")setLoading(true);const timer=setTimeout(()=>void load(),mode==="audit"?250:0);
+    return()=>{clearTimeout(timer);invalidateRequests();};
+  }, [load,mode,invalidateRequests]);
   useEffect(() => {
     if (mode !== "jobs") return;
     const timer = setInterval(() => void load(), 5000);
@@ -377,17 +383,8 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
       )}
       {mode === "audit" && (
         <>
-          <div className="toolbar">
-            <label>
-              Aktor/aksi/objek
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </label>
+          <ListFilters label="audit" active={[search&&"Pencarian",from&&"Dari",until&&"Sebelum"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFrom("");setUntil("");setPage(1);}} total={total} loading={loading} error={listError}>
+            <SearchField label="Aktor/aksi/objek" value={search} maxLength={100} onChange={value=>{setSearch(value);setPage(1);}} />
             <label>
               Dari
               <input
@@ -417,7 +414,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
             >
               Ekspor CSV
             </Button>
-          </div>
+          </ListFilters>
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel administrasi; geser untuk melihat kolom lain">
             <table>
               <thead>
@@ -430,7 +427,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
                 </tr>
               </thead>
               <tbody>
-                {audit.map((r) => (
+                {(loading||listError?[]:audit).map((r) => (
                   <tr key={r.id}>
                     <td>{new Date(r.created_at).toLocaleString("id-ID")}</td>
                     <td>{r.actor || "Otomasi"}</td>
@@ -445,7 +442,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
           <div className="actions">
             <Button
               variant="outline"
-              disabled={page <= 1}
+              disabled={page <= 1||loading||!!listError}
               onClick={() => setPage(page - 1)}
             >
               Sebelumnya
@@ -455,7 +452,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
             </span>
             <Button
               variant="outline"
-              disabled={page * 50 >= total}
+              disabled={page * 50 >= total||loading||!!listError}
               onClick={() => setPage(page + 1)}
             >
               Berikutnya

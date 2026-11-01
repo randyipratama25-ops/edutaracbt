@@ -1,4 +1,5 @@
 "use client";
+import {ListFilters, SearchField} from "../ui/list-filters";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -19,6 +20,7 @@ export function UsersPanel() {
     [classes, setClasses] = useState<ClassRow[]>([]),
     [canManage, setCanManage] = useState(false),
     [loading, setLoading] = useState(true),
+    [listError,setListError] = useState(""),
     [message, setMessage] = useState(""),
     [query, setQuery] = useState(""),
     [role, setRole] = useState(""),
@@ -131,11 +133,12 @@ export function UsersPanel() {
   }
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);setListError("");
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
         const p = new URLSearchParams({
-          q: query,
+          q: query.trim(),
           role,
           active,
           sort,
@@ -146,12 +149,12 @@ export function UsersPanel() {
         });
         const j = await r.json();
         if (!r.ok) throw Error(j.error?.message);
+        if(controller.signal.aborted)return;
         setRows(j.data.rows);
         setCount(j.data.count || 0);
         setCanManage(j.data.canManage);
       } catch (e) {
-        if (!controller.signal.aborted)
-          setMessage(e instanceof Error ? e.message : "Data gagal dimuat.");
+        if (!controller.signal.aborted) { setRows([]);setCount(0);setListError(e instanceof Error ? e.message : "Data gagal dimuat."); }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -291,17 +294,8 @@ export function UsersPanel() {
   return (
     <div className="stack">
       <section className="panel">
-        <div className="toolbar">
-          <label>
-            Cari username atau nama
-            <input
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
+        <ListFilters label="pengguna" active={[query&&"Pencarian",role&&"Peran",active&&"Status",sort!=="asc"&&"Urutan"].filter(Boolean) as string[]} onReset={()=>{setQuery("");setRole("");setActive("");setSort("asc");setPage(1);}} total={count} loading={loading} error={listError}>
+          <SearchField label="Cari username atau nama" value={query} maxLength={80} onChange={value=>{setQuery(value);setPage(1);}} />
           <label>
             Peran
             <select
@@ -344,7 +338,7 @@ export function UsersPanel() {
               <option value="desc">Username Z–A</option>
             </select>
           </label>
-        </div>
+        </ListFilters>
         <div className="actions">
           <Button
             onClick={() => {
@@ -377,7 +371,7 @@ export function UsersPanel() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {(loading||listError?[]:rows).map((row) => (
                 <tr key={row.id}>
                   <th scope="row">{row.username}</th>
                   <td>{row.full_name}</td>
@@ -426,7 +420,7 @@ export function UsersPanel() {
             </tbody>
           </table>
         </div>
-        {!loading && !rows.length ? (
+        {!loading && !listError && !rows.length ? (
           <p>Tidak ada pengguna sesuai filter.</p>
         ) : null}
         <div className="actions">

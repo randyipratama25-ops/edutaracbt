@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import {ListFilters, SearchField} from "../ui/list-filters";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { api } from "./shared";
 import { Button } from "../ui/button";
@@ -19,6 +20,7 @@ export function MediaPanel() {
     [totalMedia, setTotalMedia] = useState(0),
     [view, setView] = useState("gallery"),
     [filter, setFilter] = useState(""),
+    [search,setSearch]=useState(""),[loading,setLoading]=useState(true),[listError,setListError]=useState(""),
     [target, setTarget] = useState<Media | null>(null),
     [progress, setProgress] = useState(""),
     [drive, setDrive] = useState<
@@ -28,27 +30,32 @@ export function MediaPanel() {
     [driveToken, setDriveToken] = useState(""),
     [folder, setFolder] = useState(""),
     [driveSelected, setDriveSelected] = useState<string[]>([]);
+  const sequence=useRef(0);
+  const invalidateRequests=useCallback(()=>{sequence.current++;},[]);
   const load = useCallback(async () => {
+    const seq=++sequence.current;setLoading(true);setListError("");
     try {
       const [rows, pending] = await Promise.all([
         api<{ rows: Media[]; total: number }>(
           "/api/media/manage?page=" +
             mediaPage +
             "&mime=" +
-            encodeURIComponent(filter),
+            encodeURIComponent(filter)+"&search="+encodeURIComponent(search.trim()),
         ),
         api<{ id: string; path: string }[]>("/api/media/manage?cleanup=1"),
       ]);
+      if(seq!==sequence.current)return;
       setRows(rows.rows);
       setTotalMedia(rows.total);
       setCleanup(pending);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Media gagal dimuat.");
-    }
-  }, [mediaPage, filter]);
+      if(seq===sequence.current){setRows([]);setTotalMedia(0);setListError(e instanceof Error ? e.message : "Media gagal dimuat.");}
+    }finally{if(seq===sequence.current)setLoading(false);}
+  }, [mediaPage, filter,search]);
   useEffect(() => {
-    void load();
-  }, [load]);
+    setLoading(true);const timer=setTimeout(()=>void load(),250);
+    return()=>{clearTimeout(timer);invalidateRequests();};
+  }, [load,invalidateRequests]);
   async function upload(files: File[]) {
     if (busy) return;
     if (files.length > 25) {
@@ -98,7 +105,7 @@ export function MediaPanel() {
       setBusy(false);
     }
   }
-  const shown = rows.filter((m) => !filter || m.mime_type.startsWith(filter));
+  const shown = (loading||listError?[]:rows).filter((m) => !filter || m.mime_type.startsWith(filter));
   return (
     <section className="panel stack">
       <div
@@ -126,7 +133,8 @@ export function MediaPanel() {
       <p role="status">
         {progress} {message}
       </p>
-      <div className="toolbar">
+      <ListFilters label="media soal" active={[search&&"Pencarian",filter&&"Tipe"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFilter("");setMediaPage(1);}} total={totalMedia} loading={loading} error={listError}>
+        <SearchField label="Cari nama berkas" value={search} maxLength={100} onChange={value=>{setSearch(value);setMediaPage(1);}} />
         <label>
           Tampilan
           <select value={view} onChange={(e) => setView(e.target.value)}>
@@ -151,11 +159,11 @@ export function MediaPanel() {
         <Button variant="outline" onClick={() => void load()}>
           Muat ulang
         </Button>
-      </div>
+      </ListFilters>
       <div className="actions">
         <Button
           variant="outline"
-          disabled={mediaPage <= 1}
+          disabled={mediaPage <= 1||loading||!!listError}
           onClick={() => setMediaPage(mediaPage - 1)}
         >
           Sebelumnya
@@ -165,7 +173,7 @@ export function MediaPanel() {
         </span>
         <Button
           variant="outline"
-          disabled={mediaPage * 50 >= totalMedia}
+          disabled={mediaPage * 50 >= totalMedia||loading||!!listError}
           onClick={() => setMediaPage(mediaPage + 1)}
         >
           Berikutnya
@@ -278,7 +286,7 @@ export function MediaPanel() {
           ))}
         </div>
       )}
-      {!shown.length && <p>Belum ada media pada tipe ini.</p>}
+      {!loading&&!listError&&!shown.length && <p>Tidak ada media sesuai pencarian dan filter.</p>}
       {cleanup.length > 0 && (
         <details>
           <summary>Pembersihan tertunda ({cleanup.length})</summary>
