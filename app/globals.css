@@ -445,3 +445,10 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 /* Login controls stay reachable on small screens and with the software keyboard. */
 .login-card{max-width:480px}.login-brand{display:flex;gap:12px;align-items:center;margin-bottom:22px;min-width:0}.login-brand>img,.login-brand>.brand-mark{flex:none}.login-brand>.eyebrow{margin:0;min-width:0;overflow-wrap:anywhere}.login-form{gap:16px}.login-options{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px}.login-options .check{font-size:.8rem;font-weight:500}.login-options>.button{font-size:.8rem}.login-hint{font-size:.85rem;margin:0}.login-form>p{margin:0}.login-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:20px;margin-top:22px;border-top:1px solid var(--border);font-size:.8rem}.login-footer>a{display:inline-flex;min-height:44px;align-items:center}.login-recovery-dialog{overflow-wrap:anywhere}.login-page .password-toggle:disabled{cursor:not-allowed;opacity:.6}.login-page .password-field input{min-height:48px}
 @media(max-width:380px){.login-options{align-items:stretch}.login-options>.button{flex-grow:1}.login-card{padding:22px}}
+
+/* Reset password uses natural document scrolling and bounded control sizes. */
+.reset-card{max-width:480px}.reset-brand{display:flex;align-items:center;gap:12px;margin-bottom:22px;min-width:0}.reset-brand .eyebrow{margin:0}.reset-form{gap:16px}.reset-form>p{margin:0}.reset-policy{font-size:.8rem}.reset-page .password-field input{min-height:48px}.reset-page .password-toggle:disabled{opacity:.6;cursor:not-allowed}.reset-footer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:22px;padding-top:20px;border-top:1px solid var(--border);font-size:.8rem}.reset-footer>a{display:inline-flex;align-items:center;min-height:44px}.reset-form #password-feedback{overflow-wrap:anywhere}
+@media(max-width:380px){.reset-card{padding:22px}}
+
+/* The reset return link changes variant after save; keep its contrast stable. */
+.reset-form>a.button{transition:none}

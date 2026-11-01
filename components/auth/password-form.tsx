@@ -1,90 +1,345 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
+import { newPasswordSchema } from "../../lib/auth/password";
+import {
+  accountRequest,
+  AccountRequestError,
+} from "../../lib/auth/account-request";
+import {
+  initializeReset,
+  checkResetSession,
+  type ResetSession,
+} from "../../lib/auth/reset-session";
+import { homeCallback } from "../../lib/auth/home-callback";
+type Phase =
+  | "checking"
+  | "redirecting"
+  | "ready"
+  | "saving"
+  | "complete"
+  | "blocked";
+type Feedback = { kind: "error" | "success" | "warning"; text: string } | null;
 export function PasswordForm() {
-  const [message, setMessage] = useState("");
-  const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<Phase>("checking"),
+    [feedback, setFeedback] = useState<Feedback>(null),
+    [canRetry, setCanRetry] = useState(false),
+    [mismatch, setMismatch] = useState(false),
+    [invalidPassword, setInvalidPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false),
+    [showConfirm, setShowConfirm] = useState(false);
+  const initialization = useRef<{
+    promise: Promise<ResetSession> | null;
+    controller: AbortController;
+    subscribers: number;
+  }>({ promise: null, controller: new AbortController(), subscribers: 0 });
+  const operation = useRef<AbortController | null>(null),
+    generation = useRef(0),
+    lock = useRef(false);
+  const passwordInput = useRef<HTMLInputElement>(null),
+    confirmInput = useRef<HTMLInputElement>(null),
+    feedbackNode = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.slice(1));
-    const access_token = hash.get("access_token");
-    const refresh_token = hash.get("refresh_token");
-    const code = new URLSearchParams(window.location.search).get("code");
-    if (code) {
-      window.location.replace(`/auth/confirm?code=${encodeURIComponent(code)}`);
-      return;
+    const scope = initialization.current,
+      lifetime = generation,
+      request = operation;
+    scope.subscribers++;
+    let active = true;
+    if (!scope.promise)
+      scope.promise = initializeReset(scope.controller).catch(() => ({
+        phase: "blocked",
+        message:
+          "Sesi belum dapat diverifikasi. Gunakan tautan terbaru atau masuk kembali.",
+        retry: false,
+      }));
+    void scope.promise.then((result) => {
+      if (active) {
+        setPhase(result.phase);
+        setCanRetry(result.retry);
+        setFeedback(
+          result.phase === "blocked"
+            ? { kind: "error", text: result.message }
+            : null,
+        );
+      }
+    });
+    function callbackChanged() {
+      if (
+        window.location.pathname === "/auth/reset" &&
+        homeCallback(
+          window.location.search,
+          window.location.hash,
+          "/auth/reset",
+        ).kind !== "none"
+      )
+        window.location.reload();
     }
-    if (access_token && refresh_token) {
-      fetch("/api/auth/activate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token, refresh_token }),
-      })
-        .then(async (r) => {
-          window.history.replaceState(null, "", "/auth/reset");
-          if (!r.ok) throw Error();
-          setReady(true);
-        })
-        .catch(() => setMessage("Tautan aktivasi tidak valid."));
-    } else setReady(true);
-  }, []);
-  const [mismatch,setMismatch]=useState(false);
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      const f = new FormData(e.currentTarget);
-      const password = String(f.get("password"));
-      if (password !== f.get("confirm")) { setMismatch(true);throw Error("Konfirmasi password tidak sama."); }
-      setMismatch(false);
-      const r = await fetch("/api/auth/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+    window.addEventListener("hashchange", callbackChanged);
+    window.addEventListener("popstate", callbackChanged);
+    return () => {
+      active = false;
+      lifetime.current++;
+      scope.subscribers--;
+      window.removeEventListener("hashchange", callbackChanged);
+      window.removeEventListener("popstate", callbackChanged);
+      // Strict Mode reconnects before this microtask; a real unmount cancels client work.
+      queueMicrotask(() => {
+        if (scope.subscribers === 0) {
+          scope.controller.abort();
+          request.current?.abort();
+        }
       });
-      const j = await r.json();
-      if (!r.ok) throw Error(j.error?.message);
-      setMessage(j.data.message);
-    } catch (e) {
-      setMessage(
-        e instanceof Error ? e.message : "Gagal memperbarui password.",
-      );
+    };
+  }, []);
+  function focusFeedback() {
+    requestAnimationFrame(() => {
+      if (!document.querySelector('[role="dialog"]'))
+        feedbackNode.current?.focus();
+    });
+  }
+  async function retrySession() {
+    if (lock.current) return;
+    lock.current = true;
+    setPhase("checking");
+    setFeedback(null);
+    const seq = generation.current,
+      controller = new AbortController();
+    operation.current = controller;
+    try {
+      const result = await checkResetSession(controller);
+      if (seq === generation.current) {
+        setPhase(result.phase);
+        setCanRetry(true);
+      }
+    } catch (error) {
+      if (seq === generation.current) {
+        setPhase("blocked");
+        setFeedback({
+          kind: "error",
+          text:
+            error instanceof Error
+              ? error.message
+              : "Sesi belum dapat diperiksa.",
+        });
+      }
     } finally {
-      setBusy(false);
+      lock.current = false;
+      if (operation.current === controller) operation.current = null;
     }
   }
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (lock.current || phase !== "ready") return;
+    const form = e.currentTarget,
+      fields = new FormData(form),
+      password = String(fields.get("password") || ""),
+      parsed = newPasswordSchema.safeParse(password);
+    if (!parsed.success) {
+      setInvalidPassword(true);
+      setFeedback({ kind: "error", text: parsed.error.issues[0].message });
+      passwordInput.current?.focus();
+      return;
+    }
+    if (password !== fields.get("confirm")) {
+      setMismatch(true);
+      setFeedback({ kind: "error", text: "Konfirmasi password tidak sama." });
+      confirmInput.current?.focus();
+      return;
+    }
+    lock.current = true;
+    setPhase("saving");
+    setFeedback(null);
+    setMismatch(false);
+    setInvalidPassword(false);
+    setShowPassword(false);
+    setShowConfirm(false);
+    const seq = generation.current,
+      controller = new AbortController();
+    operation.current = controller;
+    try {
+      const data = await accountRequest(
+        "password",
+        { password: parsed.data },
+        controller,
+      );
+      if (seq !== generation.current) return;
+      if (
+        typeof data.message !== "string" ||
+        !data.message.trim() ||
+        data.message.length > 500 ||
+        (data.signed_out !== undefined && typeof data.signed_out !== "boolean")
+      )
+        throw new AccountRequestError(
+          "Hasil perubahan password belum dapat dipastikan. Coba masuk dengan password baru sebelum mengulang.",
+        );
+      form.reset();
+      setPhase("complete");
+      setCanRetry(false);
+      setFeedback({
+        kind: data.signed_out === false ? "warning" : "success",
+        text: data.message,
+      });
+      focusFeedback();
+    } catch (error) {
+      if (seq === generation.current) {
+        const editable =
+          error instanceof AccountRequestError &&
+          (error.status === 422 || error.status === 429);
+        setPhase(editable ? "ready" : "blocked");
+        if (error instanceof AccountRequestError && error.status === 422)
+          setInvalidPassword(true);
+        setCanRetry(false);
+        setFeedback({
+          kind: "error",
+          text:
+            error instanceof Error
+              ? error.message
+              : "Hasil perubahan password belum dapat dipastikan. Coba masuk dengan password baru.",
+        });
+        focusFeedback();
+      }
+    } finally {
+      lock.current = false;
+      if (operation.current === controller) operation.current = null;
+    }
+  }
+  const disabled = phase !== "ready";
+  function edited() {
+    setMismatch(false);
+    setInvalidPassword(false);
+    setFeedback(null);
+  }
   return (
-    <form onSubmit={submit} className="stack" aria-busy={busy}>
-      <label>
+    <form
+      method="post"
+      action="/api/auth/password"
+      onSubmit={submit}
+      className="stack reset-form"
+      aria-busy={
+        phase === "checking" || phase === "saving" || phase === "redirecting"
+      }
+    >
+      {(phase === "checking" || phase === "redirecting") && (
+        <p role="status">
+          {phase === "checking"
+            ? "Memeriksa tautan dan sesi akun…"
+            : "Membuka verifikasi tautan…"}
+        </p>
+      )}
+      <label htmlFor="new-password">
         Password baru
-        <input
-          name="password"
-          onChange={()=>setMismatch(false)}
-          type="password"
-          aria-describedby="password-policy"
-          minLength={12}
-          maxLength={128}
-          required
-          autoComplete="new-password"
-        />
+        <span className="password-field">
+          <input
+            ref={passwordInput}
+            id="new-password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            onChange={edited}
+            disabled={disabled}
+            aria-invalid={invalidPassword || undefined}
+            aria-describedby="password-policy password-feedback"
+            minLength={12}
+            maxLength={128}
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            disabled={disabled}
+            aria-label={
+              showPassword
+                ? "Sembunyikan password baru"
+                : "Tampilkan password baru"
+            }
+            aria-controls="new-password"
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((value) => !value)}
+          >
+            {showPassword ? (
+              <EyeOff size={19} aria-hidden="true" />
+            ) : (
+              <Eye size={19} aria-hidden="true" />
+            )}
+          </button>
+        </span>
       </label>
-      <p id="password-policy" className="muted">Gunakan minimal 12 karakter untuk password baru.</p>
-      <label>
+      <p id="password-policy" className="muted reset-policy">
+        Gunakan 12–128 karakter. Hindari password yang mudah ditebak.
+      </p>
+      <label htmlFor="confirm-password">
         Ulangi password
-        <input
-          name="confirm"
-          aria-invalid={mismatch||undefined}
-          aria-describedby="password-feedback"
-          onChange={()=>setMismatch(false)}
-          type="password"
-          minLength={12}
-          required
-          autoComplete="new-password"
-        />
+        <span className="password-field">
+          <input
+            ref={confirmInput}
+            id="confirm-password"
+            name="confirm"
+            type={showConfirm ? "text" : "password"}
+            onChange={edited}
+            disabled={disabled}
+            aria-invalid={mismatch || undefined}
+            aria-describedby="password-feedback"
+            minLength={12}
+            maxLength={128}
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            disabled={disabled}
+            aria-label={
+              showConfirm
+                ? "Sembunyikan konfirmasi password"
+                : "Tampilkan konfirmasi password"
+            }
+            aria-controls="confirm-password"
+            aria-pressed={showConfirm}
+            onClick={() => setShowConfirm((value) => !value)}
+          >
+            {showConfirm ? (
+              <EyeOff size={19} aria-hidden="true" />
+            ) : (
+              <Eye size={19} aria-hidden="true" />
+            )}
+          </button>
+        </span>
       </label>
-      <Button disabled={!ready || busy}>Simpan password</Button>
-      <p id="password-feedback" role={mismatch?"alert":"status"}>{message}</p>
-      <a href="/login">Kembali ke login</a>
+      {phase !== "complete" && (
+        <Button disabled={disabled}>
+          {phase === "saving" ? "Menyimpan…" : "Simpan password"}
+        </Button>
+      )}
+      <p
+        ref={feedbackNode}
+        id="password-feedback"
+        tabIndex={-1}
+        role={
+          feedback?.kind === "error" || feedback?.kind === "warning"
+            ? "alert"
+            : "status"
+        }
+      >
+        {feedback?.text}
+      </p>
+      {phase === "blocked" && canRetry && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void retrySession()}
+        >
+          Periksa sesi lagi
+        </Button>
+      )}
+      <Button asChild variant={phase === "complete" ? "default" : "outline"}>
+        <Link href="/login">
+          {phase === "complete"
+            ? "Masuk dengan password baru"
+            : "Kembali ke login"}
+        </Link>
+      </Button>
     </form>
   );
 }

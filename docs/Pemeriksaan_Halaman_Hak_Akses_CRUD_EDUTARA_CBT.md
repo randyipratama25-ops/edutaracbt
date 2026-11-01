@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.19 — Audit Login dan bantuan pemulihan.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.20 — Audit Atur password akun.
+
+## Audit Atur password akun — 1 November 2026
+
+Inventaris tetap **23 halaman**. `/auth/reset` adalah halaman publik, tetapi U password tetap wajib memakai sesi terverifikasi. GET `/api/auth/password` hanya R readiness sesi (private/no-store, tanpa identitas akun). POST password dan aktivasi tetap same-origin; struktur data, peran dan panjang 12–128 karakter dipertahankan. Tidak ada CRUD akademik atau migrasi database.
+
+Aktivasi fragment single-flight, token dibersihkan sebelum request, callback kode/email diteruskan ke handler lama dan marker nonrahasia mencegah fallback tidak sengaja ke sesi lama saat tautan gagal/di-refresh. Form menunggu sesi sah, memakai POST native, lock/deadline/no retry otomatis, validasi konfirmasi serta feedback hasil pasti/tidak pasti. Setelah sukses password dibersihkan dari input dan form dikunci. Audit gagal tidak melewatkan upaya global signout; flag additive signed_out menyatakan pengakhiran sesi terkonfirmasi/tidak pasti tanpa mengulang mutation.
+
+UI memakai card berbatas lebar, toggle password, fokus/alert yang aksesibel serta bantuan/footer yang konsisten. Scroll alami dan dialog bounded menjaga konten tetap terjangkau pada layar pendek/zoom. Rincian dan batas validasi ada di `docs/password-reset-audit.md`; pengujian autentikasi memakai simulasi, tidak mengubah password produksi.
 
 ## Audit Login dan bantuan pemulihan — 1 November 2026
 
@@ -261,7 +269,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 |---|---|---|---|---|---|
 | 1 | Beranda | `/` | Pintu masuk publik; tombol masuk, bantuan kontekstual dan panduan peran. Callback aktivasi fragment, kode PKCE, dan token hash email diteruskan ke handler autentikasi lama; kesalahan dibersihkan dari URL dengan pesan aman. | Publik | R informasi publik; tidak ada CRUD akademik. |
 | 2 | Login dan bantuan pemulihan | `/login` | Login username/password berdasarkan konteks; validasi, feedback aktivasi dan bantuan pemulihan melalui modal yang dapat dibuka kembali tanpa mengirim ulang request berjalan. Branding memiliki fallback/deadline. | Publik | Membuat sesi/permintaan pemulihan; bukan membuat akun sendiri. |
-| 3 | Atur password akun | `/auth/reset` | Menetapkan password melalui tautan aktivasi atau pemulihan. | Halaman publik; perubahan memerlukan sesi/token sah | U password akun terkait; tidak dapat mengubah akun lain. |
+| 3 | Atur password akun | `/auth/reset` | Memeriksa sesi/tautan, menetapkan password 12–128 karakter dan menampilkan hasil perubahan serta status pengakhiran sesi secara jujur. | Halaman publik; perubahan memerlukan sesi/token sah | U password akun terkait; tidak dapat mengubah akun lain. |
 | 4 | Ringkasan madrasah | `/dashboard` | Statistik pengguna, kelas, dan mapel sesuai akses; tautan ke pengelolaan dasar. | Admin, Guru dalam konteks staf | R statistik; C/U/D melalui modul terkait. |
 | 5 | Pengguna | `/dashboard/users` | Cari/filter/sort/paginasi pengguna; tambah akun, impor, edit nama, status/arsip, serta kirim ulang undangan. | Admin, Guru dalam konteks staf | Admin C/R/U dan arsip; Guru C/R/U terbatas pada siswa berizin; tidak ada D permanen pengguna. |
 | 6 | Data master | `/dashboard/master-data` | Mengelola kelas, mapel, penugasan guru dan keanggotaan kelas siswa sebagai dasar cakupan akses. | Admin, Guru dalam konteks staf | Admin C/R/U; Guru R sesuai cakupan; D tidak disediakan endpoint ini. |
