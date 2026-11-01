@@ -12,6 +12,7 @@ Lingkup `/auth/reset`, form password, callback Beranda, `/auth/confirm`, API akt
 - Validasi konfirmasi, atribut form dan feedback belum konsisten. Skema password 12–128 karakter dipakai bersama API/UI, kedua field memiliki maxlength, form native POST, password tidak di-trim. Toggle lihat/sembunyikan terpisah, aria-invalid/deskripsi dan fokus feedback diperbaiki. Help dialog tidak kehilangan fokus saat request selesai.
 - Audit yang throw sesudah update dapat melewatkan global signout; error hasil signout diabaikan. Setelah update terkonfirmasi, audit dicoba dan global signout tetap dicoba walau audit gagal. Hasil partial tetap mengakui password sudah berubah, dengan flag additive `signed_out:false`, tanpa mendorong mutation ulang. Log kegagalan hanya nama event, tanpa password/token.
 - Setelah sukses form dulu tetap dapat dikirim dan mempertahankan nilai. Kini nilai dibersihkan, form dikunci dan CTA menuju login disediakan.
+- Transisi link dari outline ke tombol utama dapat menampilkan teks putih sebelum latar hijau selesai berubah. Transisi link pada form reset dinonaktifkan agar kontras stabil saat status berubah.
 - Card sebelumnya tidak mempunyai batas lebar auth-card. Styling khusus reset, hierarchy, bantuan/footer dan target sentuh 44 px menjaga wrapping serta reflow. Layar pendek/zoom memakai scroll dokumen alami, bukan memotong konten.
 
 ## Kompatibilitas dan batas
