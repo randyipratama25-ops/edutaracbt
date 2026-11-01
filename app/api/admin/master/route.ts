@@ -1,6 +1,6 @@
-import { z } from "zod";
 import { actor } from "../../../../lib/auth/actor";
-import { masterSchema } from "../../../../lib/domain/validation";
+import { masterCommand } from "../../../../lib/master/schema";
+import { loadMasterData } from "../../../../lib/master/server";
 import {
   body,
   failure,
@@ -11,28 +11,9 @@ import {
 export async function GET() {
   try {
     const a = await actor();
-    if (!a || a.context !== "staff")
+    if (!a || a.context !== "staff" || !["admin", "teacher"].includes(a.role))
       throw new HttpError(401, "Silakan masuk sebagai staf.");
-    const results = await Promise.all(
-      ["classes", "subjects", "teacher_assignments", "student_enrollments"].map(
-        (t) => a.client.from(t).select("*"),
-      ),
-    );
-    for (const r of results) if (r.error) throw r.error;
-    const { data: people } = await a.client
-      .from("profiles")
-      .select("id,full_name,role")
-      .eq("active", true)
-      .in("role", ["teacher", "student"])
-      .limit(1000);
-    return json({
-      people: people || [],
-      classes: results[0].data,
-      subjects: results[1].data,
-      assignments: results[2].data,
-      enrollments: results[3].data,
-      canManage: a.role === "admin",
-    });
+    return json(await loadMasterData(a));
   } catch (e) {
     return failure(e);
   }
@@ -43,29 +24,48 @@ export async function POST(request: Request) {
     const a = await actor();
     if (!a || a.role !== "admin" || a.context !== "staff")
       throw new HttpError(403, "Hanya Admin yang dapat mengelola data master.");
-    const raw = await body(request);
-    if (raw.kind === "assignment" || raw.kind === "enrollment") {
-      const x = z
-        .object({
-          kind: z.enum(["assignment", "enrollment"]),
-          id: z.uuid().optional(),
-          user_id: z.uuid(),
-          class_id: z.uuid(),
-          subject_id: z.uuid().optional(),
-          active: z.boolean().default(true),
-        })
-        .parse(raw);
+    const x = masterCommand.parse(await body(request));
+    if ("user_id" in x) {
+      const profile = await a.client
+        .from("profiles")
+        .select("role,active")
+        .eq("id", x.user_id)
+        .eq("organization_id", a.organization_id)
+        .single();
+      if (profile.error)
+        throw new HttpError(422, "Pengguna tidak tersedia dalam organisasi.");
+      if (
+        profile.data?.role !== (x.kind === "assignment" ? "teacher" : "student")
+      )
+        throw new HttpError(422, "Peran pengguna tidak sesuai penugasan.");
+      if (x.active) {
+        if (!profile.data.active)
+          throw new HttpError(
+            422,
+            "Pengguna nonaktif tidak dapat diberi penugasan aktif.",
+          );
+        const targets = [
+          { table: "classes", id: x.class_id },
+          ...(x.kind === "assignment"
+            ? [{ table: "subjects", id: x.subject_id! }]
+            : []),
+        ];
+        for (const target of targets) {
+          const r = await a.client
+            .from(target.table)
+            .select("id,active")
+            .eq("id", target.id)
+            .eq("organization_id", a.organization_id)
+            .single();
+          if (r.error || !r.data?.active)
+            throw new HttpError(
+              422,
+              "Pilih kelas dan mata pelajaran aktif dalam organisasi.",
+            );
+        }
+      }
       const table =
         x.kind === "assignment" ? "teacher_assignments" : "student_enrollments";
-      const { data: profile } = await a.client
-        .from("profiles")
-        .select("role")
-        .eq("id", x.user_id)
-        .single();
-      if (profile?.role !== (x.kind === "assignment" ? "teacher" : "student"))
-        throw new HttpError(422, "Peran pengguna tidak sesuai penugasan.");
-      if (x.kind === "assignment" && !x.subject_id)
-        throw new HttpError(422, "Mata pelajaran wajib dipilih.");
       const fields: {
         organization_id: string;
         class_id: string;
@@ -82,37 +82,60 @@ export async function POST(request: Request) {
           : { student_id: x.user_id }),
       };
       const query = x.id
-        ? a.client.from(table).update(fields).eq("id", x.id)
+        ? a.client
+            .from(table)
+            .update(fields)
+            .eq("id", x.id)
+            .eq("organization_id", a.organization_id)
         : a.client.from(table).upsert(fields, {
             onConflict:
               x.kind === "assignment"
                 ? "teacher_id,class_id,subject_id"
                 : "student_id,class_id",
           });
-      const { error } = await query.select("id").single();
-      if (error)
+      const r = await query.select("id").single();
+      if (
+        (!r.error && !r.data) ||
+        (r.error && (r.status === 0 || r.status >= 500))
+      )
+        throw new HttpError(
+          503,
+          "Hasil perubahan belum dapat dipastikan. Muat ulang data sebelum mencoba lagi.",
+        );
+      if (r.error)
         throw new HttpError(
           422,
-          "Penugasan gagal. Periksa kelas dan mata pelajaran.",
+          "Penugasan gagal. Periksa pengguna, kelas dan mata pelajaran.",
         );
       return json({ saved: true });
     }
-    const x = masterSchema.parse(raw);
-    const row = {
+    const fields = {
       organization_id: a.organization_id,
       name: x.name,
       ...(x.active === undefined ? {} : { active: x.active }),
     };
     const query = x.id
-      ? a.client.from(x.kind).update(row).eq("id", x.id)
-      : a.client.from(x.kind).insert(row);
-    const { data, error } = await query.select("id").single();
-    if (error)
+      ? a.client
+          .from(x.kind)
+          .update(fields)
+          .eq("id", x.id)
+          .eq("organization_id", a.organization_id)
+      : a.client.from(x.kind).insert(fields);
+    const r = await query.select("id").single();
+    if (
+      (!r.error && !r.data) ||
+      (r.error && (r.status === 0 || r.status >= 500))
+    )
+      throw new HttpError(
+        503,
+        "Hasil perubahan belum dapat dipastikan. Muat ulang data sebelum mencoba lagi.",
+      );
+    if (r.error)
       throw new HttpError(
         422,
-        "Data gagal disimpan. Nama mungkin sudah digunakan.",
+        "Data gagal disimpan. Nama mungkin sudah digunakan atau data tidak tersedia.",
       );
-    return json(data);
+    return json(r.data);
   } catch (e) {
     return failure(e);
   }

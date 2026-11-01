@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.22 — Audit Pengguna.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.23 — Audit Data master.
+
+## Audit Data master — 1 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/master-data` tetap R dalam cakupan RLS bagi Admin/Guru konteks staf; seluruh C/U kelas, mapel, penugasan dan keanggotaan hanya Admin. Pengarsipan master memakai active=false, tanpa D permanen atau perubahan otomatis pada riwayat ujian/tautan yang sudah ada. Daftar keanggotaan siswa kini menampilkan hasil alur Siswa → kelas yang sudah tersedia di API; statusnya dapat diperbarui oleh Admin melalui operasi enrollment lama.
+
+GET `/api/admin/master` mengambil seluruh halaman referensi dengan urutan ID, filter organisasi, RLS dan deadline; error pengguna tidak disamarkan sebagai array kosong. Nama referensi nonaktif ikut dibaca sesuai izin agar riwayat dapat dikenali, tetapi pilihan penugasan baru hanya pengguna/kelas/mapel aktif. POST memvalidasi payload sebelum mengakses field; aktivasi memeriksa role, organisasi dan referensi aktif, sedangkan penonaktifan tautan tetap diizinkan untuk pembersihan referensi nonaktif. Kontrak arrays, hasil id/saved, endpoint, scope dan audit database lama dipertahankan.
+
+UI memvalidasi respons, membatasi waktu, membatalkan pekerjaan klien saat unmount dan menolak respons lama. Lock sinkron melindungi simpan/toggle/massal; kind dan isian ditangkap sebagai snapshot, pesan terpisah per operasi. Kegagalan refresh mempertahankan data terakhir bertanda dengan perubahan dinonaktifkan; halaman kosong dikoreksi setelah hasil berubah. Daftar guru dan siswa memiliki pencarian/pagination lokal 20 baris serta label referensi yang jelas.
+
+Tambah massal tetap maksimal 100 nama, kini melalui pratinjau/konfirmasi, validasi panjang/duplikat, laporan per baris dan satu refresh setelah rangkaian selesai. Hasil tak pasti/sesi/izin/rate-limit menghentikan sisa pengiriman; baris yang belum dikirim ditandai. Transport memakai helper bersama dengan Halaman Pengguna, mempertahankan API userRequest dan pesannya agar tidak membuat fungsi fetch duplikat. Tidak ada retry mutation otomatis atau klaim pembatalan efek server yang sudah berjalan.
+
+Tabel ber-scroll internal dengan header/kolom identitas sticky, dialog bounded, fokus dan reflow mobile dipertahankan/disempurnakan. Tidak ada migrasi database, endpoint, dependency atau deployment Edge Function baru. Detail dan batas uji ada di `docs/master-data-audit.md`; seluruh mutation browser memakai simulasi, bukan mengubah data akademik produksi.
 
 ## Audit Pengguna — 1 November 2026
 
@@ -290,7 +302,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 3 | Atur password akun | `/auth/reset` | Memeriksa sesi/tautan, menetapkan password 12–128 karakter dan menampilkan hasil perubahan serta status pengakhiran sesi secara jujur. | Halaman publik; perubahan memerlukan sesi/token sah | U password akun terkait; tidak dapat mengubah akun lain. |
 | 4 | Ringkasan madrasah | `/dashboard` | Total organisasi untuk Admin; prioritas koreksi untuk Guru; agenda nonarsip, waktu snapshot dan pintasan sesuai peran. | Admin, Guru dalam konteks staf | R total/agenda/koreksi dan pembaruan snapshot; C/U/D tetap melalui modul terkait. |
 | 5 | Pengguna | `/dashboard/users` | Cari/filter/sort/paginasi pengguna; tambah akun, impor, edit nama, status/arsip, serta kirim ulang undangan. | Admin, Guru dalam konteks staf | Admin C/R/U dan arsip; Guru C/R/U terbatas pada siswa berizin; tidak ada D permanen pengguna. |
-| 6 | Data master | `/dashboard/master-data` | Mengelola kelas, mapel, penugasan guru dan keanggotaan kelas siswa sebagai dasar cakupan akses. | Admin, Guru dalam konteks staf | Admin C/R/U; Guru R sesuai cakupan; D tidak disediakan endpoint ini. |
+| 6 | Data master | `/dashboard/master-data` | Mengelola kelas/mapel, penugasan guru dan keanggotaan siswa; pencarian, pagination, status/arsip dan pratinjau tambah massal. | Admin, Guru dalam konteks staf | Admin C/R/U; Guru R sesuai cakupan; D tidak disediakan endpoint ini. |
 | 7 | Ujian dan bank soal | `/dashboard/exams` | Jadwal, kelas peserta, PIN, konfigurasi tipe soal, periode input, penyusunan/impor/salin soal, versi dan pratinjau. | Admin, Guru dalam konteks staf | Admin mengelola ujian dan soal; Guru mengelola soal pada ujian berizin. Arsip terpisah dari D. |
 | 8 | Hasil dan koreksi | `/dashboard/results` | Daftar/detail hasil, koreksi esai, rekalkulasi, publikasi, riwayat dan saran AI bila tersedia. | Admin, Guru dalam konteks staf | R dan C/U penilaian sesuai cakupan; publikasi hanya Admin; tidak ada D ledger. |
 | 9 | Analitik dan laporan | `/dashboard/analytics` | Analisis kelompok peserta dan pembuatan/unduh laporan PDF/XLSX. Memakai komponen hasil yang sama, dengan analitik didahulukan. | Admin, Guru dalam konteks staf | R analitik, C pekerjaan ekspor; kop laporan C/U hanya Admin. Hak koreksi mengikuti modul hasil yang sama. |
