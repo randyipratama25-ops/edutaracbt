@@ -1,3 +1,4 @@
+import { PageHeading } from "../../components/layout/page-heading";
 import { Workbench } from "../../components/workflow/workbench";
 import { actor } from "../../lib/auth/actor";
 import { redirect } from "next/navigation";
@@ -13,9 +14,7 @@ export default async function Dashboard() {
   );
   return (
     <>
-      <p className="eyebrow">RUANG PENGELOLAAN</p>
-      <h1>Ringkasan madrasah</h1>
-      <p className="muted">Statistik sesuai cakupan akses akun Anda.</p>
+      <PageHeading title="Ringkasan madrasah" description="Statistik sesuai cakupan akses akun Anda." />
       <div className="cards">
         {results.map((r, i) => (
           <section className="panel" key={i}>

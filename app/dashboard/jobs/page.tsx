@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../components/layout/page-heading";
 import { redirect } from "next/navigation";
 import { actor } from "../../../lib/auth/actor";
 import { SystemPanel } from "../../../components/system/panel";
@@ -6,7 +7,7 @@ export default async function Page() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <h1>Otomasi dan backup</h1>
+      <PageHeading title="Otomasi dan backup" />
       <SystemPanel mode="jobs" />
     </>
   );

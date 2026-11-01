@@ -1,9 +1,9 @@
+import { PageHeading } from "../../../components/layout/page-heading";
 import { UsersPanel } from "../../../components/admin/users-panel";
 export default function Users() {
   return (
     <>
-      <h1>Pengguna</h1>
-      <p className="muted">Kelola identitas, status akun, dan impor peserta.</p>
+      <PageHeading title="Pengguna" description="Kelola identitas, status akun, dan impor peserta." />
       <UsersPanel />
     </>
   );

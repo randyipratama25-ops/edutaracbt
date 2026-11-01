@@ -16,7 +16,7 @@ try{
  server=spawn('npm',['run','dev','--','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,NEXT_TELEMETRY_DISABLED:'1',EDUTARA_UI_TEST_DIST:dist},detached:true,stdio:['ignore','pipe','pipe']});
  server.stdout.pipe(log,{end:false});server.stderr.pipe(log,{end:false});
  await waitUntil(async()=>{try{return(await fetch(origin+'/login')).ok;}catch{return false;}});
- browser=await puppeteer.launch({args:chromium.args,executablePath:await chromium.executablePath(),headless:true});
+ browser=await puppeteer.launch({args:chromium.args,executablePath:process.env.EDUTARA_TEST_CHROME||await chromium.executablePath(),headless:true});
  const page=await browser.newPage();const errors=[];let latestAttempt=null,answers={},listFailure=false;
  page.on('pageerror',error=>errors.push(error.message));
  await page.setRequestInterception(true);

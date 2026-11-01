@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../components/layout/page-heading";
 import { redirect } from "next/navigation";
 import { actor } from "../../../lib/auth/actor";
 import { OperationsPanel } from "../../../components/operations/panel";
@@ -6,7 +7,7 @@ export default async function Rooms() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <h1>Ruang, sesi dan pengawas</h1>
+      <PageHeading title="Ruang, sesi dan pengawas" />
       <OperationsPanel mode="rooms" />
     </>
   );

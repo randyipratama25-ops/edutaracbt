@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../components/layout/page-heading";
 import { redirect } from "next/navigation";
 import { actor } from "../../../lib/auth/actor";
 import { AcceptancePanel } from "../../../components/acceptance/panel";
@@ -6,7 +7,7 @@ export default async function Page() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <h1>Penerimaan operasional</h1>
+      <PageHeading title="Penerimaan operasional" />
       <AcceptancePanel />
     </>
   );

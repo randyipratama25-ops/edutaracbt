@@ -1,4 +1,6 @@
 "use client";
+import { HelpDisclosure } from "../ui/help-disclosure";
+
 import {
   useCallback,
   useEffect,
@@ -142,17 +144,17 @@ export function AdvancedPanel() {
             Periksa browser ini
           </Button>
         </div>
-        <p className="muted">
+        <HelpDisclosure><p>
           Berkas uji tidak dienkripsi dan tidak memvalidasi Browser Exam
           Key/Config Key. Petunjuk browser dapat dipalsukan; hasil deteksi bukan
           bukti keamanan SEB.
-        </p>
+        </p></HelpDisclosure>
         {local && <p role="status">{local}</p>}
-        <p>
+        <HelpDisclosure><p>
           Uji login, soal/rumus, media, canvas, pemulihan koneksi dan submit
           pada setiap kombinasi perangkat serta versi SEB. Catat hanya hasil
           yang benar-benar diamati.
-        </p>
+        </p></HelpDisclosure>
       </section>
       <section className="panel stack">
         <h2>Pertukaran nilai XLSX dan PDF</h2>

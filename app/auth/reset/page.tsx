@@ -3,8 +3,8 @@ export default function Reset() {
   return (
     <main id="main-content" tabIndex={-1} className="auth-wrap">
       <section className="panel">
-        <h1>Atur password akun</h1>
-        <p>Gunakan tautan aktivasi atau pemulihan dari email Anda.</p>
+        <h1>Atur password</h1>
+        <p>Buat password untuk mengakses akun Anda.</p>
         <PasswordForm />
       </section>
     </main>

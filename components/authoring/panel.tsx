@@ -1,4 +1,6 @@
 "use client";
+import { HelpDisclosure } from "../ui/help-disclosure";
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -730,11 +732,11 @@ export function AuthoringPanel() {
           <details>
             <summary>Impor soal dan template</summary>
             <div className="stack">
-              <p>
+              <HelpDisclosure><p>
                 Maksimal 500 soal / 5 MB. Excel: kolom A berisi JSON soal, baris
                 pertama judul. Google Forms: unggah ekspor JSON Forms API atau
                 berkas Excel yang dinormalisasi.
-              </p>
+              </p></HelpDisclosure>
               <div className="actions">
                 {types.map((t) => (
                   <Button

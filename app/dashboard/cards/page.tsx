@@ -1,8 +1,9 @@
+import { PageHeading } from "../../../components/layout/page-heading";
 import { CardsPanel } from "../../../components/operations/cards";
 export default function Cards() {
   return (
     <>
-      <h1>Kartu peserta ujian</h1>
+      <PageHeading title="Kartu peserta ujian" />
       <CardsPanel />
     </>
   );

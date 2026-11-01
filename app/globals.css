@@ -316,3 +316,22 @@ progress::-moz-progress-bar { background: var(--primary); border-radius: 20px; }
 /* Bank and assessment */
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.criterion-editor{display:grid;grid-template-columns:minmax(0,2fr) minmax(80px,1fr);gap:.65rem}.criterion-editor .button{grid-column:1/-1;justify-self:start}.grading-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:1.5rem;align-items:start}.assessment-canvas{width:100%;height:auto;object-fit:contain;border:1px solid var(--border);border-radius:.5rem}.moderation-list{list-style:none;padding:0;margin:0;display:grid;gap:.75rem}.moderation-list>li{padding:1rem;border:1px solid var(--border);border-radius:.75rem;display:flex;justify-content:space-between;gap:1rem;align-items:start}.moderation-list>li>div{min-width:0;overflow-wrap:anywhere}.moderation-list p{margin:.3rem 0}.block{display:block}.bank-table{min-width:850px}.bank-table th:first-child{width:260px;min-width:260px}.assessment-table{min-width:740px}.dashboard-workspace :is(button,input,select,textarea,a){scroll-margin-block-start:96px}
 @media(max-width:900px){.grading-grid{grid-template-columns:1fr}}@media(max-width:600px){.form-grid,.criterion-editor{grid-template-columns:1fr}.moderation-list>li{flex-direction:column}.bank-table th:first-child{width:180px;min-width:180px}}
+
+/* Compact workspace hierarchy and optional contextual guidance. */
+.page-heading{display:grid;gap:.35rem;margin:0 0 1.25rem;max-width:75ch}
+.page-heading h1{margin:0;font-size:clamp(1.45rem,2.5vw,1.9rem);line-height:1.2;letter-spacing:-.025em}
+.page-heading>p{margin:0;color:var(--muted);font-size:.94rem;line-height:1.5}
+.help-disclosure{max-width:100%;min-width:0;border:1px solid var(--border);border-radius:.65rem;background:var(--background);font-size:.9rem}
+.help-disclosure>summary{cursor:pointer;padding:.65rem .85rem;font-weight:600;min-height:44px;list-style-position:inside}
+.help-disclosure>summary:focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:.5rem}
+.help-disclosure[open]>summary{border-bottom:1px solid var(--border)}
+.help-disclosure-content{padding:.75rem .85rem;line-height:1.6;color:var(--muted)}
+.help-disclosure-content>p{margin:0;max-width:80ch}
+.dashboard-workspace>.stack{gap:1rem}
+.dashboard-workspace .panel{box-shadow:0 1px 3px rgb(15 23 42 / .035)}
+.dashboard-workspace .panel>h2{font-size:1.1rem;line-height:1.35;margin-block:.15rem .65rem}
+.dashboard-workspace label{font-size:.9rem}
+.dashboard-workspace .actions{gap:.55rem}
+.dashboard-workspace :is(input,select,textarea){max-width:100%;min-width:0}
+@media(max-width:600px){.page-heading{margin-bottom:1rem}.dashboard-workspace .panel{padding:1rem}.help-disclosure-content{padding:.7rem}.dashboard-workspace .actions>.button{flex-grow:1}.dashboard-workspace .form-grid{gap:.8rem}}
+.auth-card>h1{font-size:clamp(1.5rem,3vw,2rem);margin-block:.5rem}.auth-card>.muted{margin-block:.4rem 1.25rem}.hero>h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.12;letter-spacing:-.035em}.supervisor-workspace>.student-portal-heading h1,.student-shell>.student-portal-heading h1{font-size:clamp(1.5rem,3vw,2rem);margin-bottom:.35rem}.supervisor-workspace>details{border:1px solid var(--border);border-radius:.75rem;padding:.8rem 1rem}.supervisor-workspace>details>summary{cursor:pointer;font-weight:600;min-height:36px}

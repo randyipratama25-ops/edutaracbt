@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../components/layout/page-heading";
 import { AISettings } from "../../../components/ai/settings";
 import { redirect } from "next/navigation";
 import { actor } from "../../../lib/auth/actor";
@@ -7,7 +8,7 @@ export default async function Page() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <h1>Fitur lanjutan</h1>
+      <PageHeading title="Fitur lanjutan" />
       <AISettings />
       <AdvancedPanel />
     </>
