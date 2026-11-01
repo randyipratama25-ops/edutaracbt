@@ -1,0 +1,5 @@
+import { staff } from '../../../../lib/results/server';
+import { body,failure,HttpError,json,requireOrigin } from '../../../../lib/http';
+import { providerSave } from '../../../../lib/ai/schema';
+export async function GET(){try{const a=await staff();if(a.role!=='admin')throw new HttpError(403,'Hanya Admin.');const r=await a.client.rpc('ai_configuration',{input:{action:'list'}});if(r.error)throw new HttpError(503,'Pengaturan AI belum tersedia.');return json(r.data);}catch(e){return failure(e);}}
+export async function POST(request:Request){try{requireOrigin(request);const a=await staff();if(a.role!=='admin')throw new HttpError(403,'Hanya Admin.');const input=providerSave.parse(await body(request));const r=await a.client.rpc('ai_configuration',{input});if(r.error)throw new HttpError(409,'Konfigurasi belum tersimpan. Muat ulang dan periksa isian.');return json(r.data);}catch(e){return failure(e);}}

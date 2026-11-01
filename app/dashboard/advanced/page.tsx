@@ -1,3 +1,4 @@
+import { AISettings } from "../../../components/ai/settings";
 import { redirect } from "next/navigation";
 import { actor } from "../../../lib/auth/actor";
 import { AdvancedPanel } from "../../../components/advanced/panel";
@@ -7,6 +8,7 @@ export default async function Page() {
   return (
     <>
       <h1>Fitur lanjutan</h1>
+      <AISettings />
       <AdvancedPanel />
     </>
   );
