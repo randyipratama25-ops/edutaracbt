@@ -1,3 +1,4 @@
+import { ContextHelp } from "../../../components/help/context-help";
 import { PasswordForm } from "../../../components/auth/password-form";
 export default function Reset() {
   return (
@@ -6,6 +7,7 @@ export default function Reset() {
         <h1>Atur password</h1>
         <p>Buat password untuk mengakses akun Anda.</p>
         <PasswordForm />
+        <ContextHelp audience="public" page="/auth/reset" />
       </section>
     </main>
   );

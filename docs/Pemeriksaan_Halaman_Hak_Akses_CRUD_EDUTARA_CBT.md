@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.12 — Pemeriksaan perangkat sebelum ujian.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.13 — Pusat bantuan sesuai konteks.
+
+## Pusat bantuan sesuai konteks — 1 November 2026
+
+Inventaris tetap **23 halaman**. Tombol Bantuan membuka dialog panduan pada shell 18 halaman dashboard, portal siswa, ruang ujian/status/hasil, portal pengawas, beranda, login dan pengaturan password. Panduan awal mengikuti halaman serta konteks peran. Admin/Guru memakai peran dari shell yang sudah diotorisasi, Pengawas memakai konteks pengawasan, Siswa memakai portal/keadaan attempt sendiri, dan halaman publik menampilkan panduan akun umum.
+
+Pengguna R panduan, mencari kata, membuka langkah/penanganan kendala, serta memperluas pencarian ke panduan perannya. Guru tidak ditawari panduan khusus Admin; Siswa/Pengawas/publik tidak ditawari modul staf. Perubahan halaman/peran menutup dialog lama dan membersihkan pencarian. Panduan statis bukan pembatas otorisasi; hak endpoint dan data tetap diperiksa server sebagaimana sebelumnya.
+
+Selama ujian, panduan dibuka di halaman yang sama tanpa navigasi/tindakan attempt. Timer dan autosave tetap berjalan. Panduan mengingatkan bahwa Minta bantuan adalah fitur terpisah untuk mengirim pesan ke pengawas; pencarian panduan tidak mengirim tiket. Tidak ada tautan keluar dari panduan ruang ujian. Kata pencarian dan state dialog tidak dikirim ke server atau disimpan sebagai riwayat.
+
+Tidak ada halaman, endpoint, tabel, skema, hak C/U/D data atau migrasi baru. Panduan hanya R; form kendala pengawas tetap memakai hak dan pembatasan yang sudah ada. Bukti implementasi: `docs/context-help.md`.
 
 ## Pemeriksaan perangkat sebelum ujian — 1 November 2026
 

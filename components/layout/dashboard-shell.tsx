@@ -1,4 +1,5 @@
 "use client";
+import { ContextHelp } from "../help/context-help";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -63,6 +64,7 @@ export function DashboardShell({ name, role, children }: { name: string; role: "
       <header className="workspace-header">
         <Button className="mobile-menu" variant="outline" aria-label="Buka navigasi" onClick={() => setMenuOpen(true)}><Menu size={20} aria-hidden="true" /></Button>
         <nav aria-label="Jejak navigasi" className="breadcrumbs"><Link href="/dashboard">Ruang kerja</Link><span aria-hidden="true">/</span><span>{page}</span></nav>
+        <ContextHelp audience={role} page={pathname} />
         <span className="role-badge">{role === "admin" ? "Admin" : "Guru"}</span>
       </header>
       <main id="main-content" tabIndex={-1} className="workspace dashboard-workspace">{children}</main>
