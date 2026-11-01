@@ -47,7 +47,7 @@ Deno.serve(async (request) => {
         return fail("Terlalu banyak percobaan. Coba lagi dalam 15 menit.", 429);
       const { data: profile } = await admin
         .from("profiles")
-        .select("id,role,active,archived_at")
+        .select("id,organization_id,role,active,archived_at")
         .eq("username", name)
         .single();
       let email = "";
@@ -114,7 +114,7 @@ Deno.serve(async (request) => {
         return fail("Konteks login atau penugasan tidak diizinkan.", 403);
       }
       await admin.from("audit_logs").insert({
-        organization_id: "6e143c55-7be5-4e6e-9f1a-8f8db429956a",
+        organization_id: profile!.organization_id,
         actor_id: profile!.id,
         action: "LOGIN",
         target_type: "session",

@@ -1,0 +1,64 @@
+import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
+vi.mock("server-only", () => ({}));
+import { branding } from "../lib/system/branding";
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://branding.example.invalid");
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "test-publishable");
+  vi.stubGlobal("fetch", vi.fn());
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+describe("branding fallback", () => {
+  it("works without configuration", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    expect((await branding()).name).toBe("EDUTARA CBT");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("rejects malformed and oversized text", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({ name: { broken: true }, subtitle: "x".repeat(201) }),
+      ),
+    );
+    expect(await branding()).toMatchObject({
+      name: "EDUTARA CBT",
+      subtitle: "Ujian madrasah",
+      logo: "",
+      background: "",
+    });
+  });
+  it("retains valid configured text", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          name: "MTs Pengujian",
+          subtitle: "Asesmen semester",
+          logo_id: null,
+          background_id: null,
+        }),
+      ),
+    );
+    expect(await branding()).toMatchObject({
+      name: "MTs Pengujian",
+      subtitle: "Asesmen semester",
+    });
+  });
+  it("aborts all optional branding work at six seconds", async () => {
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockImplementation(
+      (_u, o) =>
+        new Promise((_r, reject) =>
+          o!.signal!.addEventListener("abort", () =>
+            reject(new DOMException("Abort", "AbortError")),
+          ),
+        ),
+    );
+    const pending = branding();
+    await vi.advanceTimersByTimeAsync(6000);
+    expect((await pending).name).toBe("EDUTARA CBT");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

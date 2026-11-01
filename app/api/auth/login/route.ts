@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { loginDestination } from "../../../../lib/auth/account-request";
 import { loginSchema } from "../../../../lib/domain/validation";
 import { db } from "../../../../lib/supabase/server";
 import { gateway } from "../../../../lib/auth/gateway";
@@ -18,12 +19,7 @@ export async function POST(request: Request) {
       path: "/",
     });
     return json({
-      next:
-        input.context === "supervisor"
-          ? "/supervisor"
-          : input.context === "student"
-            ? "/student"
-            : "/dashboard",
+      next: loginDestination(input.context),
     });
   } catch (error) {
     return failure(error);

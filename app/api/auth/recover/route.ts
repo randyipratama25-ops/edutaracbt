@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { recoveryAcceptedMessage } from "../../../../lib/auth/account-request";
 import { gateway } from "../../../../lib/auth/gateway";
 import { username } from "../../../../lib/domain/validation";
 import { body, failure, json, requireOrigin } from "../../../../lib/http";
@@ -8,8 +9,7 @@ export async function POST(request: Request) {
     const input = z.object({ username }).parse(await body(request));
     await gateway({ action: "recover", ...input });
     return json({
-      message:
-        "Jika akun tersedia, petunjuk pemulihan akan dikirim ke email yang terdaftar.",
+      message: recoveryAcceptedMessage,
     });
   } catch (error) {
     return failure(error);
