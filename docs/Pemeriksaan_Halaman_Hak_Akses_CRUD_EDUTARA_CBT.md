@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.15 — Penyempurnaan aksesibilitas.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.16 — Notifikasi yang dapat ditindaklanjuti.
+
+## Notifikasi yang dapat ditindaklanjuti — 1 November 2026
+
+Inventaris tetap **23 halaman**. Notifikasi di portal Siswa menampilkan judul, prioritas Informasi/Penting, isi, waktu WIB, status dibaca dan konteks ujian. Siswa R hanya pesan milik penerima dalam organisasi aktif; U dibaca satu pesan atau maksimal 20 pesan halaman saat ini. Filter belum dibaca, pagination 20, serta jumlah belum dibaca global tidak terbatas 100 pesan terakhir. Dibaca bukan bukti penyelesaian tindakan.
+
+Tombol Lihat ujian terkait memfokuskan kartu ujian yang sedang tersedia di halaman yang sama, tanpa URL eksternal, reload, mulai/submit attempt atau pergantian sesi. Jika player aktif/kartu tidak tersedia, UI memberi petunjuk untuk menyelesaikan sesi atau menghubungi pengawas. API hanya mengembalikan identitas/judul ujian jika siswa masih terdaftar aktif dan ujian bukan draf/arsip. Pencabutan akses membuat konteks ujian tidak tersedia, tanpa membocorkan judulnya.
+
+Admin/Guru/Pengawas tetap C notifikasi melalui Monitoring/portal Pengawas dalam cakupan penerima lama. Form baru menambah judul (1–120), prioritas dan konteks ujian opsional untuk sasaran exam/selected; sasaran all tidak membawa tautan ujian. Rate limit, request idempoten dan audit tetap berlaku. R riwayat pengiriman kini berupa kartu/status penerima berizin, bukan JSON mentah. Tidak ada hak U/D isi notifikasi.
+
+Endpoint lama `/api/operations` diperluas dengan GET inbox_page dan POST read_batch. Tabel tetap private dengan RLS dan tanpa grant tabel langsung; RPC anonim tetap ditolak. Migrasi `20261101062737_actionable_notifications.sql` menambah metadata dan indeks serta mempertahankan kontrak array inbox/sent lama. Pesan lama default Informasi/Pesan petugas, tanpa konteks ujian. Helper latihan restore mengisi default untuk backup lama yang belum memiliki kolom baru. Tidak ada email/push/browser notification atau pengiriman pesan nyata selama implementasi. Bukti: `docs/actionable-notifications.md`.
 
 ## Penyempurnaan aksesibilitas — 1 November 2026
 

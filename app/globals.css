@@ -392,3 +392,11 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 }
 
 .button-outline:hover:not(:disabled) { border-color:#536571; }
+
+.notification-list { display:grid; gap:1rem; }
+.notification-card { padding:1rem; border:1px solid var(--border); border-radius:.75rem; min-width:0; }
+.notification-card.is-unread { border-inline-start:4px solid var(--primary); }
+.notification-card time { color:var(--muted); font-size:.8rem; }
+.notification-card h2 { margin-block:.7rem; }
+.inbox-panel [hidden] { display:none; }
+.notification-list { max-height:min(55dvh,32rem); overflow:auto; overscroll-behavior:contain; padding:6px; }
