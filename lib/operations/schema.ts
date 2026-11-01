@@ -70,8 +70,12 @@ export const operation = z.discriminatedUnion("action", [
     exam_id: exam_id.optional(),
     student_ids: student_ids.optional(),
     message: z.string().trim().min(1).max(2000),
+    title:z.string().trim().min(1).max(120).default("Pesan petugas"),
+    priority:z.enum(["info","important"]).default("info"),
+    link_exam:z.boolean().default(false),
   }),
   z.object({ action: z.literal("read"), id }),
+  z.object({action:z.literal("read_batch"),ids:z.array(id).min(1).max(20)}),
 ]);
 export const cardCreate = z.object({
   action: z.literal("create"),

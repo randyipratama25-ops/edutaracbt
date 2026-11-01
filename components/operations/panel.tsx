@@ -98,6 +98,7 @@ export function OperationsPanel({
     [people, setPeople] = useState<string[]>([]),
     [scope, setScope] = useState("exam"),
     [text, setText] = useState(""),
+    [notificationTitle,setNotificationTitle]=useState(""),[priority,setPriority]=useState("info"),[linkExam,setLinkExam]=useState(true),
     [history, setHistory] = useState<unknown>(null);
   const seq = useRef(0);
   const retry = useRef<{signature:string;id:string}|null>(null);
@@ -150,7 +151,7 @@ export function OperationsPanel({
     setPeople([]);
     setName("");
     setCapacity("0");
-    setText("");
+    setText("");setNotificationTitle("");setPriority("info");setLinkExam(true);
     setScope("exam");
   }
   async function save(input: object) {
@@ -233,6 +234,7 @@ export function OperationsPanel({
         exam_id: exam,
         student_ids: scope === "selected" ? selected : undefined,
         message: text,
+        title:notificationTitle,priority,link_exam:linkExam&&scope!=="all",
       };
     else input = { action: dialog, id: target };
     void save(input);
@@ -513,7 +515,7 @@ export function OperationsPanel({
             >
               Diskualifikasi
             </Button>
-            <Button onClick={() => open("broadcast")}>Kirim pesan</Button>
+            <Button onClick={() => open("broadcast")}>Kirim notifikasi</Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -684,7 +686,7 @@ export function OperationsPanel({
         }
         description="Perubahan diperiksa server dan dicatat dalam audit."
       >
-        {["history", "sent"].includes(dialog) ? (
+        {dialog==="sent" ? <SentNotifications value={history} /> : dialog==="history" ? (
           <pre className="answer-text">
             {history ? JSON.stringify(history, null, 2) : "Memuat…"}
           </pre>
@@ -852,6 +854,10 @@ export function OperationsPanel({
             )}
             {dialog === "broadcast" && (
               <>
+                <label>Judul notifikasi<input required maxLength={120} value={notificationTitle} onChange={e=>setNotificationTitle(e.target.value)} /></label>
+                <label>Prioritas<select value={priority} onChange={e=>setPriority(e.target.value)}><option value="info">Informasi</option><option value="important">Penting</option></select></label>
+                {scope!=="all"&&<label className="check"><input type="checkbox" checked={linkExam} onChange={e=>setLinkExam(e.target.checked)} />Sertakan tombol Lihat ujian terkait</label>}
+                <p className="muted">Tindakan hanya mengarahkan siswa ke kartu ujian di halaman yang sama. Dibaca bukan bukti tindakan selesai. Jangan sertakan PIN atau jawaban.</p>
                 <label>
                   Sasaran
                   <select
@@ -900,4 +906,10 @@ export function OperationsPanel({
       </Dialog>
     </section>
   );
+}
+
+function SentNotifications({value}:{value:unknown}){
+ if(!Array.isArray(value))return <p role="status">Memuat riwayat pengiriman…</p>;
+ const rows=value as {id:string;title?:string;priority?:string;message:string;created_at:string;receipts:{student:string;read_at:string|null}[]|null}[];
+ return <div className="stack">{!rows.length&&<p>Belum ada pengiriman.</p>}{rows.map(m=><article className="notification-card" key={m.id}><h2>{m.title||'Pesan petugas'}</h2><p>{m.priority==='important'?'Penting':'Informasi'} · {new Date(m.created_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})} WIB</p><p className="answer-text">{m.message}</p><p>{m.receipts?.filter(r=>!!r.read_at).length||0} / {m.receipts?.length||0} penerima berizin sudah membaca.</p><details><summary>Status penerima</summary><ul>{m.receipts?.map((r,i)=><li key={i}>{r.student} · {r.read_at?'Sudah dibaca':'Belum dibaca'}</li>)}</ul></details></article>)}<p className="muted">Status dibaca tidak membuktikan tindakan sudah diselesaikan.</p></div>;
 }

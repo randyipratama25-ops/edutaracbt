@@ -12,15 +12,16 @@ export async function GET(request: Request) {
   try {
     const s = new URL(request.url).searchParams;
     const action = z
-      .enum(["options", "rooms", "monitor", "inbox", "sent", "history"])
+      .enum(["options", "rooms", "monitor", "inbox", "inbox_page", "sent", "history"])
       .parse(s.get("action") || "options");
-    const a = await operator(action === "inbox");
+    const a = await operator(action === "inbox"||action === "inbox_page");
     const input = {
       action,
       exam_id: s.get("exam") ? z.uuid().parse(s.get("exam")) : undefined,
       id: s.get("id") ? z.uuid().parse(s.get("id")) : undefined,
       room_id: s.get("room") ? z.uuid().parse(s.get("room")) : undefined,
       search: (s.get("search") || "").slice(0, 150),
+      ...(action==="inbox_page"?{page:z.coerce.number().int().min(1).max(100000).parse(s.get("page")||1),filter:z.enum(["all","unread"]).parse(s.get("filter")||"all")}:{}),
     };
     const r = await a.client.rpc("ops_command", { input });
     if (r.error) throw new HttpError(403, r.error.message);
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   try {
     requireOrigin(request);
     const input = operation.parse(await body(request));
-    const a = await operator(input.action === "read");
+    const a = await operator(input.action === "read"||input.action === "read_batch");
     const r = await a.client.rpc("ops_command", { input });
     if (r.error)
       throw new HttpError(

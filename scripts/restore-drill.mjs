@@ -41,9 +41,10 @@ export async function restoreRows(db, rows) {
           throw Error("Untrusted table identifier");
         const sqlName = table.split(".").map(ident).join(".");
         await db.exec(`alter table ${sqlName} disable trigger user`);
+        const payload = table === "private.notifications" ? "jsonb_build_object('title','Pesan petugas','priority','info') || $1::jsonb" : "$1::jsonb";
         for (const record of byTable.get(table))
           await db.query(
-            `insert into ${sqlName} overriding system value select (jsonb_populate_record(null::${sqlName},$1::jsonb)).*`,
+            `insert into ${sqlName} overriding system value select (jsonb_populate_record(null::${sqlName},${payload})).*`,
             [typeof record === "string" ? record : JSON.stringify(record)],
           );
         await db.exec(`alter table ${sqlName} enable trigger user`);

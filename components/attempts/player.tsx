@@ -169,7 +169,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
       {listState === "ready" && exams.some(e => !e.attempt && e.status !== "closed") && <DevicePreflight onReadyChange={updateDeviceReady} />}
       <div className="student-exam-list">
       {listState === "ready" && exams.map((e) => (
-        <section className="panel stack exam-card" key={e.id}>
+        <section id={`exam-${e.id}`} tabIndex={-1} className="panel stack exam-card" key={e.id}>
           <div className="actions"><span className="question-type">{e.attempt?.finalized_at ? "Selesai" : e.attempt ? "Sudah dimulai" : e.status === "active" ? "Berlangsung" : e.status === "closed" ? "Ditutup" : "Terjadwal"}</span><span className="muted">{e.duration_minutes} menit</span></div>
           <h2>{e.title}</h2>
           <p className="muted">
