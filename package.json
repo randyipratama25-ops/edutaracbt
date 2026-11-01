@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "test:database": "node scripts/stage4-integration.mjs && node scripts/stage5-integration.mjs && node scripts/stage6-integration.mjs && node scripts/release/rollback-drill.mjs && node scripts/acceptance/retention-integration.mjs && node scripts/answer-session-integration.mjs && node scripts/durable-recovery-integration.mjs && node scripts/workflow-integration.mjs && node scripts/bank-assessment-integration.mjs && node scripts/advanced-features-integration.mjs",
-    "release:check": "node scripts/release/gate.mjs"
+    "release:check": "node scripts/release/gate.mjs",
+    "test:accessibility": "node scripts/ui/accessibility-browser.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.3.1",
@@ -46,6 +47,7 @@
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "axe-core": "4.14.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.3",
     "react-test-renderer": "19.3.1",

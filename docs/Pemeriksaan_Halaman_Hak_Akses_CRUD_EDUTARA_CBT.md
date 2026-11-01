@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.14 — Pencarian dan filter yang konsisten.
+Tanggal pemeriksaan: 1 November 2026 (WIB). Versi dokumen: 1.15 — Penyempurnaan aksesibilitas.
+
+## Penyempurnaan aksesibilitas — 1 November 2026
+
+Inventaris tetap **23 halaman**. Dialog bersama menyimpan elemen pembuka sebelum fokus dipindahkan ke portal, mempertahankan Tab/Shift+Tab di modal, serta mengembalikan fokus saat ditutup. Jika pembuka telah dihapus, fokus diarahkan ke main yang tersedia; handler khusus pemanggil tetap dihormati. Navigasi dashboard mengumumkan judul dan memfokuskan konten utama setelah perpindahan route; tombol navigasi mobile mengumumkan status terbuka.
+
+Kontras teks footer diperkuat, begitu pula batas kontrol/placeholder/outline fokus. Dukungan forced-colors ditambahkan; prefers-reduced-motion yang sudah ada dipertahankan. Label login/password serta pesan konfirmasi password dihubungkan ke input; mismatch ditandai aria-invalid dan alert. Esai terhubung ke keterangan panjang jawaban, sedangkan timer secara eksplisit aria-live=off agar perubahan tiap detik tidak terus diumumkan.
+
+Tidak ada halaman, endpoint, tabel, skema, migrasi atau perubahan hak CRUD. Deadline, autosave, koreksi dan izin server tetap seperti sebelumnya. Dependency axe-core hanya untuk pengujian pengembangan; tidak diimpor oleh komponen aplikasi.
+
+Validasi otomatis meliputi 18 scan WCAG-tag pada login/password/dashboard/player serta dialog, navigasi mobile, peta soal dan esai; keyboard skip link, perangkap/pengembalian fokus, fallback pembuka hilang, perpindahan route, aria-invalid, timer dan autosave, ukuran 320/768/1440 serta emulasi reduced-motion/forced-colors. Pemindaian tidak membuktikan kepatuhan WCAG penuh; uji manual pembaca layar/perangkat fisik masih diperlukan. Bukti implementasi: `docs/accessibility-refinement.md`.
 
 ## Pencarian dan filter yang konsisten — 1 November 2026
 

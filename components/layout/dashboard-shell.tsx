@@ -1,6 +1,6 @@
 "use client";
 import { ContextHelp } from "../help/context-help";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, BarChart3, BookOpen, CalendarDays, ClipboardCheck, DoorOpen, GraduationCap, ImageIcon, LayoutDashboard, Menu, Printer, Settings, ShieldCheck, Users, Workflow } from "lucide-react";
@@ -52,6 +52,19 @@ export function DashboardNavigation({ role, pathname, onNavigate }: { role: "adm
 export function DashboardShell({ name, role, children }: { name: string; role: "admin" | "teacher"; children: ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const previousPath = useRef(pathname);
+  const [announcement, setAnnouncement] = useState("");
+  useEffect(() => {
+    if (previousPath.current === pathname) return;
+    previousPath.current = pathname;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById("main-content")?.focus();
+      const heading=document.querySelector("#main-content h1")?.textContent?.trim()||"Ruang kerja";
+      setAnnouncement(`Halaman ${heading}.`);
+    });
+    setAnnouncement("");
+    return () => cancelAnimationFrame(frame);
+  }, [pathname]);
   const page = groups.flatMap(group => group.items).find(item => item.href === pathname)?.label || "Ruang kerja";
   return <div className="app-shell">
     <aside className="sidebar">
@@ -62,11 +75,12 @@ export function DashboardShell({ name, role, children }: { name: string; role: "
     </aside>
     <div className="shell-body">
       <header className="workspace-header">
-        <Button className="mobile-menu" variant="outline" aria-label="Buka navigasi" onClick={() => setMenuOpen(true)}><Menu size={20} aria-hidden="true" /></Button>
+        <Button className="mobile-menu" variant="outline" aria-label="Buka navigasi" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={20} aria-hidden="true" /></Button>
         <nav aria-label="Jejak navigasi" className="breadcrumbs"><Link href="/dashboard">Ruang kerja</Link><span aria-hidden="true">/</span><span>{page}</span></nav>
         <ContextHelp audience={role} page={pathname} />
         <span className="role-badge">{role === "admin" ? "Admin" : "Guru"}</span>
       </header>
+      <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
       <main id="main-content" tabIndex={-1} className="workspace dashboard-workspace">{children}</main>
       <footer className="workspace-footer">EDUTARA CBT<span>Ruang pengelolaan madrasah</span></footer>
     </div>

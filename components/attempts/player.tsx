@@ -544,7 +544,7 @@ export function ExamPlayer({
       </main>
     );
   const item = a.questions[index];
-  if (!item) return <main id="main-content" className="workspace stack"><p>Snapshot soal tidak tersedia. Hubungi pengawas.</p><ContextHelp audience="student" page="student-exam" duringExam /></main>;
+  if (!item) return <main id="main-content" tabIndex={-1} className="workspace stack"><p>Snapshot soal tidak tersedia. Hubungi pengawas.</p><ContextHelp audience="student" page="student-exam" duringExam /></main>;
   const q = item.payload;
   const answer =
     queue.values[item.id] || (["PG", "PG_KOMPLEKS"].includes(q.type) ? [] : {});
@@ -589,7 +589,7 @@ export function ExamPlayer({
       <header ref={examHeader} className="exam-top panel">
         <div><p className="eyebrow">RUANG UJIAN</p><h1>{a.title}</h1><small>Soal {index+1} dari {a.questions.length}</small></div>
         <div className={`exam-clock${remaining <= 300 ? " is-urgent" : ""}`}><span>Sisa waktu</span>
-          <p role="timer" aria-label="Sisa waktu">{Math.floor(remaining/3600).toString().padStart(2,"0")}:{Math.floor((remaining%3600)/60).toString().padStart(2,"0")}:{(remaining%60).toString().padStart(2,"0")}</p>
+          <p role="timer" aria-live="off" aria-label="Sisa waktu">{Math.floor(remaining/3600).toString().padStart(2,"0")}:{Math.floor((remaining%3600)/60).toString().padStart(2,"0")}:{(remaining%60).toString().padStart(2,"0")}</p>
         </div>
         <div className="actions">
           <Button className="player-mobile-map" variant="outline" onClick={() => setMapOpen(true)}><ListOrdered size={17} aria-hidden="true" />Daftar soal</Button>
@@ -734,6 +734,7 @@ export function ExamPlayer({
             <label>
               Jawaban esai (HTML terbatas / LaTeX)
               <textarea
+                aria-describedby={`essay-length-${item.id}`}
                 dir={q.direction}
                 rows={8}
                 disabled={disabled}
@@ -743,7 +744,7 @@ export function ExamPlayer({
                 }
               />
             </label>
-            <p>
+            <p id={`essay-length-${item.id}`}>
               {essayLength(record.text || "")} karakter · minimum {q.minChars}
             </p>
             <div className="actions">
