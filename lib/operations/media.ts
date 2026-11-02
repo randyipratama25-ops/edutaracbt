@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {HttpError} from "../http";
 import { createHash } from "node:crypto";
 export const mediaTypes = [
   "image/png",
@@ -83,12 +84,13 @@ export async function storeMedia(
       .select("id")
       .eq("object_path", path)
       .maybeSingle();
+    if(old.error)throw new HttpError(503,"Status impor belum dapat diperiksa. Coba lagi setelah memuat ulang media.");
     if (old.data) return old.data;
   }
   const up = await client.storage
     .from("exam-media")
     .upload(path, bytes, { contentType: mime, upsert: false });
-  if (up.error) throw Error("Unggah media gagal; file sumber tidak diubah.");
+  if(up.error)throw new HttpError(503,"Hasil unggah Storage belum dapat dipastikan. Periksa media sebelum mencoba lagi.");
   const row = await client
     .from("media_assets")
     .insert({
@@ -101,9 +103,13 @@ export async function storeMedia(
     })
     .select("id")
     .single();
-  if (row.error) {
-    await client.storage.from("exam-media").remove([path]);
-    throw Error("Pencatatan media gagal.");
+  if(row.error){
+    // Never remove bytes after an uncertain INSERT: it may have committed despite a lost response.
+    const code=row.error.code||'';
+    if(!['23502','23503','23505','23514','42501','P0001'].includes(code))throw new HttpError(503,'Pencatatan media belum dapat dipastikan. Muat ulang dan periksa sebelum mengunggah kembali.');
+    try{await client.storage.from('exam-media').remove([path]);}catch{}
+    throw new HttpError(422,'Pencatatan media ditolak. Periksa akses dan coba lagi.');
   }
+  if(!row.data?.id)throw new HttpError(503,'Tanda terima media belum tersedia. Periksa daftar sebelum mengunggah lagi.');
   return row.data;
 }

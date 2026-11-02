@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.27 — Audit Peninjauan ujian.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.28 — Audit Media soal.
+
+## Audit Media soal — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/media` tetap untuk Admin/Guru dalam konteks staf; Admin dapat mengelola media dalam organisasi dan impor Drive, Guru tetap pada media/cakupan RLS miliknya. Berkas bersifat immutable: perubahan memakai unggahan baru, bukan overwrite. Penghapusan tetap ditolak bila media direferensikan soal, bank soal, snapshot, branding, logo atau laporan; proteksi backup tetap berlaku.
+
+Migrasi `20261102022942_media_search_audit.sql` memperbaiki konflik alias m pada fungsi daftar, menerapkan pencarian ID/path literal sebelum pagination, serta urutan created_at/id deterministik. Nama asli unggahan lokal lama tidak tersimpan, sehingga label pencarian disesuaikan tanpa mengarang atau mengubah struktur data. Cleanup_done kini menolak penutupan tiket selama objek Storage masih ada. Admin mempertahankan akses baca terhadap target cleanup berizin setelah metadata dihapus melalui helper proteksi yang sudah ada; grant dan RLS tidak dibuka untuk publik.
+
+UI memakai kontrak respons, abort/sequence/single-flight, debounce dan clamp halaman. Error daftar dan cleanup dipisah; kegagalan cleanup tidak menutup daftar media valid. Lock sinkron mencakup unggah/drop, hapus, cleanup dan Drive, dialog tidak ditutup selama mutation. Batch lokal maksimal 25, tipe/ukuran diperiksa sebelum kirim; unggah berhenti pada hasil tak pasti dan meminta pemeriksaan daftar. Pratinjau menangani gagal muat/putar dan coba ulang, renewal URL tidak mengganti audio aktif atau posisi jedanya. Clipboard yang tidak tersedia ditangani tanpa JavaScript error.
+
+API memvalidasi page/UUID/multipart, menolak receipt kosong dan menyamarkan detail SQL. Hapus/cleanup hanya menyatakan bersih setelah acknowledgement path valid; kegagalan Storage/transport/ack tetap pending. Pencatatan unggah yang hasilnya belum pasti tidak menghapus bytes yang mungkin sudah terdaftar. Drive tetap Admin-only, folder server, 5 MiB, 25 pilihan, deduplikasi berbasis sumber+hash; ada anggaran waktu batch dan timeout klien yang sesuai.
+
+Galeri/tabel, sticky header/identitas, wrapping path, kontrol unggah/pencarian, pagination, dialog dan daftar Drive/cleanup dirapikan untuk mobile. Tidak ada halaman, endpoint atau dependency baru; struktur tabel/data bisnis dan fitur lama dipertahankan. Bukti uji/migrasi dan batas ada di `docs/media-audit.md` serta PR terkait.
 
 ## Audit Peninjauan/monitoring ujian — 2 November 2026
 

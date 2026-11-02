@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { staff } from "../../../../lib/results/server";
+import { staff, resultData } from "../../../../lib/results/server";
 import {
   body,
   failure,
@@ -9,32 +9,20 @@ import {
 } from "../../../../lib/http";
 export async function GET(request: Request) {
   try {
-    const a = await staff();
-    const action =
-      new URL(request.url).searchParams.get("cleanup") === "1"
-        ? "cleanup_list"
-        : "list";
-    const r = await a.client.rpc("media_command", {
-      input: {
-        action,
-        page: Math.max(
-          1,
-          Math.min(
-            100000,
-            Number(new URL(request.url).searchParams.get("page") || 1),
-          ),
-        ),
-        mime: z
-          .enum(["", "image/", "audio/"])
-          .parse(new URL(request.url).searchParams.get("mime") || ""),
-        search: (new URL(request.url).searchParams.get("search") || "").slice(
-          0,
-          100,
-        ),
-      },
-    });
-    if (r.error) throw new HttpError(403, r.error.message);
-    return json(r.data);
+    const a = await staff(),
+      p = new URL(request.url).searchParams;
+    const input = {
+      action: p.get("cleanup") === "1" ? "cleanup_list" : "list",
+      page: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(100000)
+        .parse(p.get("page") || 1),
+      mime: z.enum(["", "image/", "audio/"]).parse(p.get("mime") || ""),
+      search: (p.get("search") || "").slice(0, 100),
+    };
+    return json(resultData(await a.client.rpc("media_command", { input })));
   } catch (e) {
     return failure(e);
   }
@@ -47,20 +35,42 @@ export async function POST(request: Request) {
       .object({ action: z.enum(["delete", "cleanup"]), id: z.uuid() })
       .parse(await body(request));
     const r = await a.client.rpc("media_command", { input });
-    if (r.error) throw new HttpError(422, r.error.message);
-    const removed = await a.client.storage
-      .from("exam-media")
-      .remove([r.data.path]);
-    const ticket = input.action === "delete" ? r.data.cleanup_id : input.id;
-    if (!removed.error)
-      await a.client.rpc("media_command", {
-        input: { action: "cleanup_done", id: ticket },
-      });
+    resultData(r, true);
+    const receipt = z
+      .object({ path: z.string().min(1), cleanup_id: z.uuid().optional() })
+      .safeParse(r.data);
+    if (
+      !receipt.success ||
+      (input.action === "delete" && !receipt.data.cleanup_id)
+    )
+      throw new HttpError(
+        503,
+        "Hasil penghapusan belum pasti. Muat ulang media dan pembersihan sebelum mencoba lagi.",
+      );
+    const ticket =
+      input.action === "delete" ? receipt.data.cleanup_id! : input.id;
+    let pending = true;
+    try {
+      const removed = await a.client.storage
+        .from("exam-media")
+        .remove([receipt.data.path]);
+      if (!removed.error) {
+        const done = await a.client.rpc("media_command", {
+          input: { action: "cleanup_done", id: ticket },
+        });
+        pending =
+          !!done.error ||
+          !z.object({ path: z.literal(receipt.data.path) }).safeParse(done.data)
+            .success;
+      }
+    } catch {
+      /* The database cleanup ticket remains retryable even if Storage/transport fails. */
+    }
     return json({
       deleted: true,
-      cleanup_pending: !!removed.error,
-      message: removed.error
-        ? "Referensi dihapus; pembersihan tersimpan dan dapat dicoba kembali."
+      cleanup_pending: pending,
+      message: pending
+        ? "Referensi dihapus; pembersihan tercatat dan perlu dicoba kembali."
         : "Media dihapus.",
     });
   } catch (e) {

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
           .min(1)
           .max(25)
           .optional(),
-        folder: z.string().optional(),
+        folder: z.string().regex(/^[a-zA-Z0-9_-]{10,200}$/).optional(),
         page_token: z.string().max(2000).optional(),
       })
       .parse(await body(request));
@@ -64,11 +64,11 @@ export async function POST(request: Request) {
       });
       if (x.page_token) q.set("pageToken", x.page_token);
       const r = await call("files?" + q);
-      const d = await r.json();
+      const d=z.object({files:z.array(z.object({id:z.string(),name:z.string(),mimeType:z.string(),size:z.string().optional()})),nextPageToken:z.string().optional()}).parse(await r.json());
       return json({
         folder,
         files: d.files.filter(
-          (f: { mimeType: string; size: string }) =>
+          (f) =>
             mediaTypes.includes(f.mimeType) &&
             Number(f.size) > 0 &&
             Number(f.size) <= 5242880,
@@ -80,7 +80,9 @@ export async function POST(request: Request) {
     if (!x.ids) throw new HttpError(422, "Pilih file terlebih dahulu.");
     const errors: string[] = [];
     let saved = 0;
-    for (const id of [...new Set(x.ids)]) {
+    const ids=[...new Set(x.ids)],deadline=Date.now()+240000;
+    for (const id of ids) {
+      if(Date.now()+40000>=deadline){errors.push("Sisa berkas belum diproses. Pilih kembali berkas tersebut untuk batch berikutnya.");break;}
       try {
         const meta = await (
           await call(
@@ -93,7 +95,7 @@ export async function POST(request: Request) {
           meta.trashed ||
           !meta.parents?.includes(folder) ||
           !mediaTypes.includes(meta.mimeType) ||
-          Number(meta.size) > 5242880
+          !Number.isSafeInteger(Number(meta.size))||Number(meta.size)<=0||Number(meta.size)>5242880
         )
           throw Error("File di luar folder/tipe/ukuran yang diizinkan.");
         const r = await call(
@@ -109,7 +111,7 @@ export async function POST(request: Request) {
       }
     }
     return json({
-      message: `${saved}/${x.ids.length} file berhasil diimpor. ${errors.join("; ")}`,
+      message: `${saved}/${ids.length} file berhasil diimpor. ${errors.join("; ")}`,
     });
   } catch (e) {
     return failure(e);

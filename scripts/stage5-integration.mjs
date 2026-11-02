@@ -230,6 +230,28 @@ try {
   await db.exec(
     `insert into public.media_assets(id,organization_id,uploader_id,object_path,mime_type,byte_size) values('a3000000-0000-4000-8000-000000000009','6e143c55-7be5-4e6e-9f1a-8f8db429956a','03000000-0000-4000-8000-000000000005','03000000-0000-4000-8000-000000000005/unused.png','image/png',128);insert into storage.objects(bucket_id,name,metadata) values('exam-media','03000000-0000-4000-8000-000000000005/unused.png','{"size":128}');`,
   );
+  // Media search runs before pagination, stays literal, and preserves uploader scope.
+  await db.query(`insert into public.media_assets(organization_id,uploader_id,object_path,mime_type,byte_size) select $1::uuid,$2::uuid,$2||'/audit_search_'||n||'.png','image/png',128 from generate_series(1,55)n`,['6e143c55-7be5-4e6e-9f1a-8f8db429956a',uid(5)]);
+  await db.query(`insert into public.media_assets(organization_id,uploader_id,object_path,mime_type,byte_size) values($1,$2,$3,'image/png',128)`,['6e143c55-7be5-4e6e-9f1a-8f8db429956a',uid(1),uid(1)+'/audit_search_admin.png']);
+  await actor(5);
+  const mediaFirst=await rpc({action:'list',search:'AUDIT_SEARCH_',page:1},'media_command');
+  const mediaSecond=await rpc({action:'list',search:'audit_search_',page:2},'media_command');
+  assert.equal(mediaFirst.total,55);assert.equal(mediaFirst.rows.length,50);assert.equal(mediaSecond.rows.length,5);
+  assert.equal(new Set([...mediaFirst.rows,...mediaSecond.rows].map(r=>r.id)).size,55);
+  assert.deepEqual(mediaFirst.rows.map(r=>r.id),mediaFirst.rows.map(r=>r.id).sort().reverse());
+  assert.equal((await rpc({action:'list',search:mediaFirst.rows[0].id},'media_command')).total,1);
+  assert.equal((await rpc({action:'list',search:'%',page:1},'media_command')).total,0);
+  assert.equal((await rpc({action:'list',search:'audit_search_',mime:'audio/'},'media_command')).total,0);
+  await actor(1);assert.equal((await rpc({action:'list',search:'audit_search_'},'media_command')).total,56);
+  console.log('PASS media literal ID/path search before pagination, deterministic ties and uploader/Admin scope');
+  const cross=mediaFirst.rows[0];
+  await owner();await db.query("insert into storage.objects(bucket_id,name,metadata) values('exam-media',$1,'{\"size\":128}')",[cross.object_path]);
+  await actor(1);const crossTicket=await rpc({action:'delete',id:cross.id},'media_command');
+  await reject(()=>rpc({action:'cleanup_done',id:crossTicket.cleanup_id},'media_command'));
+  const crossRemoved=await db.query("delete from storage.objects where bucket_id='exam-media' and name=$1 returning name",[cross.object_path]);
+  assert.equal(crossRemoved.rows.length,1);await rpc({action:'cleanup_done',id:crossTicket.cleanup_id},'media_command');
+  console.log('PASS Admin cross-uploader Storage cleanup; ticket cannot close before bytes are removed');
+
   await actor(5);
   const write = await db.query(
     "update storage.objects set metadata='{}' where name='03000000-0000-4000-8000-000000000005/unused.png' returning id",
@@ -244,6 +266,8 @@ try {
     (await rpc({ action: "cleanup_list" }, "media_command")).length,
     1,
   );
+  await reject(()=>rpc({action:'cleanup_done',id:deletion.cleanup_id},'media_command'));
+  await db.query("delete from storage.objects where bucket_id='exam-media' and name=$1",[deletion.path]);
   await rpc(
     { action: "cleanup_done", id: deletion.cleanup_id },
     "media_command",

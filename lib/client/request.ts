@@ -17,6 +17,7 @@ export async function clientRequest<T>(
   controller: AbortController,
   options: {
     mutation?: boolean;
+    timeoutMs?:number;
     uncertainMessage?: string;
     partial?: (error: unknown) => boolean;
   } = {},
@@ -24,7 +25,7 @@ export async function clientRequest<T>(
   const mutation = options.mutation === true;
   if (controller.signal.aborted)
     throw new ClientRequestError("Permintaan dibatalkan.", mutation);
-  const timer = setTimeout(() => controller.abort(), mutation ? 35000 : 20000);
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? (mutation ? 35000 : 20000));
   let rejectAbort: () => void = () => {};
   const aborted = new Promise<never>((_, reject) => {
     rejectAbort = () => reject(Error("Aborted"));
