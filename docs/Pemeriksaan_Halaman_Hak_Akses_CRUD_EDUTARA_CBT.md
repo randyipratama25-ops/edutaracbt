@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.30 — Audit Ruang, sesi dan pengawas.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.31 — Audit Pengaturan aplikasi.
+
+## Audit Pengaturan aplikasi — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/settings` hanya Admin dalam konteks staf. Formulir pengaturan dipisahkan dari daftar audit/job tanpa mengubah API `system_command`, CAS/version, Vault, branding publik atau scheduler. Tidak diperlukan migrasi database, dependency maupun endpoint baru.
+
+Pembacaan memakai kontrak runtime, timeout, abort dan generation; loading/error/coba ulang terpisah. Draf umum terpisah dari status server/kredensial. Muat ulang draf meminta konfirmasi. Lock sinkron dan fieldset disabled mencegah submit bersamaan serta perubahan isian saat pending. Konflik409, hasil tak pasti atau refresh setelah simpan gagal mengunci perubahan sampai status diperiksa, tanpa retry mutation otomatis.
+
+Penyimpanan secret tidak membuang draf umum atau menaikkan versi CAS draf secara diam-diam. Input password dikosongkan setelah ACK valid, pergantian jenis, discard atau hasil secret yang tidak pasti; nilai tidak dibaca kembali. Pilihan kunci AI lama tetap kompatibel, dengan tautan ke penyedia aktif di `/dashboard/advanced`. Pengingat yang sudah aktif tetap dapat dinonaktifkan ketika worker SMTP tidak tersedia.
+
+Uji SMTP memakai konfigurasi tersimpan dan memerlukan worker, sender serta App password. ACK pembuatan job tidak ditampilkan sebagai keberhasilan koneksi; hasil diarahkan ke `/dashboard/jobs`. Request_id dipertahankan saat percobaan yang sama belum pasti dan dipisah ketika versi/sender atau kredensial berubah. Uji tidak mengirim pesan. Identitas, kebijakan, email/template dan kredensial dikelompokkan, kontrol reflow mobile, tautan diberi penanda visual dan dialog tetap berbatas viewport.
+
+API memvalidasi konfigurasi serta receipt mutasi, menolak null/false/malformed ACK dan menyamarkan detail SQL/transport. Respons secret hanya metadata, bukan nilai. RLS/grant, kebijakan branding gambar publik, CAS dan audit tetap dipertahankan. Metadata produksi diperiksa read-only; tidak ada secret, pengaturan produksi, email atau job nyata dibuat dalam QA. Bukti uji dan batas ada di `docs/settings-audit.md`.
 
 ## Audit Ruang, sesi dan pengawas — 2 November 2026
 
