@@ -43,8 +43,8 @@ export function Dialog({
               if (target) { event.preventDefault(); target.focus(); }
             }
           }}>
-          <DialogPrimitive.Title>{title}</DialogPrimitive.Title>
-          <DialogPrimitive.Description>
+          <DialogPrimitive.Title className="dialog-title">{title}</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="dialog-description">
             {description}
           </DialogPrimitive.Description>
           {children}

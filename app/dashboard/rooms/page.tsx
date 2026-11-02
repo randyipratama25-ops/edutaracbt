@@ -8,7 +8,7 @@ export default async function Rooms() {
   if (a?.role !== "admin" || a.context !== "staff") redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Ruang, sesi dan pengawas" />
+      <PageHeading title="Ruang, sesi dan pengawas" description="Siapkan ruang dan sesi, tempatkan peserta, lalu tugaskan pengawas." />
       <OperationsPanel mode="rooms" />
     </>
   );

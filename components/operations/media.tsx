@@ -613,7 +613,7 @@ export function MediaPanel({ admin = false }: { admin?: boolean }) {
           }
         }}
         title="Hapus media"
-        description="Server menolak media yang dipakai soal, bank soal, snapshot, logo atau laporan."
+        description="Media yang masih digunakan dalam soal, ujian, logo, atau laporan tidak dapat dihapus."
       >
         <p>
           Hapus <code>{target?.id}</code>?

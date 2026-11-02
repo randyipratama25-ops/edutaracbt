@@ -18,7 +18,7 @@ export default function Reset() {
         </div>
         <h1 id="reset-title">Atur password</h1>
         <p className="muted">
-          Verifikasi sesi akun, lalu buat dan konfirmasi password baru Anda.
+          Buat password baru untuk akun Anda.
         </p>
         <PasswordForm />
         <footer className="reset-footer">

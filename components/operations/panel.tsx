@@ -879,7 +879,7 @@ export function OperationsPanel({
                       : "Pengaturan operasional")
         }
         className={mode === "rooms" ? "rooms-dialog" : ""}
-        description="Perubahan diperiksa server dan dicatat dalam audit."
+        description="Periksa sasaran dan rincian tindakan sebelum menyimpan."
       >
         {dialog === "sent" || dialog === "history" ? (
           <div className="stack" aria-busy={historyLoading}>

@@ -7,7 +7,7 @@ export default async function Page() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Audit aktivitas" />
+      <PageHeading title="Audit aktivitas" description="Telusuri tindakan pengguna berdasarkan waktu dan jenis aktivitas." />
       <SystemPanel mode="audit" />
     </>
   );

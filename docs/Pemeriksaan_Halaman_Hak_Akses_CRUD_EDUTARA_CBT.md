@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.31 — Audit Pengaturan aplikasi.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.32 — Penyelarasan UI dan UX seluruh halaman.
+
+## Penyelarasan UI dan UX seluruh halaman — 2 November 2026
+
+Inventaris tetap **23 halaman**. Komponen bersama diperbarui untuk hierarki judul, jarak konten, kelompok pencarian/filter, dan dialog. Semua dialog Radix mempertahankan portal, focus trap, pengembalian fokus, kontrol penutupan serta penguncian selama simpan. Area formulir tetap dapat digulir pada layar pendek; tabel mempertahankan area gulir sendiri. Tidak ada perubahan skema, API, hak akses, struktur data atau aturan penilaian; tidak diperlukan migrasi database.
+
+Judul halaman menjelaskan alur utama secara singkat. Petunjuk pengguna tentang snapshot, engine, ledger, worker dan hash diganti dengan bahasa tindakan atau konsekuensi yang relevan. Panduan keamanan dan uji koneksi AI tersedia dalam pengungkapan terpisah; persetujuan pengiriman data tetap terlihat dan checkbox memakai baris sentuh yang sesuai. Peringatan kehilangan draf, biaya AI, penyimpanan belum pasti, batas akses, data publik dan keterbatasan SEB tetap tersedia.
+
+Cakupan: Beranda, Masuk, Atur password, portal Siswa, portal Pengawas, Ringkasan, Pengguna, Data master, Bank soal, Persiapan, Ujian, Monitoring, Ruang/sesi, Kartu, Media, Koreksi/moderasi, Hasil, Analitik, Fitur lanjutan, Penerimaan operasional, Pengaturan, Audit dan Otomasi/backup. Halaman yang tidak memerlukan perubahan khusus menerima penyelarasan melalui CSS dan komponen bersama. Bukti dan batas validasi dicatat pada `docs/global-ui-cleanup.md`.
 
 ## Audit Pengaturan aplikasi — 2 November 2026
 

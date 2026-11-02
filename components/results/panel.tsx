@@ -602,7 +602,7 @@ export function ResultsPanel({
         open={!!detail}
         onOpenChange={open=>{if(!open&&!operation.current)setDetail(null);}}
         title="Detail hasil dan koreksi"
-        description="Nilai resmi hanya berasal dari penilaian server. Kolom kosong mempertahankan status pending."
+        description="Periksa jawaban dan masukkan nilai. Biarkan kolom kosong jika belum dikoreksi."
       >
         {detail && (
           <form className="stack" onSubmit={saveGrades}>
@@ -811,7 +811,7 @@ export function ResultsPanel({
         open={batchOpen}
         onOpenChange={open=>{if(!operation.current)setBatchOpen(open);}}
         title="Koreksi per soal"
-        description="Setiap nilai mengacu pada versi soal dan revisi hasil peserta. Seluruh batch disimpan dalam satu transaksi."
+        description="Periksa nilai setiap peserta. Semua perubahan disimpan bersamaan."
       >
         <form
           className="stack"
@@ -912,7 +912,7 @@ export function ResultsPanel({
         open={recalcOpen}
         onOpenChange={open=>{if(!operation.current)setRecalcOpen(open);}}
         title="Rekalkulasi hasil"
-        description="Menggunakan snapshot dan engine yang sama; kunci sumber terbaru tidak mengganti snapshot attempt."
+        description="Hitung ulang hasil dengan soal dan kunci saat peserta mengerjakan ujian. Perubahan kunci terbaru tidak diterapkan."
       >
         <form
           className="stack"
@@ -956,7 +956,7 @@ export function ResultsPanel({
         open={settingsOpen}
         onOpenChange={open=>{if(!operation.current)setSettingsOpen(open);}}
         title="Kop laporan"
-        description="Logo menggunakan ID media privat milik organisasi. Nama pejabat dicetak sebagai identitas, bukan tanda tangan digital."
+        description="Gunakan logo madrasah dari Media soal. Nama pejabat dicetak sebagai identitas, bukan tanda tangan digital."
       >
         {settingsDraft && (
           <form
