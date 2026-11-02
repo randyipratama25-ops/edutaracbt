@@ -83,11 +83,19 @@ export const operation = z.discriminatedUnion("action", [
  }
  if((input.action==='session_save'||input.action==='substitute')&&Date.parse(input.ends_at)<=Date.parse(input.starts_at))ctx.addIssue({code:'custom',message:'Waktu selesai harus setelah mulai.'});
 });
-export const cardCreate = z.object({
-  action: z.literal("create"),
-  request_id,
-  exam_id,
-  student_ids,
-  format: z.enum(["pdf", "zip"]),
-  template: z.enum(["compact", "large"]),
-});
+export const cardCreate = z
+  .object({
+    action: z.literal("create"),
+    request_id,
+    exam_id,
+    student_ids: student_ids.refine(
+      (ids) => new Set(ids).size === ids.length,
+      "Peserta tidak boleh duplikat.",
+    ),
+    format: z.enum(["pdf", "zip"]),
+    template: z.enum(["compact", "large"]),
+  })
+  .refine(
+    (v) => v.format !== "zip" || v.student_ids.length <= 50,
+    "ZIP maksimal 50 peserta.",
+  );
