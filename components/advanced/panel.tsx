@@ -161,12 +161,12 @@ export function AdvancedPanel() {
         <p>
           Di Hasil atau Analitik, pilih peserta berizin, jenis laporan{" "}
           <strong>Pertukaran nilai</strong>, lalu XLSX atau PDF. ID
-          peserta/ujian/attempt dan revisi ledger membantu pencocokan. Nilai
+          peserta, ujian, pengerjaan, dan revisi nilai membantu pencocokan. Nilai
           yang belum final dibiarkan kosong, sedangkan nilai nol final tetap
           nol.
         </p>
         <p className="muted">
-          Ekspor memakai izin laporan dan snapshot revisi yang sama; tidak
+          Ekspor mengikuti hak akses dan revisi nilai yang sama; tidak
           mengirim data ke LMS atau layanan lain.
         </p>
         <div className="actions">

@@ -8,7 +8,7 @@ export default async function Page() {
   if (a?.role !== "admin" || a.context !== "staff") redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Pengaturan aplikasi" />
+      <PageHeading title="Pengaturan aplikasi" description="Atur identitas madrasah, kebijakan ujian, dan layanan email." />
       <SystemPanel mode="settings" />
     </>
   );

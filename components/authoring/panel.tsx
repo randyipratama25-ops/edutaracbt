@@ -845,7 +845,7 @@ export function AuthoringPanel() {
         open={examOpen}
         onOpenChange={open=>{if(!operation.current)setExamOpen(open);}}
         title={editing ? "Ubah ujian" : "Tambah ujian"}
-        description="Waktu menggunakan zona waktu perangkat. PIN disimpan sebagai hash."
+        description="Atur jadwal dan aturan ujian. Waktu mengikuti zona waktu perangkat."
       >
         <form onSubmit={saveExam} className="stack"><fieldset className="authoring-controls stack" disabled={blocked}>
           <label>
@@ -1032,7 +1032,7 @@ export function AuthoringPanel() {
         open={questionOpen}
         onOpenChange={open=>{if(!operation.current)setQuestionOpen(open);}}
         title={editingQ ? "Ubah soal" : "Tambah soal"}
-        description="Gunakan ID opsi stabil. Kunci dan rubrik hanya terlihat oleh staf berizin."
+        description="Susun pertanyaan, pilihan jawaban, dan penilaian. Kunci serta rubrik hanya terlihat oleh staf berizin."
       >
         <form onSubmit={saveQuestion} className="stack"><fieldset className="authoring-controls stack" disabled={blocked || !!locked}>
           <label>

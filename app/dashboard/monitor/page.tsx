@@ -10,7 +10,7 @@ export default async function Monitor() {
     redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Peninjauan ujian" />
+      <PageHeading title="Peninjauan ujian" description="Pilih ujian, pantau peserta, lalu tindak lanjuti kendala." />
       <OperationsPanel />
     </>
   );

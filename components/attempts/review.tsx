@@ -69,7 +69,7 @@ export function ReviewPanel() {
   return (
     <section className="panel stack">
       <p>
-        Hanya attempt dalam cakupan penugasan efektif yang ditampilkan. Kejadian
+        Hanya sesi ujian sesuai penugasan Anda yang ditampilkan. Kejadian
         browser adalah bahan peninjauan, bukan bukti tunggal kecurangan.
       </p>
       <Button
@@ -141,7 +141,7 @@ export function ReviewPanel() {
           </tbody>
         </table>
       </div>
-      {!rows.length && <p>Belum ada attempt yang dapat ditinjau.</p>}
+      {!rows.length && <p>Belum ada sesi ujian yang dapat ditinjau.</p>}
       <Dialog
         open={!!selected}
         onOpenChange={() => setSelected(null)}
@@ -149,7 +149,7 @@ export function ReviewPanel() {
           action === "events"
             ? "Riwayat kejadian"
             : action === "unlock"
-              ? "Buka kunci attempt"
+              ? "Buka kunci sesi ujian"
               : "Tinjau diskualifikasi"
         }
         description="Keputusan dilakukan oleh pengawas/Admin berizin dan dicatat dengan alasan. Membuka kunci tidak menambah waktu."

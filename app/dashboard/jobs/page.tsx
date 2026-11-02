@@ -8,7 +8,7 @@ export default async function Page() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Otomasi dan backup" />
+      <PageHeading title="Otomasi dan backup" description="Periksa layanan, tindak lanjuti pekerjaan, dan kelola cadangan." />
       <OperationalHealth />
       <SystemPanel mode="jobs" />
     </>

@@ -576,3 +576,39 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 @media(max-width:640px){.settings-grid,.settings-summary,.settings-policies{grid-template-columns:minmax(0,1fr)}.settings-page .actions>button,.settings-dialog .actions>button{flex:1 1 160px;min-height:44px;white-space:normal}.settings-page select{min-height:44px}.settings-links{flex-direction:column;align-items:flex-start}.settings-links a{display:inline-flex;align-items:center;min-height:44px}}
 
 .settings-page a{text-decoration:underline;text-underline-offset:.15em}
+
+/* Shared page and dialog hierarchy. Keep scrolling on content, never clip forms. */
+:root { --surface-subtle: #f7faf8; }
+.panel { box-shadow: 0 2px 8px #15352905; }
+.stack > :is(p, h2, h3) { margin-block: 0; }
+.page-heading { padding-bottom: 1rem; border-bottom: 1px solid var(--border); max-width: none; }
+.page-heading > p { max-width: 72ch; }
+.dashboard-workspace > .panel + .stack { margin-top: 1.5rem; }
+:where(.workspace, .auth-card, .dialog-content) :is(h2,h3,legend,summary,strong,code) { overflow-wrap: anywhere; }
+:where(.workspace, .auth-card, .dialog-content) .actions > :where(div,span,p) { min-width: 0; }
+.list-filters { background: var(--surface-subtle); padding: 1rem; border: 1px solid var(--border); border-radius: 12px; }
+.list-filters .toolbar { margin: 0; }
+.filter-summary { padding-top: .75rem; border-top: 1px solid var(--border); }
+.help-disclosure { background: var(--surface-subtle); }
+.help-disclosure-content > p + p { margin-top: .75rem; }
+.dialog-content { scrollbar-gutter: stable; padding: clamp(20px,3vw,30px); }
+.dialog-content > .dialog-title { margin: 0 0 .5rem; padding-right: 40px; line-height: 1.4; }
+.dialog-content > .dialog-description { margin: 0 0 1.25rem; padding: 0 0 1rem; border-bottom: 1px solid var(--border); line-height: 1.6; }
+.dialog-content > form { margin-top: 0; }
+.dialog-content :is(.form-grid, .stack, fieldset) { min-width: 0; }
+.dialog-content :is(input,select,textarea) { max-width: 100%; }
+.dialog-content textarea { min-height: 100px; }
+.dialog-content form > .actions:last-child { padding-top: 1rem; border-top: 1px solid var(--border); }
+.dialog-content .table-wrap { margin-block: .5rem; }
+.dialog-content .empty-state { padding: 1.5rem 1rem; }
+.dialog-content > .dialog-close { border: 1px solid var(--border); background: var(--surface-subtle); }
+@media (max-width:600px) {
+  .list-filters { padding: .85rem; }
+  .dialog-content { border-radius: 14px; max-height: calc(100dvh - 24px); }
+  .dialog-content .form-grid { grid-template-columns: minmax(0,1fr); }
+  .dialog-content .actions > .button { flex: 1 1 140px; }
+  .dialog-content > .dialog-title { font-size: 1.1rem; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .button, input, select, textarea { transition: none; }
+}

@@ -8,7 +8,7 @@ export default async function Page() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Fitur lanjutan" />
+      <PageHeading title="Fitur lanjutan" description="Kelola penyedia AI, pertukaran nilai, dan evaluasi perangkat." />
       <AISettings />
       <AdvancedPanel />
     </>

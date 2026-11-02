@@ -4,7 +4,7 @@ import { CardsPanel } from "../../../components/operations/cards";
 export default function Cards() {
   return (
     <>
-      <PageHeading title="Kartu peserta ujian" />
+      <PageHeading title="Kartu peserta ujian" description="Pilih ujian dan peserta, lalu buat kartu untuk diunduh." />
       <CardsPanel />
     </>
   );

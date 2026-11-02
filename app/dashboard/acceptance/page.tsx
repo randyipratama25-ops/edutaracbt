@@ -7,7 +7,7 @@ export default async function Page() {
   if (a?.role !== "admin") redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Penerimaan operasional" />
+      <PageHeading title="Penerimaan operasional" description="Periksa kesiapan layanan dan lengkapi bukti pemeriksaan." />
       <AcceptancePanel />
     </>
   );

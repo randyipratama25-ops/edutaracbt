@@ -299,7 +299,7 @@ function SystemLists({mode}:{mode:"audit"|"jobs"}){
                       <progress
                         max={100}
                         value={j.progress}
-                        aria-label="Progres job"
+                        aria-label="Progres pekerjaan"
                       />{" "}
                       {j.progress}%
                     </td>
@@ -397,7 +397,7 @@ function SystemLists({mode}:{mode:"audit"|"jobs"}){
               </tbody>
             </table>
           </div>
-          <p>100 job terbaru. Scheduler tunggal: Supabase Cron.</p>
+          <p>Menampilkan 100 pekerjaan terbaru.</p>
           {parts.length > 0 && (
             <details open>
               <summary>Bagian backup {backupId}</summary>
@@ -432,7 +432,7 @@ function SystemLists({mode}:{mode:"audit"|"jobs"}){
             ? "Batalkan backup"
             : "Rekonsiliasi pengiriman"
         }
-        description="Tindakan Admin dicatat. Rekonsiliasi belum terkirim akan menjadwalkan ulang email jika penerima masih eligible."
+        description="Periksa status pengiriman sebelum mengonfirmasi. Email yang belum terkirim dapat dijadwalkan ulang jika penerima masih memenuhi syarat."
       >
         <form
           className="stack"

@@ -644,7 +644,7 @@ export function OperationsPanel({
             </p>
             {selected.length > 0 && !canReview(actionRows, "reset") && (
               <p className="muted">
-                Tindakan memerlukan 1–100 attempt berizin. Buka kunci hanya
+                Tindakan memerlukan 1–100 sesi ujian yang dapat Anda kelola. Buka kunci hanya
                 untuk diskualifikasi; diskualifikasi hanya untuk sesi aktif.
               </p>
             )}
@@ -879,7 +879,7 @@ export function OperationsPanel({
                       : "Pengaturan operasional")
         }
         className={mode === "rooms" ? "rooms-dialog" : ""}
-        description="Perubahan diperiksa server dan dicatat dalam audit."
+        description="Periksa sasaran dan rincian tindakan sebelum menyimpan."
       >
         {dialog === "sent" || dialog === "history" ? (
           <div className="stack" aria-busy={historyLoading}>
@@ -1044,8 +1044,8 @@ export function OperationsPanel({
               {["reset", "unlock", "disqualify"].includes(dialog) && (
                 <>
                   <p>
-                    {actionTargets.length} attempt berizin dipilih. Peserta
-                    tanpa attempt tidak diproses. Waktu tidak ditambah; reset
+                    {actionTargets.length} sesi ujian dipilih. Peserta
+                    yang belum mulai tidak diproses. Waktu tidak ditambah; reset
                     mempertahankan semua bukti/jawaban lama.
                   </p>
                   <label>
