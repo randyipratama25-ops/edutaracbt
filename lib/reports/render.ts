@@ -126,9 +126,10 @@ export async function reportHTML(
       body += `<section class="sheet">${header}<h2>${esc(labels[kind])} — ${esc(name)}</h2><table><thead><tr><th>No</th><th>Peserta</th><th>Ujian</th><th>Status</th><th>Nilai</th><th>Kelulusan</th></tr></thead><tbody>${rows.map((d, i) => `<tr><td>${i + 1}</td><td dir="auto">${esc(d.attempt.student)}</td><td>${esc(d.attempt.title)}</td><td>${esc(d.attempt.status)}${d.attempt.pending ? ` / ${d.attempt.pending} esai pending` : ""}</td><td>${d.attempt.score === null ? "Menunggu" : esc(d.attempt.score)}</td><td>${d.attempt.passed === null ? "—" : d.attempt.passed ? "Lulus" : "Belum lulus"}</td></tr>`).join("")}</tbody></table></section>`;
   } else if (kind === "analytics") {
     const a = analyze(details);
-    body = `${header}<h2>Analisis butir</h2><p>${a.eligible} peserta layak; ${a.excluded} tidak masuk kohort. Kelompok atas/bawah 27%, nilai resmi final, versi soal dipisahkan.</p>`;
+    const exams=new Map(details.map(d=>[d.attempt.exam_id,d.attempt.title]));
+    body = `${header}<h2>Analisis butir</h2><p>${a.eligible} hasil layak; ${a.excluded} tidak masuk kohort. Kelompok atas/bawah 27%, nilai resmi final, versi soal dipisahkan.</p>`;
     for (const q of a.items)
-      body += `<section class="question"><h3>${esc(q.type)} · versi ${q.version} · N=${q.n}</h3>${rich(q.stem)}<p>P=${q.p} (${q.difficulty}); D=${q.d} (${q.discrimination}); kelompok=${q.group_size}${q.small_sample ? " · sampel kecil" : ""}</p><p>Peserta salah / parsial:</p><ul>${q.wrong.map((w) => `<li dir="auto">${esc(w.student)}: ${esc(w.earned)} / ${w.max}</li>`).join("")}</ul>${q.options.map((o) => `<p>${esc(o.text)} — ${esc(JSON.stringify(o.choices))}</p>`).join("")}</section>`;
+      body += `<section class="question"><h3>${esc(exams.get(q.exam_id)||q.exam_id)} · ${esc(q.type)} · versi ${q.version} · N=${q.n}</h3>${rich(q.stem)}<p>P=${q.p} (${q.difficulty}); D=${q.d} (${q.discrimination}); kelompok=${q.group_size}${q.small_sample ? " · sampel kecil" : ""}</p><p>Peserta salah / parsial:</p><ul>${q.wrong.map((w) => `<li dir="auto">${esc(w.student)}: ${esc(w.earned)} / ${w.max}</li>`).join("")}</ul>${q.options.map((o) => `<p>${esc(o.text)} — ${esc(JSON.stringify(o.choices))}</p>`).join("")}</section>`;
   } else
     for (const d of details) {
       body += `<section class="sheet">${header}<h2>${esc(labels[kind])}</h2><p dir="auto">${esc(d.attempt.student)} — ${esc(d.attempt.title)}</p><p class="meta">Kelas ${esc(d.attempt.class_name || "—")} · revisi ledger ${d.attempt.revision} · status ${esc(d.attempt.status)}${kind === "student" ? ` · nilai ${d.attempt.score === null ? "Menunggu" : d.attempt.score}` : ""}</p>`;
@@ -382,6 +383,8 @@ export async function renderXLSX(
       "Kelompok",
       "Versi",
     ]);
+    const exams=new Map(details.map(d=>[d.attempt.exam_id,d.attempt.title]));
+    sheet.addRow(['Ringkasan',`${a.eligible} hasil layak; ${a.excluded} dikecualikan`]);
     a.items.forEach((q, i) => {
       sheet.addRow([
         i + 1,
@@ -392,6 +395,8 @@ export async function renderXLSX(
         q.group_size,
         `${q.version}${q.small_sample ? " / sampel kecil (<30)" : ""}`,
       ]);
+      sheet.addRow(['','Ujian',text(exams.get(q.exam_id)||q.exam_id),'ID ujian',text(q.exam_id),'ID soal',text(q.question_id)]);
+      for(const part of splitCell(q.stem))sheet.addRow(['','Isi soal','',text(part)]);
       for (const w of q.wrong)
         sheet.addRow([
           "",

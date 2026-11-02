@@ -16,7 +16,14 @@ export const resultProvidersSchema=z.array(z.object({provider:z.string(),model:z
 export const reportJobSchema=z.object({id:z.uuid(),kind:z.enum(reportKinds),format:z.enum(['pdf','xlsx']),status:z.enum(['queued','running','ready','failed']),progress:z.number().min(0).max(100),failures:z.number().int().nonnegative(),error:z.string().nullable()});
 export const reportJobsSchema=z.array(reportJobSchema);
 const wrong=z.object({student:z.string(),attempt_id:z.uuid()});
-export const resultAnalysisSchema=z.object({eligible:z.number(),excluded:z.number(),items:z.array(z.object({id:z.string(),exam_id:z.uuid(),question_id:z.uuid(),version:z.number(),type:z.enum(['PG','PG_KOMPLEKS','BS','JODOH','Esai']),stem:z.string(),n:z.number(),group_size:z.number(),p:z.number(),d:z.number(),difficulty:z.string(),discrimination:z.string(),small_sample:z.boolean(),wrong:z.array(wrong.extend({earned:z.number().nullable(),max:z.number()})),options:z.array(z.object({id:z.string(),text:z.string(),choices:z.record(z.string(),z.number()),correct:z.number(),wrong:z.array(wrong),is_key:z.boolean(),selection_rate:z.number(),nonfunctional:z.boolean()})),essay:z.array(z.object({student:z.string(),earned:z.number().nullable(),max:z.number()}))}))});
+// Zod record parsing drops __proto__; preserve literal answer labels in a null-prototype map.
+const answerCountsSchema=z.unknown().transform((value,ctx)=>{
+ if(!value||typeof value!=='object'||Array.isArray(value)){ctx.addIssue({code:'custom',message:'Sebaran jawaban tidak valid.'});return z.NEVER;}
+ const result:Record<string,number>=Object.create(null);
+ for(const [key,count] of Object.entries(value)){if(typeof count!=='number'||!Number.isInteger(count)||count<0){ctx.addIssue({code:'custom',message:'Jumlah jawaban tidak valid.'});return z.NEVER;}result[key]=count;}
+ return result;
+});
+export const resultAnalysisSchema=z.object({eligible:z.number(),excluded:z.number(),items:z.array(z.object({id:z.string(),exam_id:z.uuid(),question_id:z.uuid(),version:z.number(),type:z.enum(['PG','PG_KOMPLEKS','BS','JODOH','Esai']),stem:z.string(),n:z.number(),group_size:z.number(),p:z.number(),d:z.number(),difficulty:z.string(),discrimination:z.string(),small_sample:z.boolean(),wrong:z.array(wrong.extend({earned:z.number().nullable(),max:z.number()})),options:z.array(z.object({id:z.string(),text:z.string(),choices:answerCountsSchema,correct:z.number(),wrong:z.array(wrong),is_key:z.boolean(),selection_rate:z.number(),nonfunctional:z.boolean()})),essay:z.array(z.object({student:z.string(),earned:z.number().nullable(),max:z.number()}))}))});
 const revision=z.object({attempt_id:z.uuid(),revision:z.number().int().nonnegative(),score:z.number().nullable(),pending:z.number().int().nonnegative(),passed:z.boolean().nullable()});
 export function resultReceipt(url:string,input?:object):z.ZodType<unknown>{
  const action=input&&'action' in input?input.action:'';

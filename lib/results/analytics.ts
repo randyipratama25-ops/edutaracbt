@@ -1,4 +1,6 @@
 import type { ResultDetail } from "./types";
+// PostgreSQL timestamps retain microseconds even when Date.parse truncates them.
+const submillisecond=(value:string)=>Number((value.match(/\.(\d+)(?:Z|[+-]\d{2}:?\d{2})$/i)?.[1]||"").padEnd(6,"0").slice(3,6));
 const round = (n: number) => Math.round(n * 1e10) / 1e10;
 export const difficulty = (p: number) =>
   p < 0.3 ? "Sukar" : p > 0.7 ? "Mudah" : "Sedang";
@@ -18,7 +20,9 @@ export function analyze(details: ResultDetail[]) {
     (d) =>
       ["submitted", "time_expired", "graded"].includes(d.attempt.status) &&
       d.attempt.pending === 0 &&
-      d.attempt.score !== null,
+      d.attempt.score !== null && Number.isFinite(d.attempt.score) &&
+      Number.isFinite(Date.parse(d.attempt.finalized_at)) &&
+      d.questions.every(q=>Number.isFinite(q.payload.points)&&q.payload.points>0&&q.earned!==null&&Number.isFinite(q.earned)),
   );
   const latest = new Map<string, ResultDetail>();
   for (const d of eligible) {
@@ -26,9 +30,10 @@ export function analyze(details: ResultDetail[]) {
     const old = latest.get(key);
     if (
       !old ||
-      d.attempt.finalized_at > old.attempt.finalized_at ||
-      (d.attempt.finalized_at === old.attempt.finalized_at &&
-        d.attempt.id > old.attempt.id)
+      Date.parse(d.attempt.finalized_at)>Date.parse(old.attempt.finalized_at) ||
+      (Date.parse(d.attempt.finalized_at)===Date.parse(old.attempt.finalized_at) &&
+        (submillisecond(d.attempt.finalized_at)>submillisecond(old.attempt.finalized_at) ||
+          (submillisecond(d.attempt.finalized_at)===submillisecond(old.attempt.finalized_at)&&d.attempt.id>old.attempt.id)))
     )
       latest.set(key, d);
   }
@@ -44,7 +49,9 @@ export function analyze(details: ResultDetail[]) {
   for (const d of cohort)
     for (const q of d.questions) {
       const key = d.attempt.exam_id + ":" + q.id + ":" + q.version;
-      groups.set(key, [...(groups.get(key) || []), { detail: d, question: q }]);
+      const group=groups.get(key);
+      if(group)group.push({detail:d,question:q});
+      else groups.set(key,[{detail:d,question:q}]);
     }
   const items = Array.from(groups.entries()).map(([id, entries]) => {
     const q = entries[0].question,
@@ -63,7 +70,7 @@ export function analyze(details: ResultDetail[]) {
         bottom.reduce((s, e) => s + ratio(e), 0) / k,
     );
     const options = q.payload.options.map((option, index) => {
-      const choices: Record<string, number> = {};
+      const choices: Record<string, number> = Object.create(null);
       let correct = 0;
       const wrong: { student: string; attempt_id: string }[] = [];
       for (const e of entries) {
@@ -72,15 +79,14 @@ export function analyze(details: ResultDetail[]) {
           answer && typeof answer === "object" && !Array.isArray(answer)
             ? (answer as Record<string, unknown>)
             : {};
-        const picked = Array.isArray(answer)
-          ? answer.includes(option.id)
-          : record[option.id];
+        const objectiveChoice=q.payload.type==='PG'||q.payload.type==='PG_KOMPLEKS';
+        const picked=objectiveChoice ? Array.isArray(answer)&&answer.includes(option.id) : Object.hasOwn(record,option.id)?record[option.id]:undefined;
         if (q.payload.type === "PG" || q.payload.type === "PG_KOMPLEKS") {
           if (picked) choices.selected = (choices.selected || 0) + 1;
         } else {
-          const value = String(picked ?? "Belum dijawab");
+          const value = picked===undefined||picked===null||picked==="" ? "Belum dijawab" : String(picked);
           choices[value] = (choices[value] || 0) + 1;
-          if (picked === e.question.payload.key[index]) correct++;
+          if (picked!==undefined&&picked!==null&&String(picked) === e.question.payload.key[index]) correct++;
           else
             wrong.push({
               student: e.detail.attempt.student,

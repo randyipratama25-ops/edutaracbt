@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.25 — Audit Hasil dan koreksi.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.26 — Audit Analitik dan laporan.
+
+## Audit Analitik dan laporan — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/analytics` mempertahankan hak staf sesuai can_grade, publikasi dan kop hanya Admin, tanpa perubahan ledger, struktur database atau API bisnis. Tidak diperlukan migrasi database, Edge Function maupun dependency baru.
+
+Analisis memakai hasil final terbaru per siswa per ujian, membandingkan waktu sebagai instant dengan presisi mikrodetik dan tie-break ID. Nilai non-finite/tidak lengkap dikecualikan; rumus P, D, kelompok 27%, batas kategori dan pemisahan versi soal dipertahankan. Sebaran BS menyamakan boolean/string sesuai ekstraksi teks PostgreSQL, PG harus berbentuk array, label pasangan seperti __proto__/constructor dihitung dalam map tanpa prototype dan tetap utuh setelah validasi respons.
+
+Analisis ditandai basis pilihan/revisi dan dibersihkan ketika pilihan/koreksi berubah atau permintaan baru dimulai. Error menyediakan coba ulang tanpa menampilkan statistik lama. Halaman memprioritaskan tindakan analisis dan jenis ekspor analitik, menampilkan nama ujian/versi, ringkasan hasil layak/dikecualikan, panduan sampel kecil, pencarian, filter lima tipe dan pagination 20 butir. Detail dirender saat dibuka; daftar peserta diperluas bertahap. Tabel memiliki scroll internal dan wrapping pada layar kecil.
+
+API memvalidasi detail sebelum analisis, menormalisasi ID duplikat dan membatasi pembacaan 15 detik; izin RPC tetap berlaku. PDF/XLSX analitik menyertakan identitas ujian; XLSX mempertahankan isi soal panjang dan proteksi formula. Batas data worker 30 MB dihitung sebagai byte UTF-8. Delapan jenis laporan, revisi snapshot, kepemilikan job, lease dan audit tetap dipertahankan. Rincian temuan dan bukti validasi ada di `docs/analytics-audit.md`.
 
 ## Audit Hasil dan koreksi — 2 November 2026
 
