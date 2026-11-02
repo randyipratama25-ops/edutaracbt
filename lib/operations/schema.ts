@@ -59,7 +59,7 @@ export const operation = z.discriminatedUnion("action", [
     attempts: z
       .array(z.object({ id, version: z.number().int().min(1) }))
       .min(1)
-      .max(100),
+      .max(100).refine(rows=>new Set(rows.map(r=>r.id)).size===rows.length,"Attempt tidak boleh duplikat."),
     reason,
     confirmation: z.literal("KONFIRMASI"),
   }),
@@ -76,7 +76,13 @@ export const operation = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("read"), id }),
   z.object({action:z.literal("read_batch"),ids:z.array(id).min(1).max(20)}),
-]);
+]).superRefine((input,ctx)=>{
+ if(input.action==='broadcast'){
+  if(input.scope!=='all'&&!input.exam_id)ctx.addIssue({code:'custom',message:'Ujian sasaran wajib.'});
+  if(input.scope==='selected'&&!input.student_ids?.length)ctx.addIssue({code:'custom',message:'Pilih penerima notifikasi.'});
+ }
+ if((input.action==='session_save'||input.action==='substitute')&&Date.parse(input.ends_at)<=Date.parse(input.starts_at))ctx.addIssue({code:'custom',message:'Waktu selesai harus setelah mulai.'});
+});
 export const cardCreate = z.object({
   action: z.literal("create"),
   request_id,

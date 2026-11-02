@@ -7,6 +7,7 @@ import {
   json,
   requireOrigin,
 } from "../../../lib/http";
+import {resultData} from "../../../lib/results/server";
 import { workflowCommand } from "../../../lib/workflow/schema";
 export async function GET(request: Request) {
   try {
@@ -32,8 +33,7 @@ export async function GET(request: Request) {
           : {}),
       },
     });
-    if (error) throw new HttpError(403, error.message);
-    return json(data);
+    return json(resultData({data,error}));
   } catch (e) {
     return failure(e);
   }
@@ -55,12 +55,8 @@ export async function POST(request: Request) {
     )
       throw new HttpError(403, "Anda tidak memiliki izin tindakan ini.");
     const { data, error } = await a.client.rpc("workflow_command", { input });
-    if (error)
-      throw new HttpError(
-        error.message.includes("CONFLICT") ? 409 : 422,
-        error.message,
-      );
-    return json(data);
+    if(error?.message.startsWith("CONFLICT:"))throw new HttpError(409,error.message);
+    return json(resultData({data,error},true));
   } catch (e) {
     return failure(e);
   }
