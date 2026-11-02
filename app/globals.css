@@ -612,3 +612,6 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 @media (prefers-reduced-motion:reduce) {
   .button, input, select, textarea { transition: none; }
 }
+
+.audit-page .audit-filters{border:0;padding:0;margin:0}.audit-page .summary-heading>div{min-width:0}.audit-page .summary-heading p{margin:.35rem 0 0}.audit-table{min-width:720px}.audit-table tbody th{width:170px;min-width:170px;font-weight:600}.audit-table td{max-width:280px}.audit-detail{display:grid;gap:1rem;margin:0}.audit-detail>div{min-width:0}.audit-detail dt{font-size:.8rem;color:var(--muted);margin-bottom:.3rem}.audit-detail dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}.audit-page nav span{overflow-wrap:anywhere}@media(max-width:600px){.audit-page .summary-heading{align-items:stretch}.audit-page .summary-heading>.actions{width:100%}.audit-page .summary-heading .button{flex:1 1 130px}.audit-table tbody th{min-width:125px;width:125px}.audit-page nav{align-items:stretch}.audit-page nav>span{flex-basis:100%;order:-1}}
+@media(max-width:600px){.audit-page .summary-heading .button{flex-basis:10rem}.audit-table td:last-child .button{min-width:6em}}

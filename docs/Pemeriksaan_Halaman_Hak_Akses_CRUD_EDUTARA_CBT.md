@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.32 — Penyelarasan UI dan UX seluruh halaman.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.33 — Audit aktivitas.
+
+## Audit aktivitas — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/audit` hanya Admin dalam konteks staf; tidak menyediakan tambah/ubah/hapus log. `SystemPanel` mempertahankan API komponen, dengan `AuditPanel` terpisah dari Jobs/Pengaturan. API audit memvalidasi page integer, rentang waktu, respons runtime, jumlah dan ID unik sebelum render. RLS, tenant, RPC `system_command` dan struktur data dipertahankan. Migrasi `audit_stable_order` menambahkan ID DESC pada pemilihan dan agregasi audit untuk memastikan urutan timestamp yang sama stabil, tanpa mengubah tindakan lain atau isi log.
+
+Pencarian/filter memakai debounce, timeout/abort dan generation. Loading/error/empty serta muat ulang terpisah; total yang gagal dibaca tidak dinyatakan nol. Pagination 50 baris mengoreksi halaman di luar batas. Input dan tampilan WIB eksplisit; CSV ISO UTC. Tabel bergulir secara lokal dengan kolom waktu sticky. Modal Detail hanya menampilkan field catatan yang sudah tersedia, tetap memakai focus trap/pengembalian fokus dan batas viewport. Total penggunaan dialog kini **32 pada 20 komponen**.
+
+Ekspor membekukan filter/batas atas waktu saat mulai, maksimal 10.000 baris/200 halaman/120 detik. Setiap halaman diperiksa; data kosong tak konsisten, ID duplikat atau total berubah menolak unduhan. Lock, cancel, cleanup, CSV escaping/formula guard dan pelepasan object URL mencegah pengiriman ganda/berkas parsial yang diketahui. Tidak mengklaim snapshot transaksi. Bukti dan batas pengujian pada `docs/audit-page-audit.md`.
 
 ## Penyelarasan UI dan UX seluruh halaman — 2 November 2026
 

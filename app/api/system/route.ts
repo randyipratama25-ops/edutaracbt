@@ -12,6 +12,7 @@ import {
   appSettingsSchema,
   settingsReceipt,
 } from "../../../lib/system/contracts";
+import { auditListSchema } from "../../../lib/system/audit";
 import { systemMutation } from "../../../lib/system/validation";
 export async function GET(request: Request) {
   try {
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     const input = {
       action,
       id: p.get("id") ? z.uuid().parse(p.get("id")) : undefined,
-      page: Math.max(1, Math.min(100000, Number(p.get("page") || 1))),
+      page: action === "audit" ? z.coerce.number().int().min(1).max(100000).parse(p.get("page") ?? "1") : Math.max(1, Math.min(100000, Number(p.get("page") || 1))),
       search: (p.get("search") || "").slice(0, 100),
       from: p.get("from")
         ? z.iso.datetime({ offset: true }).parse(p.get("from"))
@@ -33,6 +34,7 @@ export async function GET(request: Request) {
         ? z.iso.datetime({ offset: true }).parse(p.get("until"))
         : undefined,
     };
+    if(action === "audit" && input.from && input.until && Date.parse(input.from)>=Date.parse(input.until))throw new HttpError(422,"Tanggal Dari harus sebelum tanggal Sebelum.");
     const r = await a.client.rpc("system_command", { input });
     const data = rpcData(r);
     if (action === "get") {
@@ -44,6 +46,7 @@ export async function GET(request: Request) {
         );
       return json(parsed.data);
     }
+    if(action === "audit"){const parsed=auditListSchema.safeParse(data);if(!parsed.success)throw new HttpError(503,"Catatan audit belum dapat dimuat. Silakan coba lagi.");return json(parsed.data);}
     return json(data);
   } catch (e) {
     return failure(e);

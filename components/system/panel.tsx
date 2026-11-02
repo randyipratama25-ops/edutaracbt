@@ -1,5 +1,5 @@
 "use client";
-import {ListFilters, SearchField} from "../ui/list-filters";
+import {AuditPanel} from "./audit";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
@@ -22,14 +22,6 @@ type Job = {
   created_at: string;
   outcome: string | null;
 };
-type Audit = {
-  id: string;
-  created_at: string;
-  actor: string | null;
-  action: string;
-  target_type: string;
-  target_id: string | null;
-};
 type Part = {
   number: number;
   kind: string;
@@ -37,16 +29,9 @@ type Part = {
   sha256: string;
   path: string;
 };
-export function SystemPanel({mode}:{mode:"settings"|"audit"|"jobs"}){return mode==='settings'?<SettingsPanel/>:<SystemLists mode={mode}/>;}
-function SystemLists({mode}:{mode:"audit"|"jobs"}){
+export function SystemPanel({mode}:{mode:"settings"|"audit"|"jobs"}){return mode==='settings'?<SettingsPanel/>:mode==='audit'?<AuditPanel/>:<SystemLists/>;}
+function SystemLists(){
   const [jobs, setJobs] = useState<Job[]>([]),
-    [audit, setAudit] = useState<Audit[]>([]),
-    [total, setTotal] = useState(0),
-    [page, setPage] = useState(1),
-    [search, setSearch] = useState(""),
-    [loading,setLoading]=useState(false),[listError,setListError]=useState(""),
-    [from, setFrom] = useState(""),
-    [until, setUntil] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [parts, setParts] = useState<Part[]>([]),
@@ -60,48 +45,16 @@ function SystemLists({mode}:{mode:"audit"|"jobs"}){
     [decisionConfirm, setDecisionConfirm] = useState("");
   const sequence = useRef(0),
     retry = useRef<{ key: string; id: string } | null>(null);
-  const auditURL = useCallback(
-    (p: number) => {
-      if(from&&until&&new Date(from)>=new Date(until))throw Error("Tanggal Dari harus sebelum tanggal Sebelum.");
-      const q = new URLSearchParams({
-        action: "audit",
-        page: String(p),
-        search:search.trim(),
-      });
-      if (from) q.set("from", new Date(from).toISOString());
-      if (until) q.set("until", new Date(until).toISOString());
-      return "/api/system?" + q;
-    },
-    [search, from, until],
-  );
   const invalidateRequests=useCallback(()=>{sequence.current++;},[]);
   const load = useCallback(async () => {
     const seq = ++sequence.current;
-    if(mode==="audit"){setLoading(true);setListError("");}
     try {
-      if (mode === "jobs") {
-        const j = await api<Job[]>("/api/system?action=jobs");
-        if (seq === sequence.current) setJobs(j);
-      } else {
-        const a = await api<{ rows: Audit[]; total: number }>(auditURL(page));
-        if (seq === sequence.current) {
-          setAudit(a.rows);
-          setTotal(a.total);
-        }
-      }
-    } catch (e) {
-      if(seq===sequence.current){if(mode==="audit"){setAudit([]);setTotal(0);setListError(e instanceof Error ? e.message : "Data belum dapat dimuat.");}else setMessage(e instanceof Error ? e.message : "Data belum dapat dimuat.");}
-    }finally{if(seq===sequence.current)setLoading(false);}
-  }, [mode, page, auditURL]);
-  useEffect(() => {
-    if(mode==="audit")setLoading(true);const timer=setTimeout(()=>void load(),mode==="audit"?250:0);
-    return()=>{clearTimeout(timer);invalidateRequests();};
-  }, [load,mode,invalidateRequests]);
-  useEffect(() => {
-    if (mode !== "jobs") return;
-    const timer = setInterval(() => void load(), 5000);
-    return () => clearInterval(timer);
-  }, [mode, load]);
+      const j = await api<Job[]>("/api/system?action=jobs");
+      if(seq===sequence.current)setJobs(j);
+    } catch(e){if(seq===sequence.current)setMessage(e instanceof Error?e.message:"Data belum dapat dimuat.");}
+  }, []);
+  useEffect(()=>{void load();return invalidateRequests;},[load,invalidateRequests]);
+  useEffect(()=>{const timer=setInterval(()=>void load(),5000);return()=>clearInterval(timer);},[load]);
   async function save(input: Record<string, unknown>) {
     setBusy(true);
     setMessage("");
@@ -124,138 +77,10 @@ function SystemLists({mode}:{mode:"audit"|"jobs"}){
       setBusy(false);
     }
   }
-  async function exportAudit() {
-    setBusy(true);
-    try {
-      const rows: Audit[] = [];
-      let p = 1;
-      for (;;) {
-        const d = await api<{ rows: Audit[]; total: number }>(auditURL(p));
-        if (d.total > 10000)
-          throw Error(
-            "Persempit tanggal/filter: maksimum 10.000 baris per ekspor.",
-          );
-        rows.push(...d.rows);
-        if (rows.length >= d.total) break;
-        p++;
-      }
-      const cell = (v: unknown) => {
-        const s = String(v ?? "");
-        return (
-          '"' + (/^[=+\-@]/.test(s) ? "'" + s : s).replaceAll('"', '""') + '"'
-        );
-      };
-      const csv =
-        "\ufeff" +
-        [
-          ["Waktu", "Aktor", "Aksi", "Objek", "ID"],
-          ...rows.map((r) => [
-            r.created_at,
-            r.actor,
-            r.action,
-            r.target_type,
-            r.target_id,
-          ]),
-        ]
-          .map((r) => r.map(cell).join(","))
-          .join("\r\n");
-      const url = URL.createObjectURL(
-        new Blob([csv], { type: "text/csv;charset=utf-8" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "audit-edutara.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Ekspor gagal.");
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <section className="panel stack">
       <p role="status">{message}</p>
-      {mode === "audit" && (
-        <>
-          <ListFilters label="audit" active={[search&&"Pencarian",from&&"Dari",until&&"Sebelum"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFrom("");setUntil("");setPage(1);}} total={total} loading={loading} error={listError}>
-            <SearchField label="Aktor/aksi/objek" value={search} maxLength={100} onChange={value=>{setSearch(value);setPage(1);}} />
-            <label>
-              Dari
-              <input
-                type="datetime-local"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </label>
-            <label>
-              Sebelum
-              <input
-                type="datetime-local"
-                value={until}
-                onChange={(e) => {
-                  setUntil(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </label>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => void exportAudit()}
-            >
-              Ekspor CSV
-            </Button>
-          </ListFilters>
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel administrasi; geser untuk melihat kolom lain">
-            <table>
-              <thead>
-                <tr>
-                  <th>Waktu</th>
-                  <th>Aktor</th>
-                  <th>Aksi</th>
-                  <th>Objek</th>
-                  <th>ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(loading||listError?[]:audit).map((r) => (
-                  <tr key={r.id}>
-                    <td>{new Date(r.created_at).toLocaleString("id-ID")}</td>
-                    <td>{r.actor || "Otomasi"}</td>
-                    <td>{r.action}</td>
-                    <td>{r.target_type}</td>
-                    <td>{r.target_id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="actions">
-            <Button
-              variant="outline"
-              disabled={page <= 1||loading||!!listError}
-              onClick={() => setPage(page - 1)}
-            >
-              Sebelumnya
-            </Button>
-            <span>
-              {total} catatan · halaman {page}
-            </span>
-            <Button
-              variant="outline"
-              disabled={page * 50 >= total||loading||!!listError}
-              onClick={() => setPage(page + 1)}
-            >
-              Berikutnya
-            </Button>
-          </div>
-        </>
-      )}
-      {mode === "jobs" && (
+      {(
         <>
           <div className="actions">
             <Button
