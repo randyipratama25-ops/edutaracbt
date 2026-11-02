@@ -9,15 +9,18 @@ import {
   HttpError,
   json,
   requireOrigin,
+  rpcData,
 } from "../../../lib/http";
 export const maxDuration = 300;
 export const runtime = "nodejs";
 export async function GET() {
   try {
     const a = await operator();
-    const r = await a.client.rpc("card_command", { input: { action: "list" } });
-    if (r.error) throw new HttpError(403, r.error.message);
-    return json(r.data);
+    return json(
+      rpcData(
+        await a.client.rpc("card_command", { input: { action: "list" } }),
+      ),
+    );
   } catch (e) {
     return failure(e);
   }
@@ -25,24 +28,50 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     requireOrigin(request);
-    const a = await operator();
-    const raw = await body(request);
+    const a = await operator(),
+      raw = await body(request);
     const input =
-      raw.action === "retry"
+      raw?.action === "retry"
         ? z.object({ action: z.literal("retry"), job_id: z.uuid() }).parse(raw)
         : cardCreate.parse(raw);
-    const r = await a.client.rpc("card_command", {
-      input:
-        input.action === "retry"
-          ? { action: "download", job_id: input.job_id }
-          : input,
-    });
-    if (input.action !== "retry" && r.error)
-      throw new HttpError(422, r.error.message);
-    const id = input.action === "retry" ? input.job_id : r.data.id;
-    // claim performs fresh scope/lease validation for retries; no protected data leaves the worker on denial.
+    const created =
+      input.action === "create"
+        ? rpcData(await a.client.rpc("card_command", { input }), true)
+        : { id: input.job_id };
+    const receipt = z.object({ id: z.uuid() }).safeParse(created);
+    if (!receipt.success)
+      throw new HttpError(
+        503,
+        "Hasil pembuatan belum dapat dipastikan. Periksa daftar kartu.",
+      );
+    const id = receipt.data.id;
+    const claim = rpcData(
+      await a.client.rpc("card_command", {
+        input: { action: "claim", job_id: id },
+      }),
+      true,
+    );
+    if (
+      claim &&
+      typeof claim === "object" &&
+      "ready" in claim &&
+      claim.ready === true
+    )
+      return json({ id, queued: false, state: "ready" });
+    if (
+      claim &&
+      typeof claim === "object" &&
+      "busy" in claim &&
+      claim.busy === true
+    )
+      return json({ id, queued: false, state: "running" });
+    if (!z.object({ lease: z.uuid() }).safeParse(claim).success)
+      throw new HttpError(
+        503,
+        "Status proses belum dapat dipastikan. Muat ulang daftar kartu.",
+      );
     after(() =>
-      processCards(a.client, id, new URL("/login", request.url).href),
+      processCards(a.client, id, new URL("/login", request.url).href, claim),
     );
     return json({ id, queued: true });
   } catch (e) {

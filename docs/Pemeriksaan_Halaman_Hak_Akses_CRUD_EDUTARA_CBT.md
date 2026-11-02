@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.28 — Audit Media soal.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.29 — Audit Kartu peserta.
+
+## Audit Kartu peserta — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/cards` mempertahankan akses Admin/Guru dalam konteks staf, dan komponen kartu bersama tetap tersedia bagi pengawas efektif melalui `/supervisor`. Cakupan peserta, kepemilikan job, RLS, bucket privat, lease dan batas retry tetap ditentukan RPC `card_command`; kata sandi/PIN tidak dicetak.
+
+Pembacaan opsi/peserta/job memvalidasi respons, membatasi waktu, membatalkan permintaan usang dan mencegah polling tumpang tindih. Error peserta dan job dipisahkan; kegagalan daftar job mempertahankan snapshot terakhir dengan peringatan. Pagination lokal 50 peserta, pilihan unik maksimal 500 PDF/50 ZIP, pencarian/pergantian ujian mengosongkan pilihan. Penggantian format tidak diam-diam memangkas pilihan. Kontrol dikunci selama mutation dan request_id pembuatan dipertahankan pada hasil tidak pasti.
+
+API memperoleh claim/lease sebelum menjadwalkan worker. Job berjalan/siap dilaporkan sesuai keadaan tanpa worker pesaing; penolakan akses dan batas retry tidak dianggap sukses. Receipt kosong/null dan signed URL tidak tersedia ditangani, detail SQL disamarkan. Unduhan tetap memeriksa izin terbaru dan memakai URL privat 60 detik. Worker memvalidasi snapshot, memuat CSS sekali per job, membatasi ZIP mentah/artifak 50 MiB dan penjadwalan batch 180 detik.
+
+Kontrol, identitas panjang, checkbox, pagination dan kartu status dirapikan untuk viewport kecil, fokus keyboard dan pembaca layar. Tidak ada halaman, endpoint, dependency atau migrasi database baru. Rincian temuan, kode dan validasi ada di `docs/cards-audit.md`.
 
 ## Audit Media soal — 2 November 2026
 

@@ -1,191 +1,471 @@
 "use client";
-import {ListFilters, SearchField} from "../ui/list-filters";
-import {matchesSearch} from "../../lib/lists/search";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, useLive, type Options } from "./shared";
+import { z } from "zod";
+import { useLive, type Options } from "./shared";
+import { clientRequest, ClientRequestError } from "../../lib/client/request";
+import { operationOptionsSchema } from "../../lib/operations/contracts";
+import {
+  cardStudentsSchema,
+  cardJobsSchema,
+  cardReceiptSchema,
+  cardLimit,
+  selectCards,
+} from "../../lib/operations/card-contracts";
+import { matchesSearch } from "../../lib/lists/search";
+import { SearchField } from "../ui/list-filters";
 import { Button } from "../ui/button";
-type Student = {
-  student_id: string;
-  student: string;
-  username: string;
-  room: string | null;
-};
-type Job = {
-  id: string;
-  status: string;
-  progress: number;
-  error: string | null;
-  format: string;
+type Student = z.infer<typeof cardStudentsSchema>[number];
+type Job = z.infer<typeof cardJobsSchema>[number];
+const statusLabel = {
+  queued: "Menunggu",
+  running: "Diproses",
+  ready: "Siap diunduh",
+  failed: "Gagal",
 };
 export function CardsPanel() {
   const [options, setOptions] = useState<Options | null>(null),
-    [exam, setExam] = useState(""),
+    [optionError, setOptionError] = useState(""),
+    [optionLoading, setOptionLoading] = useState(true),
+    [optionRetry, setOptionRetry] = useState(0);
+  const [exam, setExam] = useState(""),
     [rows, setRows] = useState<Student[]>([]),
+    [jobs, setJobs] = useState<Job[]>([]),
     [selected, setSelected] = useState<string[]>([]),
     [format, setFormat] = useState("pdf"),
     [template, setTemplate] = useState("compact"),
-    [jobs, setJobs] = useState<Job[]>([]),
+    [search, setSearch] = useState(""),
+    [page, setPage] = useState(1),
+    [loading, setLoading] = useState(false),
+    [jobsLoading, setJobsLoading] = useState(true),
+    [listError, setListError] = useState(""),
+    [jobsError, setJobsError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [search, setSearch] = useState(""),[listLoading,setListLoading]=useState(true),[listError,setListError]=useState("");
-  const sequence=useRef(0);
-  useEffect(() => {
-    void api<Options>("/api/operations")
-      .then((d) => {
-        setOptions(d);
-        setExam(d.exams[0]?.id || "");
-      })
-      .catch((e) => setMessage(e.message));
+    [uncertain, setUncertain] = useState(false);
+  const live = useRef(false),
+    generation = useRef(0),
+    flight = useRef<AbortController | null>(null),
+    writing = useRef(false),
+    mutation = useRef<AbortController | null>(null),
+    retry = useRef<{ signature: string; id: string } | null>(null);
+  const invalidate = useCallback(() => {
+    generation.current++;
+    flight.current?.abort();
+    flight.current = null;
   }, []);
-  const invalidateRequests=useCallback(()=>{sequence.current++;},[]);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+      invalidate();
+      mutation.current?.abort();
+    };
+  }, [invalidate]);
+  useEffect(() => {
+    const c = new AbortController();
+    let active = true;
+    setOptionLoading(true);
+    setOptionError("");
+    void clientRequest("/api/operations", undefined, operationOptionsSchema, c)
+      .then((d) => {
+        if (active) {
+          setOptions(d);
+          setExam((current) => current || d.exams[0]?.id || "");
+        }
+      })
+      .catch((e) => {
+        if (active) setOptionError(e.message);
+      })
+      .finally(() => {
+        if (active) setOptionLoading(false);
+      });
+    return () => {
+      active = false;
+      c.abort();
+    };
+  }, [optionRetry]);
   const load = useCallback(async () => {
-    const seq=++sequence.current;
-    try {
-      const [jobs,students]=await Promise.all([api<Job[]>("/api/cards"),exam?api<Student[]>("/api/operations?action=monitor&exam="+exam):Promise.resolve([])]);
-      if(seq!==sequence.current)return;
-      setJobs(jobs);setRows(students);setListError("");
-    } catch(e){if(seq===sequence.current){setRows([]);setJobs([]);setListError(e instanceof Error?e.message:"Data gagal dimuat.");}}
-    finally{if(seq===sequence.current)setListLoading(false);}
+    if (!live.current || writing.current || flight.current) return;
+    const c = new AbortController(),
+      g = generation.current;
+    flight.current = c;
+    setJobsLoading(true);
+    if (exam) setLoading(true);
+    const results = await Promise.allSettled([
+      clientRequest("/api/cards", undefined, cardJobsSchema, c),
+      exam
+        ? clientRequest(
+            "/api/operations?action=monitor&exam=" + exam,
+            undefined,
+            cardStudentsSchema,
+            c,
+          )
+        : Promise.resolve([]),
+    ]);
+    if (!live.current || g !== generation.current || flight.current !== c)
+      return;
+    if (results[0].status === "fulfilled") {
+      setJobs(results[0].value);
+      setJobsError("");
+      setUncertain(false);
+    } else
+      setJobsError(
+        results[0].reason instanceof Error
+          ? results[0].reason.message
+          : "Daftar proses gagal dimuat.",
+      );
+    if (results[1].status === "fulfilled") {
+      const students = results[1].value;
+      setRows(students);
+      const available = new Set(students.map((s) => s.student_id));
+      setSelected((prev) => prev.filter((id) => available.has(id)));
+      setListError("");
+    } else {
+      setRows([]);
+      setListError(
+        results[1].reason instanceof Error
+          ? results[1].reason.message
+          : "Peserta gagal dimuat.",
+      );
+    }
+    flight.current = null;
+    setLoading(false);
+    setJobsLoading(false);
   }, [exam]);
-  useEffect(()=>{setListLoading(true);void load();return()=>{invalidateRequests();};},[load,invalidateRequests]);
+  useEffect(() => {
+    invalidate();
+    setRows([]);
+    setSelected([]);
+    setListError("");
+    setLoading(Boolean(exam));
+    void load();
+    return invalidate;
+  }, [exam, load, invalidate]);
   useLive(load);
-  const retry=useRef<{signature:string;id:string}|null>(null);
-  async function run(input: object) {
+  const shown = rows.filter((r) =>
+      matchesSearch(r.student + " " + r.username, search),
+    ),
+    pages = Math.max(1, Math.ceil(shown.length / 50)),
+    currentPage = Math.min(page, pages),
+    limit = cardLimit(format),
+    over = selected.length > limit;
+  useEffect(() => {
+    setPage((p) => Math.min(p, pages));
+  }, [pages]);
+  async function run(
+    input:
+      | {
+          action: "create";
+          exam_id: string;
+          student_ids: string[];
+          format: string;
+          template: string;
+        }
+      | { action: "retry"; job_id: string },
+  ) {
+    if (writing.current || uncertain) return;
+    writing.current = true;
     setBusy(true);
+    setMessage("");
+    invalidate();
+    setLoading(false);
+    setJobsLoading(false);
+    const c = new AbortController();
+    mutation.current = c;
     try {
-      const data=input as Record<string,unknown>;
-      const signature=JSON.stringify({...data,request_id:undefined});
-      if(retry.current?.signature!==signature)retry.current={signature,id:crypto.randomUUID()};
-      await api("/api/cards", data.action==='create'?{...data,request_id:retry.current.id}:input);
-      retry.current=null;
-      setMessage("Job kartu dibuat. Progres diperbarui otomatis.");
-      await load();
+      let payload: object = input;
+      if (input.action === "create") {
+        const normalized = {
+            ...input,
+            student_ids: [...input.student_ids].sort(),
+          },
+          signature = JSON.stringify(normalized);
+        if (retry.current?.signature !== signature)
+          retry.current = { signature, id: crypto.randomUUID() };
+        payload = { ...normalized, request_id: retry.current.id };
+      }
+      const receipt = await clientRequest(
+        "/api/cards",
+        payload,
+        cardReceiptSchema,
+        c,
+        { mutation: true },
+      );
+      if (!live.current) return;
+      if (input.action === "create") retry.current = null;
+      setMessage(
+        receipt.state === "ready"
+          ? "Kartu sudah siap diunduh."
+          : receipt.state === "running"
+            ? "Proses kartu masih berjalan. Pantau progres di bawah."
+            : "Proses kartu dijadwalkan. Progres diperbarui otomatis.",
+      );
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Kartu gagal dibuat.");
+      if (live.current) {
+        setMessage(e instanceof Error ? e.message : "Kartu gagal diproses.");
+        if (e instanceof ClientRequestError && e.uncertain) setUncertain(true);
+      }
     } finally {
-      setBusy(false);
+      writing.current = false;
+      if (live.current) {
+        setBusy(false);
+        void load();
+      }
     }
   }
-  const shown = (listLoading||listError?[]:rows).filter((r) =>
-    matchesSearch(r.student + " " + r.username,search),
-  );
+  function changeSearch(value: string) {
+    setSearch(value);
+    setSelected([]);
+    setPage(1);
+  }
   return (
-    <section className="panel stack">
+    <section
+      className="panel stack cards-page"
+      aria-label="Kartu peserta ujian"
+    >
       <p>
-        Kartu memuat identitas, username, ruang dan jadwal. Kata sandi akun dan
-        PIN tidak dicetak.
+        Kartu berisi identitas, username, ruang dan jadwal. Kata sandi dan PIN
+        tidak dicetak.
       </p>
-      <ListFilters label="kartu peserta" active={[search&&"Pencarian"].filter(Boolean) as string[]} onReset={()=>setSearch("")} total={shown.length} loading={listLoading} error={listError}>
-        <label>
-          Ujian
-          <select
-            value={exam}
-            onChange={(e) => {
-              setExam(e.target.value);
-              setRows([]);
-              setSelected([]);
-            }}
+      {optionError && (
+        <div role="alert">
+          <p>{optionError}</p>
+          <Button
+            variant="outline"
+            onClick={() => setOptionRetry((v) => v + 1)}
           >
-            <option value="">Pilih ujian</option>
-            {options?.exams.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.title}
+            Muat ulang pilihan ujian
+          </Button>
+        </div>
+      )}
+      <fieldset disabled={busy} className="stack cards-controls">
+        <legend>Siapkan kartu</legend>
+        <div className="cards-filter-grid">
+          <label>
+            Ujian
+            <select
+              value={exam}
+              disabled={optionLoading}
+              onChange={(e) => {
+                invalidate();
+                setExam(e.target.value);
+                setRows([]);
+                setSelected([]);
+                setPage(1);
+              }}
+            >
+              <option value="">
+                {optionLoading ? "Memuat ujian…" : "Pilih ujian"}
               </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Template
-          <select
-            value={template}
-            onChange={(e) => setTemplate(e.target.value)}
-          >
-            <option value="compact">Ringkas · dua kolom</option>
-            <option value="large">Besar · satu kolom</option>
-          </select>
-        </label>
-        <label>
-          Format
-          <select value={format} onChange={(e) => setFormat(e.target.value)}>
-            <option value="pdf">PDF gabungan · maks. 500</option>
-            <option value="zip">ZIP PDF per siswa · maks. 50</option>
-          </select>
-        </label>
-        <SearchField label="Cari siswa" value={search} maxLength={150} onChange={value=>{setSearch(value);}} />
-      </ListFilters>
-      <div className="actions">
-        <Button
-          variant="outline"
-          onClick={() => setSelected(shown.map((r) => r.student_id))}
-        >
-          Pilih hasil pencarian
-        </Button>
-        <Button variant="outline" onClick={() => setSelected([])}>
-          Kosongkan pilihan
-        </Button>
-        <Button
-          disabled={
-            busy ||
-            !exam ||
-            !selected.length ||
-            (format === "zip" && selected.length > 50) ||
-            selected.length > 500
-          }
-          onClick={() =>
-            void run({
-              action: "create",
-              request_id: crypto.randomUUID(),
-              exam_id: exam,
-              student_ids: selected,
-              format,
-              template,
-            })
-          }
-        >
-          Buat {selected.length} kartu
-        </Button>
-      </div>
-      <fieldset className="ops-choice-list">
-        <legend>Peserta</legend>
-        {shown.map((r) => (
-          <label key={r.student_id}>
-            <input
-              type="checkbox"
-              checked={selected.includes(r.student_id)}
-              onChange={(e) =>
-                setSelected(
-                  e.target.checked
-                    ? [...selected, r.student_id]
-                    : selected.filter((id) => id !== r.student_id),
-                )
-              }
-            />
-            {r.student} · {r.username} · {r.room || "Belum ditempatkan"}
+              {options?.exams.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.title}
+                </option>
+              ))}
+            </select>
           </label>
-        ))}
-      </fieldset>
-      <p role="status">{message}</p>
-      <h2>Job kartu</h2>
-      {jobs.map((j) => (
-        <div className="panel" key={j.id}>
-          <p>
-            {j.format.toUpperCase()} · {j.status} · {j.progress}%
+          <label>
+            Template
+            <select
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+            >
+              <option value="compact">Ringkas · dua kolom</option>
+              <option value="large">Besar · satu kolom</option>
+            </select>
+          </label>
+          <label>
+            Format
+            <select value={format} onChange={(e) => setFormat(e.target.value)}>
+              <option value="pdf">PDF gabungan · maks. 500</option>
+              <option value="zip">ZIP per siswa · maks. 50</option>
+            </select>
+          </label>
+          <SearchField
+            label="Cari nama atau username"
+            value={search}
+            maxLength={150}
+            onChange={changeSearch}
+          />
+        </div>
+        <div className="actions">
+          <Button
+            variant="outline"
+            disabled={loading || !!listError || !shown.length}
+            onClick={() =>
+              setSelected(
+                selectCards(
+                  [],
+                  shown.map((r) => r.student_id),
+                  limit,
+                ),
+              )
+            }
+          >
+            Pilih hasil · maks. {limit}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!selected.length}
+            onClick={() => setSelected([])}
+          >
+            Kosongkan pilihan
+          </Button>
+          <Button
+            disabled={
+              !exam ||
+              !selected.length ||
+              over ||
+              loading ||
+              !!listError ||
+              uncertain
+            }
+            onClick={() =>
+              void run({
+                action: "create",
+                exam_id: exam,
+                student_ids: selected,
+                format,
+                template,
+              })
+            }
+          >
+            Buat {selected.length} kartu
+          </Button>
+        </div>
+        <p role="status">
+          {selected.length} dipilih dari {shown.length} hasil
+          {shown.length > limit
+            ? `; pilih hasil mengambil ${limit} peserta pertama`
+            : ""}
+          . Pencarian atau pergantian ujian mengosongkan pilihan.
+        </p>
+        {over && (
+          <p role="alert">
+            Pilihan melebihi batas {limit}. Kurangi pilihan atau gunakan PDF
+            gabungan.
           </p>
-          <progress max={100} value={j.progress} aria-label="Progres kartu" />
-          {j.error && <p role="alert">{j.error}</p>}
-          {j.status === "ready" ? (
-            <a href={"/api/cards/download?id=" + j.id}>Unduh kartu</a>
-          ) : (
+        )}
+        {listError && <p role="alert">{listError}</p>}
+        {loading && rows.length === 0 ? (
+          <p role="status">Memuat peserta…</p>
+        ) : !exam ? (
+          <p>Pilih ujian untuk melihat peserta.</p>
+        ) : !shown.length && !listError ? (
+          <p>
+            {search
+              ? "Tidak ada peserta yang cocok."
+              : "Belum ada peserta pada ujian ini."}
+          </p>
+        ) : null}
+        <fieldset className="ops-choice-list cards-participants">
+          <legend>
+            Peserta · halaman {currentPage} dari {pages}
+          </legend>
+          {shown.slice((currentPage - 1) * 50, currentPage * 50).map((r) => (
+            <label key={r.student_id}>
+              <input
+                type="checkbox"
+                checked={selected.includes(r.student_id)}
+                disabled={
+                  !selected.includes(r.student_id) && selected.length >= limit
+                }
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setSelected((prev) =>
+                    checked
+                      ? selectCards(prev, [r.student_id], limit)
+                      : prev.filter((id) => id !== r.student_id),
+                  );
+                }}
+              />
+              <span>
+                {r.student}
+                <small>
+                  {r.username} · {r.room || "Belum ditempatkan"}
+                </small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        {pages > 1 && (
+          <nav className="actions" aria-label="Halaman peserta">
             <Button
               variant="outline"
-              disabled={busy}
-              onClick={() => void run({ action: "retry", job_id: j.id })}
+              disabled={currentPage <= 1}
+              onClick={() => setPage(currentPage - 1)}
             >
-              Coba / lanjutkan proses
+              Sebelumnya
             </Button>
-          )}
-        </div>
-      ))}
+            <span>
+              {currentPage} / {pages}
+            </span>
+            <Button
+              variant="outline"
+              disabled={currentPage >= pages}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              Berikutnya
+            </Button>
+          </nav>
+        )}
+      </fieldset>
+      <p role="status" aria-live="polite">
+        {busy ? "Menjadwalkan proses kartu…" : message}
+      </p>
+      <div className="actions">
+        <h2>Proses kartu</h2>
+        <Button
+          variant="outline"
+          disabled={busy || jobsLoading}
+          onClick={() => void load()}
+        >
+          {jobsLoading ? "Memperbarui…" : "Perbarui status"}
+        </Button>
+      </div>
+      {uncertain && (
+        <p role="alert">
+          Hasil belum pasti. Periksa status sebelum mencoba kembali dengan isian
+          yang sama.
+        </p>
+      )}
+      {jobsError && (
+        <p role="alert">
+          {jobsError} Daftar terakhir yang berhasil dimuat dipertahankan.
+        </p>
+      )}
+      {!jobsLoading && !jobsError && !jobs.length && (
+        <p>Belum ada proses kartu. Pilih peserta lalu buat kartu.</p>
+      )}
+      <div className="cards-jobs">
+        {jobs.map((j) => (
+          <article className="panel stack cards-job" key={j.id}>
+            <h3>
+              {j.format.toUpperCase()} · {statusLabel[j.status]}
+            </h3>
+            <progress
+              max={100}
+              value={j.progress}
+              aria-label={`Progres ${j.format.toUpperCase()} ${j.progress}%`}
+            />
+            <span>{j.progress}%</span>
+            {j.error && <p role="alert">{j.error}</p>}
+            {j.status === "ready" ? (
+              <a href={"/api/cards/download?id=" + j.id}>Unduh kartu</a>
+            ) : (
+              <Button
+                variant="outline"
+                disabled={busy || uncertain}
+                onClick={() => void run({ action: "retry", job_id: j.id })}
+              >
+                {j.status === "failed"
+                  ? "Coba kembali"
+                  : "Periksa / lanjutkan proses"}
+              </Button>
+            )}
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

@@ -513,3 +513,21 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 /* Media library: bounded controls/cards, with table overflow kept inside its region. */
 .media-controls{border:0;padding:0;margin:0;min-width:0}.media-page,.media-card,.media-preview{min-width:0}.media-page code{overflow-wrap:anywhere;word-break:break-word;user-select:text}.media-page .media-controls>.ops-drop{padding:18px}.media-page .ops-drop p{margin:8px 0 0;font-size:.82rem}.media-dragging{background:var(--primary-soft);border-color:var(--primary)}.media-card{padding:16px;gap:10px}.media-preview{min-height:100px;display:grid;align-items:center}.media-preview audio{max-width:100%}.media-card details{font-size:.82rem}.media-protected{padding:6px 10px;background:var(--primary-soft);border-radius:8px;font-size:.82rem;margin:0}.media-page table{min-width:800px;table-layout:fixed}.media-page .table-wrap{max-height:65vh}.media-page :is(th,td){overflow-wrap:anywhere}.media-page table th:first-child{width:220px;position:sticky;left:0;background:#fff;z-index:2}.media-page table thead th{position:sticky;top:0;background:#fff;z-index:3}.media-page table thead th:first-child{z-index:4}.media-page table tbody tr:nth-child(even) :is(td,th){background:#f5f8f7}.media-page table small{display:block;margin-top:6px}.media-pagination{justify-content:space-between}.media-cleanup-list{padding-left:20px;max-height:24rem;overflow:auto}.media-cleanup-list li{padding:10px 0;display:flex;gap:12px;align-items:center;justify-content:space-between}.media-cleanup-list code{min-width:0}.media-drive .ops-choice-list label{align-items:flex-start;overflow-wrap:anywhere}.media-drive .ops-choice-list input{margin-top:4px}.media-page .toolbar>label{min-width:0}.media-page input[type=file]{max-width:100%}
 @media(max-width:600px){.media-page .toolbar{display:grid;grid-template-columns:minmax(0,1fr)}.media-page .actions>button{flex:1 1 auto;white-space:normal}.media-pagination{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.media-pagination>span{grid-column:1/-1;grid-row:1;text-align:center}.media-cleanup-list li{align-items:stretch;flex-direction:column}.media-page table th:first-child{width:145px;max-width:145px}}
+
+/* Kartu peserta: keep controls, identities and job feedback within the viewport. */
+.cards-page,.cards-controls,.cards-job{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.cards-controls{border:0;padding:0;margin:0}
+.cards-controls legend{font-weight:700;margin-bottom:.75rem}
+.cards-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.cards-filter-grid label,.cards-filter-grid input,.cards-filter-grid select{min-width:0;max-width:100%;width:100%}
+.cards-participants{min-width:0;max-height:32rem;overflow-y:auto}
+.cards-participants label{display:flex;flex-direction:row;align-items:center;gap:.75rem;min-height:48px;min-width:0}
+.cards-participants input[type=checkbox]{width:24px;height:24px;flex:0 0 24px}
+.cards-participants span{min-width:0;overflow-wrap:anywhere}
+.cards-participants small{display:block;color:var(--muted-foreground)}
+.cards-jobs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.cards-job progress{width:100%;max-width:100%}
+.cards-job h3{margin:0}
+.cards-job a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline}
+.cards-page .actions{flex-wrap:wrap}
+@media(max-width:640px){.cards-filter-grid,.cards-jobs{grid-template-columns:minmax(0,1fr)}.cards-page .actions>button{flex:1 1 140px;white-space:normal;min-height:44px}.cards-controls select{min-height:44px}}
