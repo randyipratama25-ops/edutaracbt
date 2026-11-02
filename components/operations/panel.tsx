@@ -1,6 +1,13 @@
 "use client";
-import {ListFilters, SearchField} from "../ui/list-filters";
-import {matchesSearch} from "../../lib/lists/search";
+import { ListFilters, SearchField } from "../ui/list-filters";
+import { matchesSearch } from "../../lib/lists/search";
+import { RoomLists, RosterChoices } from "./room-lists";
+import {
+  roomTitles,
+  roomLocalDate,
+  roomInstant,
+  sortRooms,
+} from "../../lib/operations/rooms";
 import { IncidentPanel } from "../workflow/incidents";
 import {
   useCallback,
@@ -12,11 +19,22 @@ import {
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { useLive, type Options } from "./shared";
-import {z} from 'zod';
-import {clientRequest,ClientRequestError} from '../../lib/client/request';
-import {operation} from '../../lib/operations/schema';
-import {operationOptionsSchema,monitorRowsSchema,roomsSchema,sentNotificationsSchema,monitorHistorySchema,operationReceipt,reviewTargets,canReview,monitorPage,type MonitorRow as Row} from '../../lib/operations/contracts';
-type Rooms=z.infer<typeof roomsSchema>;
+import { z } from "zod";
+import { clientRequest, ClientRequestError } from "../../lib/client/request";
+import { operation } from "../../lib/operations/schema";
+import {
+  operationOptionsSchema,
+  monitorRowsSchema,
+  roomsSchema,
+  sentNotificationsSchema,
+  monitorHistorySchema,
+  operationReceipt,
+  reviewTargets,
+  canReview,
+  monitorPage,
+  type MonitorRow as Row,
+} from "../../lib/operations/contracts";
+type Rooms = z.infer<typeof roomsSchema>;
 const status: Record<string, string> = {
   not_started: "Belum mulai",
   in_progress: "Aktif",
@@ -45,7 +63,8 @@ export function OperationsPanel({
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState(""),
-    [listLoading,setListLoading]=useState(true),[listError,setListError]=useState(""),
+    [listLoading, setListLoading] = useState(true),
+    [listError, setListError] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
     [page, setPage] = useState(1),
     [dialog, setDialog] = useState(""),
@@ -62,567 +81,781 @@ export function OperationsPanel({
     [people, setPeople] = useState<string[]>([]),
     [scope, setScope] = useState("exam"),
     [text, setText] = useState(""),
-    [notificationTitle,setNotificationTitle]=useState(""),[priority,setPriority]=useState("info"),[linkExam,setLinkExam]=useState(true),
+    [notificationTitle, setNotificationTitle] = useState(""),
+    [priority, setPriority] = useState("info"),
+    [linkExam, setLinkExam] = useState(true),
     [history, setHistory] = useState<unknown>(null);
-  const seq=useRef(0),mounted=useRef(true),controllers=useRef(new Set<AbortController>()),lock=useRef(false),dialogRef=useRef(''),flight=useRef<{seq:number;promise:Promise<void>}|null>(null);
-  const retry=useRef<{signature:string;id:string}|null>(null);
-  const [optionError,setOptionError]=useState(''),[historyError,setHistoryError]=useState(''),[historyLoading,setHistoryLoading]=useState(false),[uncertain,setUncertain]=useState(false),[lastUpdated,setLastUpdated]=useState(''),[refreshing,setRefreshing]=useState(false),[actionTargets,setActionTargets]=useState<Row[]>([]);
-  const loadedExam=useRef(''),optionSeq=useRef(0);
-  const historySeq=useRef(0),historyController=useRef<AbortController|null>(null),readController=useRef<AbortController|null>(null);
-  const request=useCallback(async function request<T>(url:string,input:object|undefined,schema:z.ZodType<T>,controller=new AbortController()){
-    if(!mounted.current)throw Error('Permintaan dibatalkan.');
+  const seq = useRef(0),
+    mounted = useRef(true),
+    controllers = useRef(new Set<AbortController>()),
+    lock = useRef(false),
+    dialogRef = useRef(""),
+    flight = useRef<{ seq: number; promise: Promise<void> } | null>(null);
+  const retry = useRef<{ signature: string; id: string } | null>(null);
+  const [optionError, setOptionError] = useState(""),
+    [historyError, setHistoryError] = useState(""),
+    [historyLoading, setHistoryLoading] = useState(false),
+    [uncertain, setUncertain] = useState(false),
+    [lastUpdated, setLastUpdated] = useState(""),
+    [refreshing, setRefreshing] = useState(false),
+    [actionTargets, setActionTargets] = useState<Row[]>([]);
+  const loadedExam = useRef(""),
+    optionSeq = useRef(0);
+  const historySeq = useRef(0),
+    historyController = useRef<AbortController | null>(null),
+    readController = useRef<AbortController | null>(null);
+  const request = useCallback(async function request<T>(
+    url: string,
+    input: object | undefined,
+    schema: z.ZodType<T>,
+    controller = new AbortController(),
+  ) {
+    if (!mounted.current) throw Error("Permintaan dibatalkan.");
     controllers.current.add(controller);
-    try{const value=await clientRequest(url,input,schema,controller,{mutation:!!input});if(!mounted.current)throw Error('Permintaan dibatalkan.');return value;}finally{controllers.current.delete(controller);}
-  },[]);
-  useEffect(()=>{mounted.current=true;const active=controllers.current,sequence=seq,optionsSequence=optionSeq,historySequence=historySeq;return()=>{mounted.current=false;sequence.current++;optionsSequence.current++;historySequence.current++;active.forEach(c=>c.abort());};},[]);
-  const invalidateRequests=useCallback(()=>{seq.current++;readController.current?.abort();flight.current=null;},[]);
-  const load=useCallback(async()=>{
-    if(!mounted.current)return;
-    if(!exam){setListLoading(false);return;}
-    if(dialogRef.current||lock.current)return;
-    if(flight.current?.seq===seq.current)return flight.current.promise;
-    const generation=++seq.current,c=new AbortController();readController.current=c;
-    setRefreshing(true);setListLoading(loadedExam.current!==exam);
-    const promise=(async()=>{try{
-      if(mode==='rooms'){const d=await request('/api/operations?action=rooms&exam='+exam,undefined,roomsSchema,c);if(generation===seq.current)setRooms(d);}
-      else{const d=await request('/api/operations?action=monitor&exam='+exam,undefined,monitorRowsSchema,c);if(generation===seq.current){setRows(d);setSelected(prev=>prev.filter(id=>d.some(r=>r.student_id===id)));}}
-      if(generation===seq.current){loadedExam.current=exam;setListError('');setLastUpdated(new Date().toLocaleTimeString('id-ID'));setUncertain(false);}
-    }catch(e){if(mounted.current&&generation===seq.current){loadedExam.current='';setRows([]);setRooms(empty);setSelected([]);setListError(e instanceof Error?e.message:'Monitor gagal dimuat.');}}
-    finally{if(mounted.current&&generation===seq.current){setListLoading(false);setRefreshing(false);flight.current=null;}}})();
-    flight.current={seq:generation,promise};return promise;
-  },[exam,mode,request]);
-  const loadOptions=useCallback(async()=>{const generation=++optionSeq.current;setOptionError('');try{const d=await request('/api/operations',undefined,operationOptionsSchema);if(generation!==optionSeq.current)return;setOptions(d);setExam(prev=>d.exams.some(e=>e.id===prev)?prev:d.exams[0]?.id||'');if(!d.exams.length)setListLoading(false);}catch(e){if(mounted.current&&generation===optionSeq.current){setOptionError(e instanceof Error?e.message:'Akses belum dapat dimuat.');setListLoading(false);}}},[request]);
-  useEffect(()=>{void loadOptions();},[loadOptions]);
-  useEffect(()=>{void load();return invalidateRequests;},[load,invalidateRequests]);
+    try {
+      const value = await clientRequest(url, input, schema, controller, {
+        mutation: !!input,
+      });
+      if (!mounted.current) throw Error("Permintaan dibatalkan.");
+      return value;
+    } finally {
+      controllers.current.delete(controller);
+    }
+  }, []);
+  useEffect(() => {
+    mounted.current = true;
+    const active = controllers.current,
+      sequence = seq,
+      optionsSequence = optionSeq,
+      historySequence = historySeq;
+    return () => {
+      mounted.current = false;
+      sequence.current++;
+      optionsSequence.current++;
+      historySequence.current++;
+      active.forEach((c) => c.abort());
+    };
+  }, []);
+  const invalidateRequests = useCallback(() => {
+    seq.current++;
+    readController.current?.abort();
+    flight.current = null;
+  }, []);
+  const load = useCallback(async () => {
+    if (!mounted.current) return;
+    if (!exam) {
+      setListLoading(false);
+      return;
+    }
+    if (dialogRef.current || lock.current) return;
+    if (flight.current?.seq === seq.current) return flight.current.promise;
+    const generation = ++seq.current,
+      c = new AbortController();
+    readController.current = c;
+    setRefreshing(true);
+    setListLoading(loadedExam.current !== exam);
+    const promise = (async () => {
+      try {
+        if (mode === "rooms") {
+          const d = await request(
+            "/api/operations?action=rooms&exam=" + exam,
+            undefined,
+            roomsSchema,
+            c,
+          );
+          if (generation === seq.current) setRooms(sortRooms(d));
+        } else {
+          const d = await request(
+            "/api/operations?action=monitor&exam=" + exam,
+            undefined,
+            monitorRowsSchema,
+            c,
+          );
+          if (generation === seq.current) {
+            setRows(d);
+            setSelected((prev) =>
+              prev.filter((id) => d.some((r) => r.student_id === id)),
+            );
+          }
+        }
+        if (generation === seq.current) {
+          loadedExam.current = exam;
+          setListError("");
+          setLastUpdated(new Date().toLocaleTimeString("id-ID"));
+          setUncertain(false);
+        }
+      } catch (e) {
+        if (mounted.current && generation === seq.current) {
+          loadedExam.current = "";
+          setRows([]);
+          setRooms(empty);
+          setSelected([]);
+          setListError(
+            e instanceof Error ? e.message : "Monitor gagal dimuat.",
+          );
+        }
+      } finally {
+        if (mounted.current && generation === seq.current) {
+          setListLoading(false);
+          setRefreshing(false);
+          flight.current = null;
+        }
+      }
+    })();
+    flight.current = { seq: generation, promise };
+    return promise;
+  }, [exam, mode, request]);
+  const loadOptions = useCallback(async () => {
+    const generation = ++optionSeq.current;
+    setOptionError("");
+    try {
+      const d = await request(
+        "/api/operations",
+        undefined,
+        operationOptionsSchema,
+      );
+      if (generation !== optionSeq.current) return;
+      setOptions(d);
+      setExam((prev) =>
+        d.exams.some((e) => e.id === prev) ? prev : d.exams[0]?.id || "",
+      );
+      if (!d.exams.length) setListLoading(false);
+    } catch (e) {
+      if (mounted.current && generation === optionSeq.current) {
+        setOptionError(
+          e instanceof Error ? e.message : "Akses belum dapat dimuat.",
+        );
+        setListLoading(false);
+      }
+    }
+  }, [request]);
+  useEffect(() => {
+    void loadOptions();
+  }, [loadOptions]);
+  useEffect(() => {
+    void load();
+    return invalidateRequests;
+  }, [load, invalidateRequests]);
   useLive(load);
-  function closeDialog(){if(lock.current)return;historySeq.current++;historyController.current?.abort();dialogRef.current='';setDialog('');setHistory(null);setHistoryError('');setMessage('');void load();}
-  async function readHistory(action:string,id=''){
-    if(lock.current)return;
-    historyController.current?.abort();const generation=++historySeq.current,c=new AbortController();historyController.current=c;
-    invalidateRequests();setRefreshing(false);setListLoading(false);dialogRef.current=action;setDialog(action);setTarget(id);setHistory(null);setHistoryError('');setHistoryLoading(true);
-    try{const value=await request<unknown>('/api/operations?action='+action+(id?'&id='+id:''),undefined,action==='sent'?sentNotificationsSchema:monitorHistorySchema,c);if(generation===historySeq.current)setHistory(value);}
-    catch(e){if(mounted.current&&generation===historySeq.current)setHistoryError(e instanceof Error?e.message:'Riwayat belum dapat dimuat.');}
-    finally{if(mounted.current&&generation===historySeq.current)setHistoryLoading(false);}
+  function closeDialog() {
+    if (lock.current) return;
+    historySeq.current++;
+    historyController.current?.abort();
+    dialogRef.current = "";
+    setDialog("");
+    setHistory(null);
+    setHistoryError("");
+    setMessage("");
+    void load();
+  }
+  async function readHistory(action: string, id = "") {
+    if (lock.current) return;
+    historyController.current?.abort();
+    const generation = ++historySeq.current,
+      c = new AbortController();
+    historyController.current = c;
+    invalidateRequests();
+    setRefreshing(false);
+    setListLoading(false);
+    dialogRef.current = action;
+    setDialog(action);
+    setTarget(id);
+    setHistory(null);
+    setHistoryError("");
+    setHistoryLoading(true);
+    try {
+      const value = await request<unknown>(
+        "/api/operations?action=" + action + (id ? "&id=" + id : ""),
+        undefined,
+        action === "sent" ? sentNotificationsSchema : monitorHistorySchema,
+        c,
+      );
+      if (generation === historySeq.current) setHistory(value);
+    } catch (e) {
+      if (mounted.current && generation === historySeq.current)
+        setHistoryError(
+          e instanceof Error ? e.message : "Riwayat belum dapat dimuat.",
+        );
+    } finally {
+      if (mounted.current && generation === historySeq.current)
+        setHistoryLoading(false);
+    }
   }
   function open(action: string, id = "") {
-    if(lock.current)return;
-    invalidateRequests();setRefreshing(false);setListLoading(false);dialogRef.current=action;setDialog(action);setMessage('');setHistoryError('');setStart('');setEnd('');
-    setActionTargets(reviewTargets(rows,selected).map(r=>({...r})));
+    if (lock.current) return;
+    invalidateRequests();
+    setRefreshing(false);
+    setListLoading(false);
+    dialogRef.current = action;
+    setDialog(action);
+    setMessage("");
+    setHistoryError("");
+    setStart("");
+    setEnd("");
+    setActionTargets(reviewTargets(rows, selected).map((r) => ({ ...r })));
     setTarget(id);
     setReason("");
     setConfirmation("");
     setPeople([]);
     setName("");
     setCapacity("0");
-    setText("");setNotificationTitle("");setPriority("info");setLinkExam(true);
+    setText("");
+    setNotificationTitle("");
+    setPriority("info");
+    setLinkExam(true);
     setScope("exam");
+    if (mode === "rooms") {
+      setRoom(rooms.rooms[0]?.id || "");
+      setSession(rooms.sessions[0]?.id || "");
+      setStaff(options?.staff[0]?.id || "");
+      if (action === "room_save" && id) {
+        const r = rooms.rooms.find((r) => r.id === id);
+        if (r) {
+          setName(r.name);
+          setCapacity(String(r.capacity));
+        }
+      }
+      if (action === "session_save" && id) {
+        const r = rooms.sessions.find((r) => r.id === id);
+        if (r) {
+          setName(r.name);
+          setStart(roomLocalDate(r.starts_at));
+          setEnd(roomLocalDate(r.ends_at));
+        }
+      }
+      if (action === "substitute") {
+        const a = rooms.assignments.find((a) => a.id === id);
+        setStaff(
+          options?.staff.find((s) => s.id !== a?.original_supervisor_id)?.id ||
+            "",
+        );
+        setStart(roomLocalDate(new Date().toISOString()));
+      }
+    }
   }
   async function save(raw: object) {
-    if(lock.current)return;
-    lock.current=true;setBusy(true);setMessage('');
-    try{
-      const signature=JSON.stringify(raw);
-      if(retry.current?.signature!==signature)retry.current={signature,id:crypto.randomUUID()};
-      const input=operation.parse({...raw,request_id:retry.current.id});
-      const receipt=await request('/api/operations',input,operationReceipt(input.action));
-      retry.current=null;setUncertain(false);dialogRef.current='';setDialog('');setSelected([]);lock.current=false;
-      await load();if(mounted.current)setMessage(input.action==='broadcast'&&receipt&&typeof receipt==='object'&&'recipients' in receipt?`Notifikasi terkirim kepada ${receipt.recipients} penerima.`:'Perubahan tersimpan. Periksa pembaruan monitor.');
-    }catch(e){if(mounted.current){setMessage(e instanceof ClientRequestError?e.message:e instanceof z.ZodError?'Periksa isian, alasan, sasaran dan konfirmasi.':'Gagal menyimpan.');if(e instanceof ClientRequestError&&(e.uncertain||e.status===409)){setUncertain(true);}}}
-    finally{lock.current=false;if(mounted.current)setBusy(false);}
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setMessage("");
+    try {
+      const signature = JSON.stringify(raw);
+      if (retry.current?.signature !== signature)
+        retry.current = { signature, id: crypto.randomUUID() };
+      const input = operation.parse({ ...raw, request_id: retry.current.id });
+      const receipt = await request(
+        "/api/operations",
+        input,
+        operationReceipt(input.action),
+      );
+      retry.current = null;
+      setUncertain(false);
+      dialogRef.current = "";
+      setDialog("");
+      setSelected([]);
+      lock.current = false;
+      await load();
+      if (mounted.current)
+        setMessage(
+          input.action === "broadcast" &&
+            receipt &&
+            typeof receipt === "object" &&
+            "recipients" in receipt
+            ? `Notifikasi terkirim kepada ${receipt.recipients} penerima.`
+            : mode === "rooms"
+              ? loadedExam.current === exam
+                ? "Perubahan tersimpan. Daftar ruang dan sesi diperbarui."
+                : "Perubahan tersimpan, tetapi daftar belum dapat dimuat. Muat ulang untuk memeriksa hasil."
+              : "Perubahan tersimpan. Periksa pembaruan monitor.",
+        );
+    } catch (e) {
+      if (mounted.current) {
+        setMessage(
+          e instanceof ClientRequestError
+            ? e.message
+            : e instanceof z.ZodError
+              ? mode === "rooms"
+                ? e.issues.map((i) => i.message).join("; ")
+                : "Periksa isian, alasan, sasaran dan konfirmasi."
+              : "Gagal menyimpan.",
+        );
+        if (
+          e instanceof ClientRequestError &&
+          (e.uncertain || e.status === 409)
+        ) {
+          setUncertain(true);
+        }
+      }
+    } finally {
+      lock.current = false;
+      if (mounted.current) setBusy(false);
+    }
   }
   function submit(e: FormEvent) {
     e.preventDefault();
-    if(lock.current||uncertain)return;
+    if (lock.current || uncertain) return;
     let input: object;
-    try{
-    if (dialog === "room_save")
-      input = {
-        action: dialog,
-        exam_id: exam,
-        id: target || undefined,
-        name,
-        capacity: Number(capacity),
-      };
-    else if (dialog === "session_save")
-      input = {
-        action: dialog,
-        exam_id: exam,
-        id: target || undefined,
-        name,
-        starts_at: new Date(start).toISOString(),
-        ends_at: new Date(end).toISOString(),
-      };
-    else if (dialog === "assign")
-      input = {
-        action: dialog,
-        exam_id: exam,
-        room_id: room,
-        session_id: session,
-        supervisor_id: staff,
-      };
-    else if (dialog === "substitute")
-      input = {
-        action: dialog,
-        id: target,
-        supervisor_id: staff,
-        starts_at: new Date(start).toISOString(),
-        ends_at: new Date(end).toISOString(),
-      };
-    else if (dialog.startsWith("roster_"))
-      input = {
-        action: dialog,
-        id: target,
-        exam_id: exam,
-        student_ids: people,
-      };
-    else if (["reset", "unlock", "disqualify"].includes(dialog))
-      input = {
-        action: dialog,
-        reason,
-        confirmation,
-        attempts: actionTargets
-          .map((r) => ({ id: r.attempt_id, version: r.version })),
-      };
-    else if (dialog === "broadcast")
-      input = {
-        action: dialog,
-        scope,
-        exam_id: exam,
-        student_ids: scope === "selected" ? selected : undefined,
-        message: text,
-        title:notificationTitle,priority,link_exam:linkExam&&scope!=="all",
-      };
-    else input = { action: dialog, id: target };
-    if(["reset","unlock","disqualify"].includes(dialog)&&!canReview(actionTargets,dialog))throw Error("Pilihan tindakan tidak valid. Muat ulang monitor.");
-    void save(input);
-    }catch{setMessage("Periksa isian, waktu, pilihan peserta dan jenis tindakan.");}
+    try {
+      if (dialog === "room_save")
+        input = {
+          action: dialog,
+          exam_id: exam,
+          id: target || undefined,
+          name,
+          capacity: Number(capacity),
+        };
+      else if (dialog === "session_save")
+        input = {
+          action: dialog,
+          exam_id: exam,
+          id: target || undefined,
+          name,
+          starts_at: roomInstant(start),
+          ends_at: roomInstant(end),
+        };
+      else if (dialog === "assign")
+        input = {
+          action: dialog,
+          exam_id: exam,
+          room_id: room,
+          session_id: session,
+          supervisor_id: staff,
+        };
+      else if (dialog === "substitute")
+        input = {
+          action: dialog,
+          id: target,
+          supervisor_id: staff,
+          starts_at: roomInstant(start),
+          ends_at: roomInstant(end),
+        };
+      else if (dialog.startsWith("roster_"))
+        input = {
+          action: dialog,
+          id: target,
+          exam_id: exam,
+          student_ids: people,
+        };
+      else if (["reset", "unlock", "disqualify"].includes(dialog))
+        input = {
+          action: dialog,
+          reason,
+          confirmation,
+          attempts: actionTargets.map((r) => ({
+            id: r.attempt_id,
+            version: r.version,
+          })),
+        };
+      else if (dialog === "broadcast")
+        input = {
+          action: dialog,
+          scope,
+          exam_id: exam,
+          student_ids: scope === "selected" ? selected : undefined,
+          message: text,
+          title: notificationTitle,
+          priority,
+          link_exam: linkExam && scope !== "all",
+        };
+      else input = { action: dialog, id: target };
+      if (
+        ["reset", "unlock", "disqualify"].includes(dialog) &&
+        !canReview(actionTargets, dialog)
+      )
+        throw Error("Pilihan tindakan tidak valid. Muat ulang monitor.");
+      void save(input);
+    } catch {
+      setMessage("Periksa isian, waktu, pilihan peserta dan jenis tindakan.");
+    }
   }
-  const actionRows=reviewTargets(rows,selected);
-  const visible = (listLoading||listError?[]:rows).filter(
+  const rosterIds = new Set(rooms.roster.map((r) => r.student_id));
+  const actionRows = reviewTargets(rows, selected);
+  const visible = (listLoading || listError ? [] : rows).filter(
     (r) =>
       (!filter || r.status === filter) &&
-      matchesSearch(r.student + " " + r.username + " " + (r.room || ""),search),
+      matchesSearch(
+        r.student + " " + r.username + " " + (r.room || ""),
+        search,
+      ),
   );
-  const currentPage=monitorPage(page,visible.length);
-  useEffect(()=>{if(!listLoading&&!listError&&page!==currentPage)setPage(currentPage);},[listLoading,listError,page,currentPage]);
+  const currentPage = monitorPage(page, visible.length);
+  useEffect(() => {
+    if (!listLoading && !listError && page !== currentPage)
+      setPage(currentPage);
+  }, [listLoading, listError, page, currentPage]);
   const shown = visible.slice((currentPage - 1) * 25, currentPage * 25);
-  const staffName = (id: string | null) =>
-    options?.staff.find((s) => s.id === id)?.name ||
-    id ||
-    "Di luar periode sesi";
   return (
-    <section className="panel stack monitor-page" aria-label={mode==='monitor'?'Monitor peserta ujian':'Pengaturan ruang dan sesi'} aria-busy={busy}>
+    <section
+      className={
+        "panel stack " + (mode === "rooms" ? "rooms-page" : "monitor-page")
+      }
+      aria-label={
+        mode === "monitor"
+          ? "Monitor peserta ujian"
+          : "Pengaturan ruang dan sesi"
+      }
+      aria-busy={busy}
+    >
       <fieldset className="monitor-controls stack" disabled={busy}>
-      <div className="toolbar">
-        <label>
-          Ujian
-          <select
-            value={exam}
-            onChange={(e) => {
-              invalidateRequests();historySeq.current++;historyController.current?.abort();
-              setExam(e.target.value);setRooms(empty);loadedExam.current='';setLastUpdated('');setRefreshing(false);setListError('');setMessage('');setSearch('');setFilter('');setUncertain(false);setListLoading(!!e.target.value);
-              setSelected([]);
-              setPage(1);
-              setRows([]);
-            }}
-          >
-            <option value="">Pilih ujian</option>
-            {options?.exams.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button variant="outline" disabled={refreshing||!exam||!!dialog} onClick={() => void load()}>
-          Muat ulang
-        </Button>
-      </div>
-      <p role="status">{message}</p>
-      {!options&&!optionError && <p role="status">Memuat akses…</p>}
-      {optionError&&<div role="alert"><p>{optionError}</p><Button onClick={()=>void loadOptions()}>Coba muat akses</Button></div>}
-      {exam&&<p className="muted monitor-freshness">{refreshing?'Memperbarui monitor…':lastUpdated?'Pembaruan terakhir: '+lastUpdated:'Menunggu pembaruan'} · Pembaruan otomatis dijeda saat dialog dibuka.</p>}
-      {mode==='rooms'&&listError&&<p role="alert">{listError}</p>}
-      {options && !options.exams.length && (
-        <p>Belum ada ujian dalam cakupan Anda.</p>
-      )}
-      {mode === "rooms" && options?.admin && exam && (
-        <>
-          <div className="actions">
-            <Button onClick={() => open("room_save")}>Tambah ruang</Button>
-            <Button onClick={() => open("session_save")}>Tambah sesi</Button>
-            <Button
-              disabled={!rooms.rooms.length || !rooms.sessions.length}
-              onClick={() => {
-                open("assign");
-                setRoom(rooms.rooms[0]?.id || "");
-                setSession(rooms.sessions[0]?.id || "");
-                setStaff(options.staff[0]?.id || "");
+        <div className="toolbar">
+          <label>
+            Ujian
+            <select
+              value={exam}
+              onChange={(e) => {
+                invalidateRequests();
+                historySeq.current++;
+                historyController.current?.abort();
+                setExam(e.target.value);
+                setRooms(empty);
+                loadedExam.current = "";
+                setLastUpdated("");
+                setRefreshing(false);
+                setListError("");
+                setMessage("");
+                setSearch("");
+                setFilter("");
+                setUncertain(false);
+                setListLoading(!!e.target.value);
+                setSelected([]);
+                setPage(1);
+                setRows([]);
               }}
             >
-              Tugaskan pengawas
-            </Button>
+              <option value="">Pilih ujian</option>
+              {options?.exams.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            variant="outline"
+            disabled={refreshing || !exam || !!dialog}
+            onClick={() => void load()}
+          >
+            Muat ulang
+          </Button>
+        </div>
+        <p role="status">{message}</p>
+        {!options && !optionError && <p role="status">Memuat akses…</p>}
+        {optionError && (
+          <div role="alert">
+            <p>{optionError}</p>
+            <Button onClick={() => void loadOptions()}>Coba muat akses</Button>
           </div>
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel operasional ujian; geser untuk melihat kolom lain">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ruang</th>
-                  <th>Kapasitas</th>
-                  <th>Peserta</th>
-                  <th>Tindakan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.rooms.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.name}</td>
-                    <td>{r.capacity || "Tanpa batas"}</td>
-                    <td>{r.count}</td>
-                    <td>
-                      <div className="actions">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            open("room_save", r.id);
-                            setName(r.name);
-                            setCapacity(String(r.capacity));
-                          }}
-                        >
-                          Ubah
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => open("roster_add", r.id)}
-                        >
-                          Tambah peserta
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => open("roster_remove", r.id)}
-                        >
-                          Keluarkan peserta
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => open("room_delete", r.id)}
-                        >
-                          Hapus
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <h2>Sesi</h2>
-          <ul>
-            {rooms.sessions.map((s) => (
-              <li key={s.id}>
-                {s.name} · {new Date(s.starts_at).toLocaleString("id-ID")} —{" "}
-                {new Date(s.ends_at).toLocaleString("id-ID")}{" "}
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    open("session_save", s.id);
-                    setName(s.name);
-                    const local = (v: string) => {
-                      const d = new Date(v);
-                      return new Date(
-                        d.getTime() - d.getTimezoneOffset() * 60000,
-                      )
-                        .toISOString()
-                        .slice(0, 16);
-                    };
-                    setStart(local(s.starts_at));
-                    setEnd(local(s.ends_at));
-                  }}
-                >
-                  Ubah
-                </Button>{" "}
-                <Button
-                  variant="outline"
-                  onClick={() => open("session_delete", s.id)}
-                >
-                  Hapus
-                </Button>
-              </li>
-            ))}
-          </ul>
-          <h2>Penugasan</h2>
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel operasional ujian; geser untuk melihat kolom lain">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ruang / sesi</th>
-                  <th>Pengawas asal</th>
-                  <th>Efektif saat ini</th>
-                  <th>Tindakan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.assignments.map((a) => (
-                  <tr key={a.id}>
-                    <td>
-                      {rooms.rooms.find((r) => r.id === a.room_id)?.name} /{" "}
-                      {rooms.sessions.find((s) => s.id === a.session_id)
-                        ?.name || "Sesi utama lama"}
-                    </td>
-                    <td>
-                      {staffName(a.original_supervisor_id)} ·{" "}
-                      {a.active ? "Aktif" : "Dicabut"}
-                    </td>
-                    <td>
-                      {staffName(a.effective_supervisor)}
-                      {a.substitutions
-                        .filter((s) => !s.revoked_at)
-                        .map((s) => (
-                          <p key={s.id}>
-                            Pengganti:{" "}
-                            {new Date(s.effective_from).toLocaleString("id-ID")}{" "}
-                            —{" "}
-                            {s.effective_until
-                              ? new Date(s.effective_until).toLocaleString(
-                                  "id-ID",
-                                )
-                              : "Tanpa akhir"}
-                          </p>
-                        ))}
-                    </td>
-                    <td>
-                      <div className="actions">
-                        <Button
-                          variant="outline"
-                          disabled={!a.active}
-                          onClick={() => {
-                            open("substitute", a.id);
-                            setStaff(
-                              options.staff.find(
-                                (s) => s.id !== a.original_supervisor_id,
-                              )?.id || "",
-                            );
-                          }}
-                        >
-                          Tunjuk pengganti
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => open("revoke", a.id)}
-                        >
-                          Cabut pengganti
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={!a.active}
-                          onClick={() => open("unassign", a.id)}
-                        >
-                          Nonaktifkan tugas
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-      {mode === "monitor" && exam && (
-        <>
-          <IncidentPanel key={exam} exam={exam} rows={listLoading||listError?[]:rows} admin={!!options?.admin} onChanged={load} paused={busy||!!dialog||listLoading||!!listError} />
-          <ListFilters label="peserta ujian" active={[search&&"Pencarian",filter&&"Status"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFilter("");setSelected([]);setPage(1);}} total={visible.length} loading={listLoading} error={listError}>
-            <SearchField label="Cari siswa/ruang" value={search} maxLength={150} onChange={value=>{setSearch(value);setSelected([]);setPage(1);}} />
-            <label>
-              Status
-              <select
-                value={filter}
-                onChange={(e) => {
-                  setFilter(e.target.value);setSelected([]);
+        )}
+        {exam && (
+          <p className="muted monitor-freshness">
+            {refreshing
+              ? mode === "rooms"
+                ? "Memperbarui ruang dan sesi…"
+                : "Memperbarui monitor…"
+              : lastUpdated
+                ? "Pembaruan terakhir: " + lastUpdated
+                : "Menunggu pembaruan"}{" "}
+            · Pembaruan otomatis dijeda saat dialog dibuka.
+          </p>
+        )}
+        {mode === "rooms" && listError && <p role="alert">{listError}</p>}
+        {options && !options.exams.length && (
+          <p>Belum ada ujian dalam cakupan Anda.</p>
+        )}
+        {mode === "rooms" && listLoading && exam && (
+          <p role="status">Memuat ruang, sesi dan penugasan…</p>
+        )}
+        {mode === "rooms" &&
+          options?.admin &&
+          exam &&
+          !listLoading &&
+          !listError && (
+            <RoomLists
+              key={exam}
+              value={rooms}
+              staff={options.staff}
+              disabled={busy || uncertain || refreshing}
+              onOpen={open}
+            />
+          )}
+        {mode === "monitor" && exam && (
+          <>
+            <IncidentPanel
+              key={exam}
+              exam={exam}
+              rows={listLoading || listError ? [] : rows}
+              admin={!!options?.admin}
+              onChanged={load}
+              paused={busy || !!dialog || listLoading || !!listError}
+            />
+            <ListFilters
+              label="peserta ujian"
+              active={
+                [search && "Pencarian", filter && "Status"].filter(
+                  Boolean,
+                ) as string[]
+              }
+              onReset={() => {
+                setSearch("");
+                setFilter("");
+                setSelected([]);
+                setPage(1);
+              }}
+              total={visible.length}
+              loading={listLoading}
+              error={listError}
+            >
+              <SearchField
+                label="Cari siswa/ruang"
+                value={search}
+                maxLength={150}
+                onChange={(value) => {
+                  setSearch(value);
+                  setSelected([]);
                   setPage(1);
                 }}
+              />
+              <label>
+                Status
+                <select
+                  value={filter}
+                  onChange={(e) => {
+                    setFilter(e.target.value);
+                    setSelected([]);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">Semua</option>
+                  {Object.entries(status).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </ListFilters>
+            <p>
+              {visible.length} peserta ·{" "}
+              {listLoading || listError
+                ? "—"
+                : rows.filter((r) => r.status === "in_progress").length}{" "}
+              aktif · {selected.length} / 500 dipilih. Pilihan dibersihkan saat
+              filter berubah.
+            </p>
+            {selected.length > 0 && !canReview(actionRows, "reset") && (
+              <p className="muted">
+                Tindakan memerlukan 1–100 attempt berizin. Buka kunci hanya
+                untuk diskualifikasi; diskualifikasi hanya untuk sesi aktif.
+              </p>
+            )}
+            <div className="actions">
+              <Button
+                variant="outline"
+                disabled={
+                  busy ||
+                  listLoading ||
+                  !!listError ||
+                  uncertain ||
+                  !canReview(actionRows, "unlock")
+                }
+                onClick={() => open("unlock")}
               >
-                <option value="">Semua</option>
-                {Object.entries(status).map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </ListFilters>
-          <p>
-            {visible.length} peserta ·{" "}
-            {listLoading||listError?'—':rows.filter((r) => r.status === "in_progress").length} aktif ·{" "}
-            {selected.length} / 500 dipilih. Pilihan dibersihkan saat filter berubah.
-          </p>
-          {selected.length>0&&!canReview(actionRows,"reset")&&<p className="muted">Tindakan memerlukan 1–100 attempt berizin. Buka kunci hanya untuk diskualifikasi; diskualifikasi hanya untuk sesi aktif.</p>}
-          <div className="actions">
-            <Button
-              variant="outline"
-              disabled={busy || listLoading || !!listError || uncertain || !canReview(actionRows,"unlock")}
-              onClick={() => open("unlock")}
+                Buka kunci
+              </Button>
+              <Button
+                variant="outline"
+                disabled={
+                  busy ||
+                  listLoading ||
+                  !!listError ||
+                  uncertain ||
+                  !canReview(actionRows, "reset")
+                }
+                onClick={() => open("reset")}
+              >
+                Reset percobaan
+              </Button>
+              <Button
+                variant="outline"
+                disabled={
+                  busy ||
+                  listLoading ||
+                  !!listError ||
+                  uncertain ||
+                  !canReview(actionRows, "disqualify")
+                }
+                onClick={() => open("disqualify")}
+              >
+                Diskualifikasi
+              </Button>
+              <Button
+                disabled={listLoading || !!listError || uncertain}
+                onClick={() => open("broadcast")}
+              >
+                Kirim notifikasi
+              </Button>
+              <Button
+                variant="outline"
+                disabled={listLoading || !!listError || !visible.length}
+                onClick={() => {
+                  if (listLoading || listError) return;
+                  const data = JSON.stringify(visible, null, 2);
+                  const url = URL.createObjectURL(
+                    new Blob([data], { type: "application/json" }),
+                  );
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "monitor.json";
+                  document.body.append(a);
+                  a.click();
+                  a.remove();
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }}
+              >
+                Ekspor monitor
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void readHistory("sent")}
+              >
+                Riwayat pesan
+              </Button>
+            </div>
+            <div
+              className="table-wrap"
+              tabIndex={0}
+              role="region"
+              aria-label="Tabel operasional ujian; geser untuk melihat kolom lain"
             >
-              Buka kunci
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy || listLoading || !!listError || uncertain || !canReview(actionRows,"reset")}
-              onClick={() => open("reset")}
-            >
-              Reset percobaan
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy || listLoading || !!listError || uncertain || !canReview(actionRows,"disqualify")}
-              onClick={() => open("disqualify")}
-            >
-              Diskualifikasi
-            </Button>
-            <Button disabled={listLoading||!!listError||uncertain} onClick={() => open("broadcast")}>Kirim notifikasi</Button>
-            <Button
-              variant="outline"
-              disabled={listLoading||!!listError||!visible.length}
-              onClick={() => {
-                if(listLoading||listError)return;
-                const data = JSON.stringify(visible, null, 2);
-                const url = URL.createObjectURL(
-                  new Blob([data], { type: "application/json" }),
-                );
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "monitor.json";
-                document.body.append(a);a.click();a.remove();
-                setTimeout(()=>URL.revokeObjectURL(url),1000);
-              }}
-            >
-              Ekspor monitor
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => void readHistory("sent")}
-            >
-              Riwayat pesan
-            </Button>
-          </div>
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel operasional ujian; geser untuk melihat kolom lain">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    <input
-                      type="checkbox"
-                      aria-label="Pilih semua pada halaman"
-                      disabled={listLoading||!!listError||uncertain}
-                      checked={
-                        shown.length > 0 &&
-                        shown.every((r) => selected.includes(r.student_id))
-                      }
-                      onChange={(e) =>
-                        setSelected(
-                          e.target.checked
-                            ? [
-                                ...new Set([
-                                  ...selected,
-                                  ...shown.map((r) => r.student_id).slice(0,500-selected.length),
-                                ]),
-                              ]
-                            : selected.filter(
-                                (id) => !shown.some((r) => r.student_id === id),
-                              ),
-                        )
-                      }
-                    />
-                  </th>
-                  <th>Siswa / ruang</th>
-                  <th>Status</th>
-                  <th>Jawaban</th>
-                  <th>Insiden</th>
-                  <th>Deadline</th>
-                  <th>Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((r) => (
-                  <tr key={r.student_id}>
-                    <td>
+              <table>
+                <thead>
+                  <tr>
+                    <th>
                       <input
                         type="checkbox"
-                        aria-label={"Pilih " + r.student}
-                        disabled={listLoading||!!listError||uncertain||(!selected.includes(r.student_id)&&selected.length>=500)}
-                        checked={selected.includes(r.student_id)}
+                        aria-label="Pilih semua pada halaman"
+                        disabled={listLoading || !!listError || uncertain}
+                        checked={
+                          shown.length > 0 &&
+                          shown.every((r) => selected.includes(r.student_id))
+                        }
                         onChange={(e) =>
                           setSelected(
                             e.target.checked
-                              ? [...selected, r.student_id]
-                              : selected.filter((id) => id !== r.student_id),
+                              ? [
+                                  ...new Set([
+                                    ...selected,
+                                    ...shown
+                                      .map((r) => r.student_id)
+                                      .slice(0, 500 - selected.length),
+                                  ]),
+                                ]
+                              : selected.filter(
+                                  (id) =>
+                                    !shown.some((r) => r.student_id === id),
+                                ),
                           )
                         }
                       />
-                    </td>
-                    <td>
-                      {r.student}
-                      <br />
-                      <small>
-                        {r.username} · {r.room || "Belum ditempatkan"}
-                      </small>
-                    </td>
-                    <td>
-                      {status[r.status] || r.status}
-                      <br />
-                      <small>
-                        {r.logged_in
-                          ? "Sesi login tersedia"
-                          : "Belum login / sesi berakhir"}
-                      </small>
-                    </td>
-                    <td>{r.answers}</td>
-                    <td>
-                      {r.countable_events} ditinjau / {r.events} tercatat
-                    </td>
-                    <td>
-                      {r.deadline_at
-                        ? new Date(r.deadline_at).toLocaleTimeString("id-ID")
-                        : "—"}
-                    </td>
-                    <td>
-                      <Button
-                        variant="outline"
-                        disabled={!r.attempt_id || !r.can_act}
-                        onClick={() => void readHistory("history",r.attempt_id!)}
-                      >
-                        Riwayat
-                      </Button>
-                    </td>
+                    </th>
+                    <th>Siswa / ruang</th>
+                    <th>Status</th>
+                    <th>Jawaban</th>
+                    <th>Insiden</th>
+                    <th>Deadline</th>
+                    <th>Detail</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!listLoading&&!listError&&!visible.length && (
-            <p>Belum ada peserta dalam cakupan/filter ini.</p>
-          )}
-          <div className="actions">
-            <Button
-              variant="outline"
-              disabled={currentPage <= 1}
-              onClick={() => setPage(currentPage - 1)}
-            >
-              Sebelumnya
-            </Button>
-            <span>
-              Halaman {currentPage} / {Math.max(1, Math.ceil(visible.length / 25))}
-            </span>
-            <Button
-              variant="outline"
-              disabled={currentPage * 25 >= visible.length}
-              onClick={() => setPage(currentPage + 1)}
-            >
-              Berikutnya
-            </Button>
-          </div>
-        </>
-      )}
+                </thead>
+                <tbody>
+                  {shown.map((r) => (
+                    <tr key={r.student_id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={"Pilih " + r.student}
+                          disabled={
+                            listLoading ||
+                            !!listError ||
+                            uncertain ||
+                            (!selected.includes(r.student_id) &&
+                              selected.length >= 500)
+                          }
+                          checked={selected.includes(r.student_id)}
+                          onChange={(e) =>
+                            setSelected(
+                              e.target.checked
+                                ? [...selected, r.student_id]
+                                : selected.filter((id) => id !== r.student_id),
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        {r.student}
+                        <br />
+                        <small>
+                          {r.username} · {r.room || "Belum ditempatkan"}
+                        </small>
+                      </td>
+                      <td>
+                        {status[r.status] || r.status}
+                        <br />
+                        <small>
+                          {r.logged_in
+                            ? "Sesi login tersedia"
+                            : "Belum login / sesi berakhir"}
+                        </small>
+                      </td>
+                      <td>{r.answers}</td>
+                      <td>
+                        {r.countable_events} ditinjau / {r.events} tercatat
+                      </td>
+                      <td>
+                        {r.deadline_at
+                          ? new Date(r.deadline_at).toLocaleTimeString("id-ID")
+                          : "—"}
+                      </td>
+                      <td>
+                        <Button
+                          variant="outline"
+                          disabled={!r.attempt_id || !r.can_act}
+                          onClick={() =>
+                            void readHistory("history", r.attempt_id!)
+                          }
+                        >
+                          Riwayat
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!listLoading && !listError && !visible.length && (
+              <p>Belum ada peserta dalam cakupan/filter ini.</p>
+            )}
+            <div className="actions">
+              <Button
+                variant="outline"
+                disabled={currentPage <= 1}
+                onClick={() => setPage(currentPage - 1)}
+              >
+                Sebelumnya
+              </Button>
+              <span>
+                Halaman {currentPage} /{" "}
+                {Math.max(1, Math.ceil(visible.length / 25))}
+              </span>
+              <Button
+                variant="outline"
+                disabled={currentPage * 25 >= visible.length}
+                onClick={() => setPage(currentPage + 1)}
+              >
+                Berikutnya
+              </Button>
+            </div>
+          </>
+        )}
       </fieldset>
       <Dialog
         open={!!dialog}
@@ -630,226 +863,313 @@ export function OperationsPanel({
           if (!v) closeDialog();
         }}
         title={
-          dialog === "reset"
+          roomTitles[dialog] ||
+          (dialog === "reset"
             ? "Reset percobaan"
-            : dialog === "unlock" ? "Buka kunci peserta" : dialog === "disqualify" ? "Diskualifikasi peserta"
-            : dialog === "broadcast"
-              ? "Kirim notifikasi"
-              : dialog === "history"
-                ? "Riwayat kejadian dan tindakan"
-                : dialog === "sent"
-                  ? "Riwayat pengiriman"
-                  : "Pengaturan operasional"
+            : dialog === "unlock"
+              ? "Buka kunci peserta"
+              : dialog === "disqualify"
+                ? "Diskualifikasi peserta"
+                : dialog === "broadcast"
+                  ? "Kirim notifikasi"
+                  : dialog === "history"
+                    ? "Riwayat kejadian dan tindakan"
+                    : dialog === "sent"
+                      ? "Riwayat pengiriman"
+                      : "Pengaturan operasional")
         }
+        className={mode === "rooms" ? "rooms-dialog" : ""}
         description="Perubahan diperiksa server dan dicatat dalam audit."
       >
-        {dialog==='sent'||dialog==='history'?<div className="stack" aria-busy={historyLoading}>{historyLoading?<p role="status">Memuat riwayat…</p>:historyError?<div role="alert"><p>{historyError}</p><Button onClick={()=>void readHistory(dialog,target)}>Coba muat riwayat</Button></div>:dialog==='sent'?<SentNotifications value={history}/>:<pre className="answer-text">{JSON.stringify(history,null,2)}</pre>}</div>:(
+        {dialog === "sent" || dialog === "history" ? (
+          <div className="stack" aria-busy={historyLoading}>
+            {historyLoading ? (
+              <p role="status">Memuat riwayat…</p>
+            ) : historyError ? (
+              <div role="alert">
+                <p>{historyError}</p>
+                <Button onClick={() => void readHistory(dialog, target)}>
+                  Coba muat riwayat
+                </Button>
+              </div>
+            ) : dialog === "sent" ? (
+              <SentNotifications value={history} />
+            ) : (
+              <pre className="answer-text">
+                {JSON.stringify(history, null, 2)}
+              </pre>
+            )}
+          </div>
+        ) : (
           <form className="stack" onSubmit={submit} aria-busy={busy}>
-            <fieldset className="monitor-controls stack" disabled={busy||uncertain}>
-            {["room_save", "session_save"].includes(dialog) && (
-              <label>
-                Nama
-                <input
-                  required
-                  maxLength={100}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </label>
-            )}
-            {dialog === "room_save" && (
-              <label>
-                Kapasitas (0 tanpa batas)
-                <input
-                  required
-                  type="number"
-                  min={0}
-                  max={10000}
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                />
-              </label>
-            )}
-            {["session_save", "substitute"].includes(dialog) && (
-              <>
+            <fieldset
+              className="monitor-controls stack"
+              disabled={busy || uncertain}
+            >
+              {mode === "rooms" && target && (
+                <p className="rooms-target">
+                  Sasaran:{" "}
+                  {rooms.rooms.find((r) => r.id === target)?.name ||
+                    rooms.sessions.find((r) => r.id === target)?.name ||
+                    (() => {
+                      const a = rooms.assignments.find((a) => a.id === target);
+                      return a
+                        ? [
+                            rooms.rooms.find((r) => r.id === a.room_id)?.name ||
+                              "Ruang",
+                            rooms.sessions.find((s) => s.id === a.session_id)
+                              ?.name || "Sesi utama lama",
+                          ].join(" / ")
+                        : target;
+                    })()}
+                </p>
+              )}
+              {["room_save", "session_save"].includes(dialog) && (
                 <label>
-                  Mulai
+                  Nama
                   <input
-                    type="datetime-local"
                     required
-                    value={start}
-                    onChange={(e) => setStart(e.target.value)}
+                    maxLength={100}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                   />
                 </label>
+              )}
+              {dialog === "room_save" && (
                 <label>
-                  Selesai
+                  Kapasitas (0 tanpa batas)
                   <input
-                    type="datetime-local"
                     required
-                    value={end}
-                    onChange={(e) => setEnd(e.target.value)}
+                    type="number"
+                    min={0}
+                    max={10000}
+                    value={capacity}
+                    onChange={(e) => setCapacity(e.target.value)}
                   />
                 </label>
-              </>
-            )}
-            {dialog === "assign" && (
-              <>
+              )}
+              {["session_save", "substitute"].includes(dialog) && (
+                <>
+                  <label>
+                    Mulai (WIB)
+                    <input
+                      type="datetime-local"
+                      required
+                      value={start}
+                      onChange={(e) => setStart(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Selesai (WIB)
+                    <input
+                      type="datetime-local"
+                      required
+                      value={end}
+                      onChange={(e) => setEnd(e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+              {dialog === "assign" && (
+                <>
+                  <label>
+                    Ruang
+                    <select
+                      required
+                      value={room}
+                      onChange={(e) => setRoom(e.target.value)}
+                    >
+                      {rooms.rooms.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Sesi
+                    <select
+                      required
+                      value={session}
+                      onChange={(e) => setSession(e.target.value)}
+                    >
+                      {rooms.sessions.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              {["assign", "substitute"].includes(dialog) && (
                 <label>
-                  Ruang
+                  Pengawas
                   <select
                     required
-                    value={room}
-                    onChange={(e) => setRoom(e.target.value)}
+                    value={staff}
+                    onChange={(e) => setStaff(e.target.value)}
                   >
-                    {rooms.rooms.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Sesi
-                  <select
-                    required
-                    value={session}
-                    onChange={(e) => setSession(e.target.value)}
-                  >
-                    {rooms.sessions.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
-            )}
-            {["assign", "substitute"].includes(dialog) && (
-              <label>
-                Pengawas
-                <select
-                  required
-                  value={staff}
-                  onChange={(e) => setStaff(e.target.value)}
-                >
-                  {options?.staff.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.role})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {dialog.startsWith("roster_") && (
-              <fieldset>
-                <legend>Pilih peserta</legend>
-                <div className="ops-choice-list">
-                  {(dialog === "roster_add"
-                    ? rooms.eligible.filter(
-                        (p) => !rooms.roster.some((r) => r.student_id === p.id),
+                    <option value="">Pilih pengawas</option>
+                    {options?.staff
+                      .filter(
+                        (s) =>
+                          dialog !== "substitute" ||
+                          s.id !==
+                            rooms.assignments.find((a) => a.id === target)
+                              ?.original_supervisor_id,
                       )
-                    : rooms.roster
-                        .filter((r) => r.room_id === target)
-                        .map((r) => ({ id: r.student_id, name: r.name }))
-                  ).map((p) => (
-                    <label key={p.id}>
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.role})
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
+              {dialog.startsWith("roster_") && (
+                <RosterChoices
+                  key={dialog + target}
+                  choices={
+                    dialog === "roster_add"
+                      ? rooms.eligible.filter((p) => !rosterIds.has(p.id))
+                      : rooms.roster
+                          .filter((r) => r.room_id === target)
+                          .map((r) => ({ id: r.student_id, name: r.name }))
+                  }
+                  selected={people}
+                  onChange={setPeople}
+                />
+              )}
+              {["reset", "unlock", "disqualify"].includes(dialog) && (
+                <>
+                  <p>
+                    {actionTargets.length} attempt berizin dipilih. Peserta
+                    tanpa attempt tidak diproses. Waktu tidak ditambah; reset
+                    mempertahankan semua bukti/jawaban lama.
+                  </p>
+                  <label>
+                    Alasan
+                    <textarea
+                      required
+                      minLength={5}
+                      maxLength={1000}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Ketik KONFIRMASI
+                    <input
+                      required
+                      pattern="KONFIRMASI"
+                      value={confirmation}
+                      onChange={(e) => setConfirmation(e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+              {dialog === "broadcast" && (
+                <>
+                  <label>
+                    Judul notifikasi
+                    <input
+                      required
+                      maxLength={120}
+                      value={notificationTitle}
+                      onChange={(e) => setNotificationTitle(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Prioritas
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                    >
+                      <option value="info">Informasi</option>
+                      <option value="important">Penting</option>
+                    </select>
+                  </label>
+                  {scope !== "all" && (
+                    <label className="check">
                       <input
                         type="checkbox"
-                        checked={people.includes(p.id)}
-                        onChange={(e) =>
-                          setPeople(
-                            e.target.checked
-                              ? [...people, p.id]
-                              : people.filter((id) => id !== p.id),
-                          )
-                        }
+                        checked={linkExam}
+                        onChange={(e) => setLinkExam(e.target.checked)}
                       />
-                      {p.name}
+                      Sertakan tombol Lihat ujian terkait
                     </label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-            {["reset", "unlock", "disqualify"].includes(dialog) && (
-              <>
+                  )}
+                  <p className="muted">
+                    Tindakan hanya mengarahkan siswa ke kartu ujian di halaman
+                    yang sama. Dibaca bukan bukti tindakan selesai. Jangan
+                    sertakan PIN atau jawaban.
+                  </p>
+                  <label>
+                    Sasaran
+                    <select
+                      value={scope}
+                      onChange={(e) => setScope(e.target.value)}
+                    >
+                      <option value="exam">Peserta ujian ini</option>
+                      <option value="selected" disabled={!selected.length}>
+                        Peserta dipilih ({selected.length})
+                      </option>
+                      <option value="all">
+                        Semua peserta dalam cakupan saya
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    Pesan
+                    <textarea
+                      required
+                      maxLength={2000}
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+              {["room_delete", "session_delete", "unassign", "revoke"].includes(
+                dialog,
+              ) && (
                 <p>
-                  {actionTargets.length}{" "}
-                  attempt berizin dipilih. Peserta tanpa attempt tidak diproses.
-                  Waktu tidak ditambah; reset mempertahankan semua bukti/jawaban
-                  lama.
+                  Konfirmasi{" "}
+                  {dialog === "revoke"
+                    ? "pencabutan pengganti"
+                    : dialog === "unassign"
+                      ? "penonaktifan tugas"
+                      : "penghapusan data kosong"}
+                  . Riwayat yang masih dirujuk tidak dihapus.
                 </p>
-                <label>
-                  Alasan
-                  <textarea
-                    required
-                    minLength={5}
-                    maxLength={1000}
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Ketik KONFIRMASI
-                  <input
-                    required
-                    pattern="KONFIRMASI"
-                    value={confirmation}
-                    onChange={(e) => setConfirmation(e.target.value)}
-                  />
-                </label>
-              </>
-            )}
-            {dialog === "broadcast" && (
-              <>
-                <label>Judul notifikasi<input required maxLength={120} value={notificationTitle} onChange={e=>setNotificationTitle(e.target.value)} /></label>
-                <label>Prioritas<select value={priority} onChange={e=>setPriority(e.target.value)}><option value="info">Informasi</option><option value="important">Penting</option></select></label>
-                {scope!=="all"&&<label className="check"><input type="checkbox" checked={linkExam} onChange={e=>setLinkExam(e.target.checked)} />Sertakan tombol Lihat ujian terkait</label>}
-                <p className="muted">Tindakan hanya mengarahkan siswa ke kartu ujian di halaman yang sama. Dibaca bukan bukti tindakan selesai. Jangan sertakan PIN atau jawaban.</p>
-                <label>
-                  Sasaran
-                  <select
-                    value={scope}
-                    onChange={(e) => setScope(e.target.value)}
-                  >
-                    <option value="exam">Peserta ujian ini</option>
-                    <option value="selected" disabled={!selected.length}>
-                      Peserta dipilih ({selected.length})
-                    </option>
-                    <option value="all">
-                      Semua peserta dalam cakupan saya
-                    </option>
-                  </select>
-                </label>
-                <label>
-                  Pesan
-                  <textarea
-                    required
-                    maxLength={2000}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                </label>
-              </>
-            )}
-            {["room_delete", "session_delete", "unassign", "revoke"].includes(
-              dialog,
-            ) && (
-              <p>
-                Konfirmasi{" "}
-                {dialog === "revoke"
-                  ? "pencabutan pengganti"
-                  : dialog === "unassign"
-                    ? "penonaktifan tugas"
-                    : "penghapusan data kosong"}
-                . Riwayat yang masih dirujuk tidak dihapus.
-              </p>
-            )}
-            <p role="status">{message}</p>
-            <Button disabled={busy||uncertain||(dialog==='broadcast'&&scope==='selected'&&!selected.length)}>
-              {busy ? "Menyimpan…" : "Konfirmasi"}
-            </Button>
+              )}
+              <p role="status">{message}</p>
+              <Button
+                disabled={
+                  busy ||
+                  uncertain ||
+                  (dialog.startsWith("roster_") && !people.length) ||
+                  (dialog === "broadcast" &&
+                    scope === "selected" &&
+                    !selected.length)
+                }
+              >
+                {busy ? "Menyimpan…" : "Konfirmasi"}
+              </Button>
             </fieldset>
-            {uncertain&&<div role="alert"><p>Hasil tindakan perlu diperiksa sebelum mengirim lagi. Tutup dialog dan muat ulang monitor; untuk notifikasi, periksa riwayat pengiriman.</p><Button type="button" variant="outline" onClick={closeDialog}>Tutup dan periksa ulang</Button></div>}
+            {uncertain && (
+              <div role="alert">
+                <p>
+                  Hasil tindakan perlu diperiksa sebelum mengirim lagi. Tutup
+                  dialog dan muat ulang daftar; untuk notifikasi, periksa
+                  riwayat pengiriman.
+                </p>
+                <Button type="button" variant="outline" onClick={closeDialog}>
+                  Tutup dan periksa ulang
+                </Button>
+              </div>
+            )}
           </form>
         )}
       </Dialog>
@@ -857,8 +1177,43 @@ export function OperationsPanel({
   );
 }
 
-function SentNotifications({value}:{value:unknown}){
- if(!Array.isArray(value))return <p role="status">Memuat riwayat pengiriman…</p>;
- const rows=sentNotificationsSchema.parse(value);
- return <div className="stack">{!rows.length&&<p>Belum ada pengiriman.</p>}{rows.map(m=><article className="notification-card" key={m.id}><h2>{m.title||'Pesan petugas'}</h2><p>{m.priority==='important'?'Penting':'Informasi'} · {new Date(m.created_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})} WIB</p><p className="answer-text">{m.message}</p><p>{m.receipts?.filter(r=>!!r.read_at).length||0} / {m.receipts?.length||0} penerima berizin sudah membaca.</p><details><summary>Status penerima</summary><ul>{m.receipts?.map((r,i)=><li key={i}>{r.student} · {r.read_at?'Sudah dibaca':'Belum dibaca'}</li>)}</ul></details></article>)}<p className="muted">Status dibaca tidak membuktikan tindakan sudah diselesaikan.</p></div>;
+function SentNotifications({ value }: { value: unknown }) {
+  if (!Array.isArray(value))
+    return <p role="status">Memuat riwayat pengiriman…</p>;
+  const rows = sentNotificationsSchema.parse(value);
+  return (
+    <div className="stack">
+      {!rows.length && <p>Belum ada pengiriman.</p>}
+      {rows.map((m) => (
+        <article className="notification-card" key={m.id}>
+          <h2>{m.title || "Pesan petugas"}</h2>
+          <p>
+            {m.priority === "important" ? "Penting" : "Informasi"} ·{" "}
+            {new Date(m.created_at).toLocaleString("id-ID", {
+              timeZone: "Asia/Jakarta",
+            })}{" "}
+            WIB
+          </p>
+          <p className="answer-text">{m.message}</p>
+          <p>
+            {m.receipts?.filter((r) => !!r.read_at).length || 0} /{" "}
+            {m.receipts?.length || 0} penerima berizin sudah membaca.
+          </p>
+          <details>
+            <summary>Status penerima</summary>
+            <ul>
+              {m.receipts?.map((r, i) => (
+                <li key={i}>
+                  {r.student} · {r.read_at ? "Sudah dibaca" : "Belum dibaca"}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </article>
+      ))}
+      <p className="muted">
+        Status dibaca tidak membuktikan tindakan sudah diselesaikan.
+      </p>
+    </div>
+  );
 }

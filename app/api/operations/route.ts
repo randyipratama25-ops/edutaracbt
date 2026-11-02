@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { operator } from "../../../lib/operations/server";
-import {resultData} from "../../../lib/results/server";
+import { resultData } from "../../../lib/results/server";
+import { operationReceipt } from "../../../lib/operations/contracts";
+import { roomActions } from "../../../lib/operations/rooms";
 import { operation } from "../../../lib/operations/schema";
 import {
   body,
@@ -13,20 +15,42 @@ export async function GET(request: Request) {
   try {
     const s = new URL(request.url).searchParams;
     const action = z
-      .enum(["options", "rooms", "monitor", "inbox", "inbox_page", "sent", "history"])
+      .enum([
+        "options",
+        "rooms",
+        "monitor",
+        "inbox",
+        "inbox_page",
+        "sent",
+        "history",
+      ])
       .parse(s.get("action") || "options");
-    const a = await operator(action === "inbox"||action === "inbox_page");
+    const a = await operator(action === "inbox" || action === "inbox_page");
+    if (action === "rooms" && (a.role !== "admin" || a.context !== "staff"))
+      throw new HttpError(403, "Hanya Admin mengelola ruang dan penugasan.");
     const input = {
       action,
       exam_id: s.get("exam") ? z.uuid().parse(s.get("exam")) : undefined,
       id: s.get("id") ? z.uuid().parse(s.get("id")) : undefined,
       room_id: s.get("room") ? z.uuid().parse(s.get("room")) : undefined,
       search: (s.get("search") || "").slice(0, 150),
-      ...(action==="inbox_page"?{page:z.coerce.number().int().min(1).max(100000).parse(s.get("page")||1),filter:z.enum(["all","unread"]).parse(s.get("filter")||"all")}:{}),
+      ...(action === "inbox_page"
+        ? {
+            page: z.coerce
+              .number()
+              .int()
+              .min(1)
+              .max(100000)
+              .parse(s.get("page") || 1),
+            filter: z.enum(["all", "unread"]).parse(s.get("filter") || "all"),
+          }
+        : {}),
     };
-    if(["rooms","monitor"].includes(action)&&!input.exam_id)throw new HttpError(422,"Pilih ujian terlebih dahulu.");
-    if(action==="history"&&!input.id)throw new HttpError(422,"Attempt riwayat wajib.");
-    const r=await a.client.rpc("ops_command",{input});
+    if (["rooms", "monitor"].includes(action) && !input.exam_id)
+      throw new HttpError(422, "Pilih ujian terlebih dahulu.");
+    if (action === "history" && !input.id)
+      throw new HttpError(422, "Attempt riwayat wajib.");
+    const r = await a.client.rpc("ops_command", { input });
     return json(resultData(r));
   } catch (e) {
     return failure(e);
@@ -36,9 +60,16 @@ export async function POST(request: Request) {
   try {
     requireOrigin(request);
     const input = operation.parse(await body(request));
-    const a = await operator(input.action === "read"||input.action === "read_batch");
+    const a = await operator(
+      input.action === "read" || input.action === "read_batch",
+    );
+    if (
+      (roomActions as readonly string[]).includes(input.action) &&
+      (a.role !== "admin" || a.context !== "staff")
+    )
+      throw new HttpError(403, "Hanya Admin mengelola ruang dan penugasan.");
     const r = await a.client.rpc("ops_command", { input });
-    if (r.error&&["23503","23505"].includes(r.error.code||""))
+    if (r.error && ["23503", "23505"].includes(r.error.code || ""))
       throw new HttpError(
         422,
         r.error.code === "23503"
@@ -47,7 +78,25 @@ export async function POST(request: Request) {
             ? "Data, peserta atau tugas sudah terdaftar. Periksa kembali pilihan Anda."
             : r.error.message,
       );
-    return json(resultData(r,true));
+    const receipt = resultData(r, true);
+    if ((roomActions as readonly string[]).includes(input.action)) {
+      if (
+        receipt &&
+        typeof receipt === "object" &&
+        "saved" in receipt &&
+        receipt.saved === false
+      )
+        throw new HttpError(
+          409,
+          "CONFLICT: Data tidak tersedia; muat ulang daftar.",
+        );
+      if (!operationReceipt(input.action).safeParse(receipt).success)
+        throw new HttpError(
+          503,
+          "Hasil perubahan belum dapat dipastikan. Muat ulang daftar dan periksa hasil.",
+        );
+    }
+    return json(receipt);
   } catch (e) {
     return failure(e);
   }
