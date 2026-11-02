@@ -7,12 +7,11 @@ import {
   useEffect,
   useRef,
   useState,
-  type FormEvent,
 } from "react";
 import { Dialog } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { api } from "../operations/shared";
-import type { AppSettings } from "../../lib/system/validation";
+import {SettingsPanel} from "./settings";
 type Job = {
   id: string;
   kind: string;
@@ -38,9 +37,9 @@ type Part = {
   sha256: string;
   path: string;
 };
-export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
-  const [settings, setSettings] = useState<AppSettings | null>(null),
-    [jobs, setJobs] = useState<Job[]>([]),
+export function SystemPanel({mode}:{mode:"settings"|"audit"|"jobs"}){return mode==='settings'?<SettingsPanel/>:<SystemLists mode={mode}/>;}
+function SystemLists({mode}:{mode:"audit"|"jobs"}){
+  const [jobs, setJobs] = useState<Job[]>([]),
     [audit, setAudit] = useState<Audit[]>([]),
     [total, setTotal] = useState(0),
     [page, setPage] = useState(1),
@@ -50,8 +49,6 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
     [until, setUntil] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [secret, setSecret] = useState(""),
-    [key, setKey] = useState("smtp_password"),
     [parts, setParts] = useState<Part[]>([]),
     [backupId, setBackupId] = useState(""),
     [decision, setDecision] = useState<{
@@ -82,10 +79,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
     const seq = ++sequence.current;
     if(mode==="audit"){setLoading(true);setListError("");}
     try {
-      if (mode === "settings") {
-        const s = await api<AppSettings>("/api/system");
-        if (seq === sequence.current) setSettings(s);
-      } else if (mode === "jobs") {
+      if (mode === "jobs") {
         const j = await api<Job[]>("/api/system?action=jobs");
         if (seq === sequence.current) setJobs(j);
       } else {
@@ -113,7 +107,7 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
     setMessage("");
     try {
       let data = input;
-      if (input.action === "backup" || input.action === "smtp_probe") {
+      if (input.action === "backup") {
         const k = JSON.stringify(input);
         if (retry.current?.key !== k)
           retry.current = { key: k, id: crypto.randomUUID() };
@@ -121,13 +115,8 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
       }
       await api("/api/system", data);
       retry.current = null;
-      setSecret("");
       setDecision(null);
-      setMessage(
-        input.action === "secret"
-          ? "Secret tersimpan; nilainya tidak ditampilkan kembali."
-          : "Permintaan tersimpan.",
-      );
+      setMessage("Permintaan tersimpan.");
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Permintaan gagal.");
@@ -187,200 +176,6 @@ export function SystemPanel({ mode }: { mode: "settings" | "audit" | "jobs" }) {
   return (
     <section className="panel stack">
       <p role="status">{message}</p>
-      {mode === "settings" && settings && (
-        <>
-          <form
-            className="stack"
-            onSubmit={(e: FormEvent) => {
-              e.preventDefault();
-              void save({
-                action: "save",
-                version: settings.version,
-                settings,
-              });
-            }}
-          >
-            <div className="toolbar">
-              {(
-                [
-                  "name",
-                  "subtitle",
-                  "timezone",
-                  "login_logo_id",
-                  "login_background_id",
-                  "smtp_sender",
-                ] as const
-              ).map((k) => (
-                <label key={k}>
-                  {
-                    {
-                      name: "Nama aplikasi",
-                      subtitle: "Subjudul",
-                      timezone: "Zona waktu sekolah",
-                      login_logo_id: "ID logo login (publik)",
-                      login_background_id: "ID gambar login (publik)",
-                      smtp_sender: "Email pengirim Gmail / Google Workspace",
-                    }[k]
-                  }
-                  <input
-                    value={settings[k] || ""}
-                    maxLength={k === "subtitle" ? 200 : 100}
-                    onChange={(e) =>
-                      setSettings({ ...settings, [k]: e.target.value })
-                    }
-                  />
-                </label>
-              ))}
-              <label>
-                Batas insiden untuk tinjauan
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={settings.violation_limit}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      violation_limit: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-              <label>
-                Retensi backup (hari)
-                <input
-                  type="number"
-                  min={7}
-                  max={730}
-                  value={settings.retention_days}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      retention_days: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <fieldset>
-              <legend>Kebijakan</legend>
-              {(
-                [
-                  "canvas_enabled",
-                  "results_enabled",
-                  "automation_enabled",
-                  "reminders_enabled",
-                ] as const
-              ).map((k) => (
-                <label key={k} className="actions">
-                  <input
-                    type="checkbox"
-                    checked={settings[k]} disabled={k==='reminders_enabled'&&!settings.worker_capabilities?.smtp}
-                    onChange={(e) =>
-                      setSettings({ ...settings, [k]: e.target.checked })
-                    }
-                  />
-                  {
-                    {
-                      canvas_enabled: "Aktifkan canvas untuk attempt baru",
-                      results_enabled:
-                        "Izinkan hasil yang sudah diterbitkan Admin terlihat siswa",
-                      automation_enabled:
-                        "Aktifkan otomasi jadwal, timeout, backup semester dan retensi",
-                      reminders_enabled:
-                        "Aktifkan email pengingat kepada Guru terverifikasi",
-                    }[k]
-                  }
-                </label>
-              ))}
-            </fieldset>
-            <label>
-              Template pengingat
-              <textarea
-                rows={5}
-                minLength={20}
-                maxLength={5000}
-                value={settings.reminder_template}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    reminder_template: e.target.value,
-                  })
-                }
-              />
-            </label>
-            <small>
-              Variabel: {"{{nama}}, {{periode}}, {{kekurangan}}, {{tautan}}"}.
-              Pengingat saat periode tersisa ≤24 jam pada pukul 11, 13, 15, 17,
-              19, 21, 23 waktu sekolah.
-            </small>
-            <p>
-              Backup semester: 30 Juni dan 31 Desember pukul 23.30. Dua backup
-              terakhir tetap dipertahankan.
-            </p>
-            <Button disabled={busy}>Simpan pengaturan</Button>
-          </form>
-          <hr />
-          <form
-            className="stack"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void save({ action: "secret", key, value: secret });
-            }}
-          >
-            <h2>Kredensial rahasia</h2>{!settings.worker_capabilities?.smtp&&<p>Email dan retensi otomatis belum diaktifkan. Backup tetap tersedia.</p>}
-            <label>
-              Jenis
-              <select
-                value={key}
-                onChange={(e) => {
-                  setKey(e.target.value);
-                  setSecret("");
-                }}
-              >
-                <option value="smtp_password">App password Gmail</option>
-                <option value="ai_api_key">
-                  Kunci AI — adaptor tetap nonaktif
-                </option>
-                <option value="drive_access_token">
-                  Token Drive — adaptor server perlu konfigurasi
-                </option>
-              </select>
-            </label>
-            <p>{settings.secrets[key] ? "Tersimpan" : "Belum tersimpan"}</p>
-            <label>
-              Nilai baru
-              <input
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={10000}
-                required
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-              />
-            </label>
-            <Button disabled={busy || secret.length < 8}>
-              Simpan secret baru
-            </Button>
-            <small>
-              Nilai tidak dapat dibaca kembali. Menyimpan kunci AI/Drive tidak
-              mengaktifkan integrasinya.
-            </small>
-          </form>
-          <Button
-            variant="outline"
-            disabled={busy||!settings.worker_capabilities?.smtp}
-            onClick={() => void save({ action: "smtp_probe" })}
-          >
-            Uji koneksi SMTP tanpa mengirim pesan
-          </Button>
-          <p>
-            <a href="/dashboard/exams">Atur periode input dan target soal</a> ·{" "}
-            <a href="/dashboard/results">Atur kop/template laporan</a>
-          </p>
-        </>
-      )}
       {mode === "audit" && (
         <>
           <ListFilters label="audit" active={[search&&"Pencarian",from&&"Dari",until&&"Sebelum"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFrom("");setUntil("");setPage(1);}} total={total} loading={loading} error={listError}>

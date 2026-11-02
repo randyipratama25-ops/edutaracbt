@@ -6,7 +6,12 @@ import {
   HttpError,
   json,
   requireOrigin,
+  rpcData,
 } from "../../../lib/http";
+import {
+  appSettingsSchema,
+  settingsReceipt,
+} from "../../../lib/system/contracts";
 import { systemMutation } from "../../../lib/system/validation";
 export async function GET(request: Request) {
   try {
@@ -29,8 +34,17 @@ export async function GET(request: Request) {
         : undefined,
     };
     const r = await a.client.rpc("system_command", { input });
-    if (r.error) throw new HttpError(422, r.error.message);
-    return json(r.data);
+    const data = rpcData(r);
+    if (action === "get") {
+      const parsed = appSettingsSchema.safeParse(data);
+      if (!parsed.success)
+        throw new HttpError(
+          503,
+          "Pengaturan belum dapat dimuat. Silakan coba lagi.",
+        );
+      return json(parsed.data);
+    }
+    return json(data);
   } catch (e) {
     return failure(e);
   }
@@ -42,8 +56,14 @@ export async function POST(request: Request) {
     if (a.role !== "admin") throw new HttpError(403, "Hanya Admin.");
     const input = systemMutation.parse(await body(request));
     const r = await a.client.rpc("system_command", { input });
-    if (r.error) throw new HttpError(422, r.error.message);
-    return json(r.data);
+    const data = rpcData(r, true);
+    const parsed = settingsReceipt(input.action).safeParse(data);
+    if (!parsed.success)
+      throw new HttpError(
+        503,
+        "Hasil perubahan belum dapat dipastikan. Muat ulang status dan periksa hasil.",
+      );
+    return json(parsed.data);
   } catch (e) {
     return failure(e);
   }
