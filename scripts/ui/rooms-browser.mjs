@@ -192,30 +192,8 @@ try {
       staff,
     });
   });
-  const click = async (text, scope = "") => {
-    await page.waitForFunction(
-      ({ text, scope }) =>
-        [
-          ...(scope
-            ? document.querySelector(scope)
-            : document
-          ).querySelectorAll("button"),
-        ].some((b) => b.textContent.trim() === text && !b.matches(":disabled")),
-      {},
-      { text, scope },
-    );
-    await page.evaluate(
-      ({ text, scope }) =>
-        [
-          ...(scope
-            ? document.querySelector(scope)
-            : document
-          ).querySelectorAll("button"),
-        ]
-          .find((b) => b.textContent.trim() === text && !b.matches(":disabled"))
-          .click(),
-      { text, scope },
-    );
+  const click = async(text,scope='')=>{
+    await page.waitForFunction(({text,scope})=>{const root=scope?document.querySelector(scope):document;const button=root&&[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===text&&!b.matches(':disabled'));if(!button)return false;button.click();return true;},{timeout:15000},{text,scope});
     await sleep(100);
   };
   const fill = async (label, value) =>
