@@ -27,7 +27,7 @@ export async function processReport(client: SupabaseClient, jobId: string) {
         lease,
         offset,
       });
-      size += JSON.stringify(chunk).length;
+      size += new TextEncoder().encode(JSON.stringify(chunk)).byteLength;
       if (size > 30_000_000)
         throw Error(
           "Data laporan melebihi 30 MB. Bagi permintaan per kelas/peserta.",

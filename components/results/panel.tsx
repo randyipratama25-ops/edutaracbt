@@ -11,6 +11,7 @@ import {clientRequest,ClientRequestError} from "../../lib/client/request";
 import {resultListSchema,resultDetailSchema,resultMastersSchema,resultSettingsSchema,resultProvidersSchema,reportJobsSchema,resultAnalysisSchema,resultReceipt,loadResultBatch,gradeValue,revisionReason,resultAnswer,canSuggest} from "../../lib/results/contracts";
 import {reportSettingsSchema} from "../../lib/reports/schema";
 import type { ResultDetail, ResultRow } from "../../lib/results/types";
+import {AnalysisView} from "./analysis-view";
 import type { analyze } from "../../lib/results/analytics";
 import { reportKinds, reportLabels } from "../../lib/reports/schema";
 import type { ReportSettings } from "../../lib/reports/render";
@@ -62,7 +63,7 @@ export function ResultsPanel({
       null,
     ),
     [jobs, setJobs] = useState<Job[]>([]),
-    [kind, setKind] = useState<(typeof reportKinds)[number]>("recap"),
+    [kind, setKind] = useState<(typeof reportKinds)[number]>(()=>analyticsFirst?"analytics":"recap"),
     [format, setFormat] = useState("pdf"),
     [settings, setSettings] = useState<
       (ReportSettings & { can_manage: boolean }) | null
@@ -79,6 +80,7 @@ export function ResultsPanel({
   const [settingsDraft,setSettingsDraft]=useState<typeof settings>(null);
   async function request<T=unknown>(url:string,input?:object,schema:z.ZodType<T>=resultReceipt(url,input) as z.ZodType<T>){
     if(!mounted.current)throw Error("Permintaan dibatalkan.");
+    if(input&&url==="/api/results")setAnalysis(null);
     const c=new AbortController();controllers.current.add(c);
     try{const result=await clientRequest(url,input,schema,c,{mutation:!!input&&!(url==='/api/reports'&&'action' in input&&input.action==='analysis')});if(!mounted.current)throw Error('Permintaan dibatalkan.');return result;}
     catch(e){if(mounted.current&&e instanceof ClientRequestError&&e.uncertain)setUncertain(true);throw e;}
@@ -87,6 +89,9 @@ export function ResultsPanel({
   useEffect(()=>{mounted.current=true;const active=controllers.current;return()=>{mounted.current=false;readController.current?.abort();active.forEach(c=>c.abort());};},[]);
 
   const ids = Object.keys(selected);
+  const selectionKey=ids.map(id=>id+':'+selected[id].revision).sort().join('|');
+  const [analysisBasis,setAnalysisBasis]=useState(''),[analysisNames,setAnalysisNames]=useState<Record<string,string>>({}),[analysisError,setAnalysisError]=useState('');
+  useEffect(()=>{setAnalysis(null);setAnalysisError('');},[selectionKey]);
   const invalidateRequests=useCallback(()=>{sequence.current++;readController.current?.abort();},[]);
   const load = useCallback(async () => {
     if(!mounted.current)return false;
@@ -104,7 +109,7 @@ export function ResultsPanel({
       if (subjectId) q.set("subject", subjectId);
       if (examId) q.set("exam", examId);
       const d = await clientRequest("/api/results?" + q,undefined,resultListSchema,c);
-      if(!mounted.current)return false;
+      if(!mounted.current||seq!==sequence.current)return false;
       const last=Math.max(1,Math.ceil(d.total/25));if(page>last){setRows([]);setTotal(d.total);setPage(last);return false;}
       if (seq === sequence.current) {
         setRows(d.rows);
@@ -230,6 +235,16 @@ export function ResultsPanel({
     catch(e){if(!mounted.current)return;setSelected({});await load();throw Error(`${done} dari ${exams.length} ujian terkonfirmasi diperbarui. Sisa operasi dihentikan. ${e instanceof Error?e.message:'Periksa hasil sebelum mencoba lagi.'}`);}
     setSelected({});await load();setMessage(`${done} ujian ${published?'diterbitkan':'ditutup publikasinya'}. Publikasi berlaku untuk seluruh peserta; kunci dan esai pending tetap dilindungi server.`);
   }
+  async function analyzeSelected(){
+    await run(async()=>{
+      const basis=selectionKey;
+      const names=Object.fromEntries(Object.values(selected).map(r=>[r.exam_id,r.title]));
+      setAnalysis(null);setAnalysisError('');
+      try{const result=await request('/api/reports',{action:'analysis',ids:[...ids]},resultAnalysisSchema);setAnalysis(result);setAnalysisBasis(basis);setAnalysisNames(names);}
+      catch(e){if(mounted.current)setAnalysisError(e instanceof Error?e.message:'Analisis belum dapat dimuat.');}
+    });
+  }
+  const analysisAction=<Button className="analysis-action" disabled={selectionBlocked||!ids.length} onClick={()=>void analyzeSelected()}>Analisis terpilih</Button>;
   const examOptions = Array.from(
     new Map(
       [...Object.values(selected), ...rows].map((r) => [r.exam_id, r.title]),
@@ -237,7 +252,7 @@ export function ResultsPanel({
   );
   if(examId&&!examOptions.some(([id])=>id===examId))examOptions.push([examId,"Ujian terpilih"]);
   return (
-    <div className="stack results-page" aria-busy={busy||loading}>
+    <div className={`stack results-page${analyticsFirst?" analytics-page":""}`} aria-busy={busy||loading}>
       <div className="actions"><Button asChild variant="outline"><Link href="/dashboard/grading">Koreksi anonim, rubrik & moderasi</Link></Button></div>
       <p role="status" aria-live="polite">
         {message}
@@ -444,6 +459,7 @@ export function ResultsPanel({
           dibuat.
         </p>
         <div className="actions">
+          {analyticsFirst&&analysisAction}
           <Button
             disabled={selectionBlocked || !ids.length}
             onClick={() =>
@@ -465,18 +481,7 @@ export function ResultsPanel({
           >
             Rekalkulasi berizin
           </Button>
-          <Button
-            disabled={selectionBlocked || !ids.length}
-            onClick={() =>
-              void run(async () =>
-                setAnalysis(
-                  await request("/api/reports", { action: "analysis", ids },resultAnalysisSchema),
-                ),
-              )
-            }
-          >
-            Analisis terpilih
-          </Button>
+          {!analyticsFirst&&analysisAction}
           {canPublish && (
             <>
               <Button
@@ -546,59 +551,8 @@ export function ResultsPanel({
           )}
         </div>
       </section>
-      {analysis && (
-        <section className="panel stack">
-          <h2>Analisis lima tipe</h2>
-          <p>
-            {analysis.eligible} peserta layak; {analysis.excluded} tidak
-            dimasukkan (pending, diskualifikasi, atau attempt lama). P memakai
-            proporsi poin; untuk PG sama dengan proporsi benar. D memakai
-            kelompok atas/bawah max(1, floor(27% × N)).
-          </p>
-          {analysis.items.map((q) => (
-            <details key={q.id}>
-              <summary>
-                {q.type} · versi {q.version} · N={q.n} · P={q.p} ({q.difficulty}
-                ) · D={q.d} ({q.discrimination})
-                {q.small_sample ? " · sampel kecil" : ""}
-              </summary>
-              <p>{q.stem.replace(/<[^>]*>/g, "")}</p>
-              <p>Kelompok: {q.group_size} peserta per sisi.</p>
-              <h3>Peserta salah / parsial</h3>
-              <ul>
-                {q.wrong.map((w) => (
-                  <li key={w.attempt_id}>
-                    {w.student}: {w.earned} / {w.max}
-                  </li>
-                ))}
-              </ul>
-              {q.options.map((o) => (
-                <div key={o.id}>
-                  <b>{o.text}</b>
-                  <p>
-                    Sebaran: {JSON.stringify(o.choices)}; benar per
-                    pernyataan/pasangan: {o.correct}
-                  </p>
-                  <ul>
-                    {o.wrong.map((w) => (
-                      <li key={w.attempt_id}>{w.student}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-              {q.essay.length > 0 && (
-                <ul>
-                  {q.essay.map((e, i) => (
-                    <li key={i}>
-                      {e.student}: {e.earned} / {e.max}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </details>
-          ))}
-        </section>
-      )}
+      {analysisError&&<div className="notice" role="alert"><p>{analysisError}</p><Button disabled={selectionBlocked||!ids.length} onClick={()=>void analyzeSelected()}>Coba analisis kembali</Button></div>}
+      {analysis&&analysisBasis===selectionKey&&<AnalysisView analysis={analysis} exams={analysisNames}/>}
       <section className="panel stack">
         <h2>Job ekspor</h2>
         <Button

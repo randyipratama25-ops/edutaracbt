@@ -13,6 +13,7 @@ import {
   reportSettingsSchema,
 } from "../../../lib/reports/schema";
 import { processReport } from "../../../lib/reports/worker";
+import {resultDetailSchema} from "../../../lib/results/contracts";
 import { analyze } from "../../../lib/results/analytics";
 export const maxDuration = 300;
 export const runtime = "nodejs";
@@ -44,20 +45,25 @@ export async function POST(request: Request) {
           ? z
               .object({
                 action: z.literal("analysis"),
-                ids: z.array(z.uuid()).min(1).max(500),
+                ids: z.array(z.uuid()).min(1).max(500).transform(ids=>[...new Set(ids)]),
               })
               .parse(raw)
           : createReportSchema.parse(raw);
-    const r = await a.client.rpc("report_command", { input });
-    resultData(r,true);
+    const query=a.client.rpc("report_command",{input});
+    const r=input.action==="analysis"?await query.abortSignal(AbortSignal.timeout(15000)):await query;
+    resultData(r,input.action!=="analysis");
     if (r.data?.error) throw new HttpError(r.data.status || 422, r.data.error);
     if (input.action === "create") {
       const receipt=z.object({id:z.uuid(),status:z.string()}).safeParse(r.data);
       if(!receipt.success)throw new HttpError(503,"Hasil pembuatan laporan belum dapat dipastikan. Muat status ekspor sebelum mencoba lagi.");
       after(() => processReport(a.client, receipt.data.id));
     }
-    if(input.action==='analysis'&&!Array.isArray(r.data))throw new HttpError(503,'Data analisis belum tersedia.');
-    return json(input.action === "analysis" ? analyze(r.data) : r.data);
+    if(input.action==='analysis'){
+      const parsed=z.array(resultDetailSchema).safeParse(r.data);
+      if(!parsed.success)throw new HttpError(503,'Data analisis belum lengkap atau tidak valid. Muat ulang hasil sebelum mencoba lagi.');
+      return json(analyze(parsed.data));
+    }
+    return json(r.data);
   } catch (e) {
     return failure(e);
   }
