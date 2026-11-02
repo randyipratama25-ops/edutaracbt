@@ -1,5 +1,5 @@
 import { operator } from "../../../../lib/operations/server";
-import { failure } from "../../../../lib/http";
+import { failure, HttpError } from "../../../../lib/http";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -7,7 +7,8 @@ export async function GET(request: Request) {
     const a = await operator(true);
     const inbox = new URL(request.url).searchParams.get("inbox") === "1";
     if (!inbox) await operator();
-    const { data } = await a.client.auth.getSession();
+    const { data,error } = await a.client.auth.getSession();
+    if(error||!data.session?.access_token)throw new HttpError(401,"Silakan masuk kembali.");
     await a.client.realtime.setAuth(data.session?.access_token);
     const encoder = new TextEncoder();
     let cleanup = () => {};
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
       start(controller) {
         let closed = false;
         const send = () => {
-          if (!closed) controller.enqueue(encoder.encode("data: changed\n\n"));
+          if (!closed)try{controller.enqueue(encoder.encode("data: changed\n\n"));}catch{cleanup();}
         };
         const channel = a.client
           .channel(inbox ? "inbox:" + a.id : "ops:" + a.organization_id, {
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
           clearTimeout(end);
           clearInterval(heartbeat);
           request.signal.removeEventListener("abort", cleanup);
-          void a.client.removeChannel(channel);
+          void a.client.removeChannel(channel).catch(()=>{});
           try {
             controller.close();
           } catch {}
@@ -36,17 +37,17 @@ export async function GET(request: Request) {
         const heartbeat = setInterval(() => {
           if (closed) return;
           if (a.context === "supervisor") {
-            void a.client.rpc("has_supervisor_context").then((r) => {
+            void Promise.resolve(a.client.rpc("has_supervisor_context")).then((r) => {
               if (r.error || !r.data) cleanup();
-            });
+            }).catch(cleanup);
           }
-          controller.enqueue(encoder.encode(": heartbeat\n\n"));
+          try{controller.enqueue(encoder.encode(": heartbeat\n\n"));}catch{cleanup();}
         }, 15000);
         const end = setTimeout(cleanup, 50000);
         request.signal.addEventListener("abort", cleanup, { once: true });
         controller.enqueue(encoder.encode("retry: 5000\n\n"));
         if (request.signal.aborted) cleanup();
-        else channel.subscribe();
+        else try{channel.subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')cleanup();});}catch{cleanup();}
       },
       cancel() {
         cleanup();

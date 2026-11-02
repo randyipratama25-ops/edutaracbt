@@ -1,6 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "../operations/shared";
+import {z} from "zod";
+import {clientRequest,ClientRequestError} from "../../lib/client/request";
+import {signalsSchema,helpListSchema} from "../../lib/operations/contracts";
+import {workflowCommand} from "../../lib/workflow/schema";
 import { Dialog } from "../ui/dialog";
 import { Button } from "../ui/button";
 import type { Help, Signal } from "../../lib/workflow/schema";
@@ -8,7 +11,7 @@ type Participant = {
   student_id: string;
   student: string;
   attempt_id: string | null;
-  version: number;
+  version: number|null;
   status: string;
   logged_in: boolean;
   can_act: boolean;
@@ -18,11 +21,13 @@ export function IncidentPanel({
   rows,
   admin,
   onChanged,
+  paused=false,
 }: {
   exam: string;
   rows: Participant[];
   admin: boolean;
   onChanged: () => Promise<void>;
+  paused?:boolean;
 }) {
   const [signals, setSignals] = useState<Signal[]>([]),
     [help, setHelp] = useState<Help[]>([]),
@@ -32,43 +37,28 @@ export function IncidentPanel({
     [minutes, setMinutes] = useState(5),
     [reason, setReason] = useState(""),
     [confirm, setConfirm] = useState(""),
-    [busy, setBusy] = useState(false);
-  const seq = useRef(0),
-    lock = useRef(false),
-    retry = useRef<{ signature: string; id: string } | null>(null);
-  const load = useCallback(async () => {
-    const s = ++seq.current;
-    try {
-      const [a, b] = await Promise.all([
-        api<Signal[]>("/api/workflow?action=signals&exam=" + exam),
-        api<Help[]>("/api/workflow?action=help_list&exam=" + exam),
-      ]);
-      if (s === seq.current) {
-        setSignals(a);
-        setHelp(b);
-      }
-    } catch (e) {
-      if (s === seq.current) {
-        setSignals([]);
-        setHelp([]);
-        setMessage(
-          e instanceof Error
-            ? e.message
-            : "Status pelaksanaan belum dapat dimuat.",
-        );
-      }
-    }
-  }, [exam]);
-  const invalidateRequests=useCallback(()=>{seq.current++;},[]);
-  useEffect(() => {
-    void load();
-    const timer = setInterval(() => void load(), 5000);
-    return () => {
-      clearInterval(timer);
-      invalidateRequests();
-    };
-  }, [load,invalidateRequests]);
-  const active = rows.filter((r) => r.status === "in_progress"),
+    [busy, setBusy] = useState(false),[readError,setReadError]=useState(''),[loading,setLoading]=useState(true),[uncertain,setUncertain]=useState(false);
+  const seq=useRef(0),mounted=useRef(true),lock=useRef(false),pause=useRef(paused),dialogOpen=useRef(false),controllers=useRef(new Set<AbortController>()),flight=useRef<Promise<void>|null>(null),retry=useRef<{signature:string;id:string}|null>(null);
+  const request=useCallback(async function request<T>(url:string,input:object|undefined,schema:z.ZodType<T>){
+    const c=new AbortController();controllers.current.add(c);
+    try{const value=await clientRequest(url,input,schema,c,{mutation:!!input});if(!mounted.current)throw Error('Permintaan dibatalkan.');return value;}finally{controllers.current.delete(c);}
+  },[]);
+  useEffect(()=>{mounted.current=true;const active=controllers.current,sequence=seq;return()=>{mounted.current=false;sequence.current++;flight.current=null;active.forEach(c=>c.abort());};},[]);
+  const load=useCallback(async()=>{
+    if(!mounted.current||pause.current||dialogOpen.current||lock.current)return;
+    if(flight.current)return flight.current;
+    const generation=++seq.current;
+    const promise=(async()=>{try{
+      const [a,b]=await Promise.all([request('/api/workflow?action=signals&exam='+exam,undefined,signalsSchema),request('/api/workflow?action=help_list&exam='+exam,undefined,helpListSchema)]);
+      if(generation===seq.current){setSignals(a);setHelp(b);setReadError('');}
+    }catch(e){if(mounted.current&&generation===seq.current){setSignals([]);setHelp([]);setReadError(e instanceof Error?e.message:'Status pelaksanaan belum dapat dimuat.');}}
+    finally{if(mounted.current&&generation===seq.current){setLoading(false);flight.current=null;}}})();
+    flight.current=promise;return promise;
+  },[exam,request]);
+  useEffect(()=>{pause.current=paused;if(!paused)void load();},[paused,load]);
+  useEffect(()=>{void load();const timer=setInterval(()=>void load(),5000);return()=>{clearInterval(timer);};},[load]);
+  function close(){if(lock.current)return;dialogOpen.current=false;setTarget(null);setTicket(null);setUncertain(false);setMessage('');void Promise.all([load(),onChanged()]);}
+  const active = rows.filter((r) => r.status === "in_progress"&&r.attempt_id&&r.version!==null),
     stale = active.filter(
       (r) =>
         signals.find((s) => s.attempt_id === r.attempt_id)?.connection ===
@@ -76,7 +66,7 @@ export function IncidentPanel({
     ),
     pending = help.filter((h) => !h.resolved_at);
   async function save() {
-    if (lock.current) return;
+    if (lock.current||uncertain) return;
     lock.current = true;
     setBusy(true);
     setMessage("");
@@ -94,21 +84,22 @@ export function IncidentPanel({
       const signature = JSON.stringify(input);
       if (retry.current?.signature !== signature)
         retry.current = { signature, id: crypto.randomUUID() };
-      await api("/api/workflow", { ...input, request_id: retry.current.id });
+      const parsed=workflowCommand.parse({...input,request_id:retry.current.id});
+      await request<unknown>("/api/workflow",parsed,ticket?z.object({resolved:z.literal(true)}):z.object({deadline_at:z.string().refine(v=>Number.isFinite(Date.parse(v))),minutes:z.number().int().min(1).max(60)}));
       retry.current = null;
-      setTarget(null);
-      setTicket(null);
+      dialogOpen.current=false;setTarget(null);setTicket(null);setUncertain(false);lock.current=false;
       await Promise.all([load(), onChanged()]);
+      if(!mounted.current)return;
       setMessage(
         ticket
           ? "Permintaan telah ditangani."
           : "Dispensasi tercatat. Timer siswa diperbarui pada pemeriksaan server berikutnya.",
       );
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Tindakan gagal.");
+      if(mounted.current){setMessage(e instanceof ClientRequestError?e.message:"Periksa tanggapan, alasan, menit dan konfirmasi.");if(e instanceof ClientRequestError&&(e.uncertain||e.status===409))setUncertain(true);}
     } finally {
       lock.current = false;
-      setBusy(false);
+      if(mounted.current)setBusy(false);
     }
   }
   return (
@@ -117,14 +108,16 @@ export function IncidentPanel({
       aria-label="Ringkasan pelaksanaan"
     >
       <h2>Pelaksanaan dan bantuan</h2>
+      {(loading||paused)&&<p role="status">Memuat status pelaksanaan…</p>}
+      {readError&&<div role="alert"><p>{readError}</p><Button variant="outline" onClick={()=>void load()}>Coba muat bantuan</Button></div>}
       <div className="cards">
         <div>
-          <strong className="metric">{active.length}</strong>
+          <strong className="metric">{paused?"—":active.length}</strong>
           <p>Sedang mengerjakan</p>
         </div>
         <div>
           <strong className="metric">
-            {rows.filter((r) => r.status === "not_started").length}
+            {paused?"—":rows.filter((r) => r.status === "not_started").length}
           </strong>
           <p>
             Belum mulai ·{" "}
@@ -136,19 +129,19 @@ export function IncidentPanel({
           </p>
         </div>
         <div>
-          <strong className="metric">{stale.length}</strong>
+          <strong className="metric">{loading||readError||paused?"—":stale.length}</strong>
           <p>Perlu cek koneksi</p>
         </div>
         <div>
-          <strong className="metric">{pending.length}</strong>
+          <strong className="metric">{loading||readError||paused?"—":pending.length}</strong>
           <p>Menunggu bantuan</p>
         </div>
       </div>
-      <p className="muted">
+      <details><summary>Tentang indikator koneksi</summary><p className="muted">
         Indikator koneksi memakai kontak server terakhir; lebih dari 45 detik
         perlu diperiksa, bukan bukti pelanggaran. Sesi login tersedia belum
         membuktikan siswa hadir di ruang.
-      </p>
+      </p></details>
       <p role="status">{message}</p>
       {stale.length > 0 && (
         <div className="notice">
@@ -158,8 +151,7 @@ export function IncidentPanel({
               <li key={r.student_id}>
                 {r.student} — kontak terakhir{" "}
                 {new Date(
-                  signals.find((s) => s.attempt_id === r.attempt_id)!
-                    .last_seen_at!,
+                  signals.find((s) => s.attempt_id === r.attempt_id)?.last_seen_at||NaN,
                 ).toLocaleTimeString("id-ID")}
               </li>
             ))}
@@ -168,22 +160,24 @@ export function IncidentPanel({
       )}
       <div className="incident-actions">
         <div>
-          <h3>Pilih penanganan sesuai masalah</h3>
+          <details><summary>Panduan penanganan peserta</summary>
           <p>
             Lanjut sesi: siswa masuk kembali. Buka kunci: batalkan penguncian
             setelah peninjauan. Reset: mulai percobaan baru dengan riwayat dan
             deadline lama tetap dipertahankan. Dispensasi: tambahan waktu
             eksplisit oleh Admin.
-          </p>
+          </p></details>
         </div>
         {admin && (
           <label>
             Dispensasi untuk peserta
             <select
+              disabled={busy||paused||!!readError||loading}
               value=""
               onChange={(e) => {
                 const r = rows.find((r) => r.attempt_id === e.target.value);
-                if (r) {
+                if (r&&!lock.current) {
+                  dialogOpen.current=true;setMessage('');setUncertain(false);
                   setTarget({ ...r });
                   setTicket(null);
                   setReason("");
@@ -203,7 +197,7 @@ export function IncidentPanel({
         )}
       </div>
       <details open={pending.length > 0}>
-        <summary>Permintaan bantuan ({pending.length} terbuka)</summary>
+        <summary>Permintaan bantuan ({loading||readError?"status belum tersedia":pending.length+" terbuka"})</summary>
         <ul className="agenda-list">
           {help.map((h) => (
             <li key={h.id}>
@@ -217,8 +211,10 @@ export function IncidentPanel({
               {!h.resolved_at && h.can_resolve && (
                 <Button
                   variant="outline"
+                  disabled={busy||paused||!!readError}
                   onClick={() => {
-                    setTicket(h);
+                    if(lock.current)return;dialogOpen.current=true;setMessage('');setUncertain(false);
+                    setTicket({...h});
                     setTarget(null);
                     setReason("");
                   }}
@@ -229,15 +225,12 @@ export function IncidentPanel({
             </li>
           ))}
         </ul>
-        {!help.length && <p>Belum ada permintaan bantuan.</p>}
+        {!loading&&!readError&&!help.length && <p>Belum ada permintaan bantuan.</p>}
       </details>
       <Dialog
         open={!!target || !!ticket}
         onOpenChange={(v) => {
-          if (!v && !busy) {
-            setTarget(null);
-            setTicket(null);
-          }
+          if (!v) close();
         }}
         title={
           ticket ? "Tanggapi permintaan bantuan" : "Dispensasi waktu ujian"
@@ -256,6 +249,7 @@ export function IncidentPanel({
             void save();
           }}
         >
+          <fieldset className="monitor-controls stack" disabled={busy||uncertain}>
           <p>
             Peserta: <strong>{ticket?.student || target?.student}</strong>
           </p>
@@ -295,10 +289,12 @@ export function IncidentPanel({
               />
             </label>
           )}
-          <Button disabled={busy}>
+          <Button disabled={busy||uncertain}>
             {ticket ? "Tandai ditangani" : "Berikan dispensasi"}
           </Button>
           <p role="status">{message}</p>
+          </fieldset>
+          {uncertain&&<div role="alert"><p>Periksa ulang status bantuan atau deadline sebelum mengirim lagi.</p><Button type="button" variant="outline" onClick={close}>Tutup dan periksa ulang</Button></div>}
         </form>
       </Dialog>
     </section>

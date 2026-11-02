@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.26 — Audit Analitik dan laporan.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.27 — Audit Peninjauan ujian.
+
+## Audit Peninjauan/monitoring ujian — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/monitor` tetap hanya Admin/Guru dalam konteks staf; `/supervisor` mempertahankan komponen monitoring bersama dalam konteks pengawas efektif. R/C/U tindakan tetap melalui ops_command/workflow_command, tanpa D bukti/jawaban/audit. Dispensasi waktu hanya Admin, bantuan hanya petugas berizin; Guru tanpa tugas efektif tetap read-only pada peserta terkait. Pengelolaan ruang/sesi/penugasan tetap hanya Admin.
+
+Pembacaan options/monitor/ruang, sinyal, bantuan dan riwayat memakai kontrak runtime, batas waktu dan pembatalan saat lifecycle berubah. Monitor dan bantuan single-flight, respons ujian/riwayat lama ditolak, opsi gagal memiliki coba ulang. Nilai version/pending/deadline null bagi peserta tanpa attempt ditangani. Kegagalan baca tidak dianggap hasil kosong/sehat. Pagination lokal dikoreksi saat data menyusut; pilihan dibersihkan saat filter/ujian berubah, dibatasi 500, sedangkan tindakan tetap maksimal 100 attempt.
+
+Dialog mengambil snapshot ID/version saat dibuka, menjeda polling terkait, mengunci isian/submit/penutupan selama pending dan mempertahankan request_id untuk payload yang sama. Tombol mengikuti transisi status: unlock hanya diskualifikasi, disqualify hanya aktif; reset mempertahankan bukti dan deadline sesuai SQL lama. Hasil tidak pasti/konflik meminta tutup dan pemeriksaan ulang; tidak ada retry mutation otomatis. Notifikasi memvalidasi sasaran terpilih dan menampilkan jumlah penerima. Riwayat pesan/kejadian memiliki loading/error/coba ulang tanpa isi dialog sebelumnya.
+
+API mewajibkan ujian/attempt pada pembacaan terkait, menolak attempt duplikat dan rentang waktu tidak valid, mempertahankan alasan, konfirmasi, CAS, idempotensi dan batas database. Error SQL/transport disamarkan, konflik 409 dan respons RPC kosong tidak dianggap sukses. SSE memeriksa token, membersihkan channel/timer saat batal/gagal dan menangani rejection heartbeat; polling 5 detik tetap menjadi fallback. Tabel memakai scroll internal dan sticky identitas/header, toolbar/dialog reflow mobile, panduan panjang dilipat dan waktu pembaruan terlihat. Tidak ada migrasi database, dependency, endpoint atau halaman baru. Rincian uji dan batas ada di `docs/monitor-audit.md`.
 
 ## Audit Analitik dan laporan — 2 November 2026
 

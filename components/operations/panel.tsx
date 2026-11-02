@@ -11,48 +11,12 @@ import {
 } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
-import { api, useLive, type Options } from "./shared";
-type Room = { id: string; name: string; capacity: number; count: number };
-type Session = { id: string; name: string; starts_at: string; ends_at: string };
-type Assignment = {
-  id: string;
-  room_id: string;
-  session_id: string;
-  original_supervisor_id: string;
-  effective_supervisor: string | null;
-  active: boolean;
-  substitutions: {
-    id: string;
-    revoked_at: string | null;
-    effective_from: string;
-    effective_until: string | null;
-  }[];
-};
-type Rooms = {
-  rooms: Room[];
-  sessions: Session[];
-  eligible: { id: string; name: string }[];
-  roster: { room_id: string; student_id: string; name: string }[];
-  assignments: Assignment[];
-};
-type Row = {
-  student_id: string;
-  student: string;
-  username: string;
-  attempt_id: string | null;
-  version: number;
-  status: string;
-  logged_in: boolean;
-  answers: number;
-  events: number;
-  countable_events: number;
-  deadline_at: string | null;
-  room: string | null;
-  room_id: string | null;
-  can_act: boolean;
-  score: number | null;
-  pending: number;
-};
+import { useLive, type Options } from "./shared";
+import {z} from 'zod';
+import {clientRequest,ClientRequestError} from '../../lib/client/request';
+import {operation} from '../../lib/operations/schema';
+import {operationOptionsSchema,monitorRowsSchema,roomsSchema,sentNotificationsSchema,monitorHistorySchema,operationReceipt,reviewTargets,canReview,monitorPage,type MonitorRow as Row} from '../../lib/operations/contracts';
+type Rooms=z.infer<typeof roomsSchema>;
 const status: Record<string, string> = {
   not_started: "Belum mulai",
   in_progress: "Aktif",
@@ -100,51 +64,50 @@ export function OperationsPanel({
     [text, setText] = useState(""),
     [notificationTitle,setNotificationTitle]=useState(""),[priority,setPriority]=useState("info"),[linkExam,setLinkExam]=useState(true),
     [history, setHistory] = useState<unknown>(null);
-  const seq = useRef(0);
-  const retry = useRef<{signature:string;id:string}|null>(null);
-  const invalidateRequests=useCallback(()=>{seq.current++;},[]);
-  const load = useCallback(async () => {
-    if (!exam) return;
-    const s = ++seq.current;
-    try {
-      if (mode === "rooms") {
-        const d = await api<Rooms>("/api/operations?action=rooms&exam=" + exam);
-        if (s === seq.current) setRooms(d);
-      } else {
-        const d = await api<Row[]>(
-          "/api/operations?action=monitor&exam=" + exam,
-        );
-        if (s === seq.current) {setRows(d);setListError("");}
-      }
-    } catch (e) {
-      if (s === seq.current) {
-        setRows([]);
-        setRooms(empty);
-        setSelected([]);
-        setListError(e instanceof Error ? e.message : "Monitor gagal dimuat.");
-      }
-    }finally{if(s===seq.current)setListLoading(false);}
-  }, [exam, mode]);
-  useEffect(() => {
-    let active = true;
-    void api<Options>("/api/operations")
-      .then((d) => {
-        if (active) {
-          setOptions(d);
-          setExam(d.exams[0]?.id || "");
-        }
-      })
-      .catch((e) => setMessage(e.message));
-    return () => {
-      active = false;
-    };
-  }, []);
-  useEffect(() => {
-    setListLoading(true);void load();return()=>{invalidateRequests();};
-  }, [load,invalidateRequests]);
+  const seq=useRef(0),mounted=useRef(true),controllers=useRef(new Set<AbortController>()),lock=useRef(false),dialogRef=useRef(''),flight=useRef<{seq:number;promise:Promise<void>}|null>(null);
+  const retry=useRef<{signature:string;id:string}|null>(null);
+  const [optionError,setOptionError]=useState(''),[historyError,setHistoryError]=useState(''),[historyLoading,setHistoryLoading]=useState(false),[uncertain,setUncertain]=useState(false),[lastUpdated,setLastUpdated]=useState(''),[refreshing,setRefreshing]=useState(false),[actionTargets,setActionTargets]=useState<Row[]>([]);
+  const loadedExam=useRef(''),optionSeq=useRef(0);
+  const historySeq=useRef(0),historyController=useRef<AbortController|null>(null),readController=useRef<AbortController|null>(null);
+  const request=useCallback(async function request<T>(url:string,input:object|undefined,schema:z.ZodType<T>,controller=new AbortController()){
+    if(!mounted.current)throw Error('Permintaan dibatalkan.');
+    controllers.current.add(controller);
+    try{const value=await clientRequest(url,input,schema,controller,{mutation:!!input});if(!mounted.current)throw Error('Permintaan dibatalkan.');return value;}finally{controllers.current.delete(controller);}
+  },[]);
+  useEffect(()=>{mounted.current=true;const active=controllers.current,sequence=seq,optionsSequence=optionSeq,historySequence=historySeq;return()=>{mounted.current=false;sequence.current++;optionsSequence.current++;historySequence.current++;active.forEach(c=>c.abort());};},[]);
+  const invalidateRequests=useCallback(()=>{seq.current++;readController.current?.abort();flight.current=null;},[]);
+  const load=useCallback(async()=>{
+    if(!mounted.current)return;
+    if(!exam){setListLoading(false);return;}
+    if(dialogRef.current||lock.current)return;
+    if(flight.current?.seq===seq.current)return flight.current.promise;
+    const generation=++seq.current,c=new AbortController();readController.current=c;
+    setRefreshing(true);setListLoading(loadedExam.current!==exam);
+    const promise=(async()=>{try{
+      if(mode==='rooms'){const d=await request('/api/operations?action=rooms&exam='+exam,undefined,roomsSchema,c);if(generation===seq.current)setRooms(d);}
+      else{const d=await request('/api/operations?action=monitor&exam='+exam,undefined,monitorRowsSchema,c);if(generation===seq.current){setRows(d);setSelected(prev=>prev.filter(id=>d.some(r=>r.student_id===id)));}}
+      if(generation===seq.current){loadedExam.current=exam;setListError('');setLastUpdated(new Date().toLocaleTimeString('id-ID'));setUncertain(false);}
+    }catch(e){if(mounted.current&&generation===seq.current){loadedExam.current='';setRows([]);setRooms(empty);setSelected([]);setListError(e instanceof Error?e.message:'Monitor gagal dimuat.');}}
+    finally{if(mounted.current&&generation===seq.current){setListLoading(false);setRefreshing(false);flight.current=null;}}})();
+    flight.current={seq:generation,promise};return promise;
+  },[exam,mode,request]);
+  const loadOptions=useCallback(async()=>{const generation=++optionSeq.current;setOptionError('');try{const d=await request('/api/operations',undefined,operationOptionsSchema);if(generation!==optionSeq.current)return;setOptions(d);setExam(prev=>d.exams.some(e=>e.id===prev)?prev:d.exams[0]?.id||'');if(!d.exams.length)setListLoading(false);}catch(e){if(mounted.current&&generation===optionSeq.current){setOptionError(e instanceof Error?e.message:'Akses belum dapat dimuat.');setListLoading(false);}}},[request]);
+  useEffect(()=>{void loadOptions();},[loadOptions]);
+  useEffect(()=>{void load();return invalidateRequests;},[load,invalidateRequests]);
   useLive(load);
+  function closeDialog(){if(lock.current)return;historySeq.current++;historyController.current?.abort();dialogRef.current='';setDialog('');setHistory(null);setHistoryError('');setMessage('');void load();}
+  async function readHistory(action:string,id=''){
+    if(lock.current)return;
+    historyController.current?.abort();const generation=++historySeq.current,c=new AbortController();historyController.current=c;
+    invalidateRequests();setRefreshing(false);setListLoading(false);dialogRef.current=action;setDialog(action);setTarget(id);setHistory(null);setHistoryError('');setHistoryLoading(true);
+    try{const value=await request<unknown>('/api/operations?action='+action+(id?'&id='+id:''),undefined,action==='sent'?sentNotificationsSchema:monitorHistorySchema,c);if(generation===historySeq.current)setHistory(value);}
+    catch(e){if(mounted.current&&generation===historySeq.current)setHistoryError(e instanceof Error?e.message:'Riwayat belum dapat dimuat.');}
+    finally{if(mounted.current&&generation===historySeq.current)setHistoryLoading(false);}
+  }
   function open(action: string, id = "") {
-    setDialog(action);
+    if(lock.current)return;
+    invalidateRequests();setRefreshing(false);setListLoading(false);dialogRef.current=action;setDialog(action);setMessage('');setHistoryError('');setStart('');setEnd('');
+    setActionTargets(reviewTargets(rows,selected).map(r=>({...r})));
     setTarget(id);
     setReason("");
     setConfirmation("");
@@ -154,30 +117,24 @@ export function OperationsPanel({
     setText("");setNotificationTitle("");setPriority("info");setLinkExam(true);
     setScope("exam");
   }
-  async function save(input: object) {
-    setBusy(true);
-    setMessage("");
-    try {
-      const signature=JSON.stringify(input);
+  async function save(raw: object) {
+    if(lock.current)return;
+    lock.current=true;setBusy(true);setMessage('');
+    try{
+      const signature=JSON.stringify(raw);
       if(retry.current?.signature!==signature)retry.current={signature,id:crypto.randomUUID()};
-      await api("/api/operations", {
-        ...input,
-        request_id: retry.current.id,
-      });
-      retry.current=null;
-      setDialog("");
-      setSelected([]);
-      await load();
-      setMessage("Perubahan tersimpan.");
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Gagal menyimpan.");
-    } finally {
-      setBusy(false);
-    }
+      const input=operation.parse({...raw,request_id:retry.current.id});
+      const receipt=await request('/api/operations',input,operationReceipt(input.action));
+      retry.current=null;setUncertain(false);dialogRef.current='';setDialog('');setSelected([]);lock.current=false;
+      await load();if(mounted.current)setMessage(input.action==='broadcast'&&receipt&&typeof receipt==='object'&&'recipients' in receipt?`Notifikasi terkirim kepada ${receipt.recipients} penerima.`:'Perubahan tersimpan. Periksa pembaruan monitor.');
+    }catch(e){if(mounted.current){setMessage(e instanceof ClientRequestError?e.message:e instanceof z.ZodError?'Periksa isian, alasan, sasaran dan konfirmasi.':'Gagal menyimpan.');if(e instanceof ClientRequestError&&(e.uncertain||e.status===409)){setUncertain(true);}}}
+    finally{lock.current=false;if(mounted.current)setBusy(false);}
   }
   function submit(e: FormEvent) {
     e.preventDefault();
+    if(lock.current||uncertain)return;
     let input: object;
+    try{
     if (dialog === "room_save")
       input = {
         action: dialog,
@@ -223,8 +180,7 @@ export function OperationsPanel({
         action: dialog,
         reason,
         confirmation,
-        attempts: rows
-          .filter((r) => selected.includes(r.student_id) && r.attempt_id)
+        attempts: actionTargets
           .map((r) => ({ id: r.attempt_id, version: r.version })),
       };
     else if (dialog === "broadcast")
@@ -237,29 +193,34 @@ export function OperationsPanel({
         title:notificationTitle,priority,link_exam:linkExam&&scope!=="all",
       };
     else input = { action: dialog, id: target };
+    if(["reset","unlock","disqualify"].includes(dialog)&&!canReview(actionTargets,dialog))throw Error("Pilihan tindakan tidak valid. Muat ulang monitor.");
     void save(input);
+    }catch{setMessage("Periksa isian, waktu, pilihan peserta dan jenis tindakan.");}
   }
-  const actionRows=rows.filter(r=>selected.includes(r.student_id)&&r.attempt_id);
-  const canAct=actionRows.length>0&&actionRows.length<=100&&actionRows.every(r=>r.can_act);
+  const actionRows=reviewTargets(rows,selected);
   const visible = (listLoading||listError?[]:rows).filter(
     (r) =>
       (!filter || r.status === filter) &&
       matchesSearch(r.student + " " + r.username + " " + (r.room || ""),search),
   );
-  const shown = visible.slice((page - 1) * 25, page * 25);
+  const currentPage=monitorPage(page,visible.length);
+  useEffect(()=>{if(!listLoading&&!listError&&page!==currentPage)setPage(currentPage);},[listLoading,listError,page,currentPage]);
+  const shown = visible.slice((currentPage - 1) * 25, currentPage * 25);
   const staffName = (id: string | null) =>
     options?.staff.find((s) => s.id === id)?.name ||
     id ||
     "Di luar periode sesi";
   return (
-    <section className="panel stack">
+    <section className="panel stack monitor-page" aria-label={mode==='monitor'?'Monitor peserta ujian':'Pengaturan ruang dan sesi'} aria-busy={busy}>
+      <fieldset className="monitor-controls stack" disabled={busy}>
       <div className="toolbar">
         <label>
           Ujian
           <select
             value={exam}
             onChange={(e) => {
-              setExam(e.target.value);
+              invalidateRequests();historySeq.current++;historyController.current?.abort();
+              setExam(e.target.value);setRooms(empty);loadedExam.current='';setLastUpdated('');setRefreshing(false);setListError('');setMessage('');setSearch('');setFilter('');setUncertain(false);setListLoading(!!e.target.value);
               setSelected([]);
               setPage(1);
               setRows([]);
@@ -273,12 +234,15 @@ export function OperationsPanel({
             ))}
           </select>
         </label>
-        <Button variant="outline" onClick={() => void load()}>
+        <Button variant="outline" disabled={refreshing||!exam||!!dialog} onClick={() => void load()}>
           Muat ulang
         </Button>
       </div>
       <p role="status">{message}</p>
-      {!options && <p>Memuat akses…</p>}
+      {!options&&!optionError && <p role="status">Memuat akses…</p>}
+      {optionError&&<div role="alert"><p>{optionError}</p><Button onClick={()=>void loadOptions()}>Coba muat akses</Button></div>}
+      {exam&&<p className="muted monitor-freshness">{refreshing?'Memperbarui monitor…':lastUpdated?'Pembaruan terakhir: '+lastUpdated:'Menunggu pembaruan'} · Pembaruan otomatis dijeda saat dialog dibuka.</p>}
+      {mode==='rooms'&&listError&&<p role="alert">{listError}</p>}
       {options && !options.exams.length && (
         <p>Belum ada ujian dalam cakupan Anda.</p>
       )}
@@ -466,15 +430,15 @@ export function OperationsPanel({
       )}
       {mode === "monitor" && exam && (
         <>
-          <IncidentPanel key={exam} exam={exam} rows={rows} admin={!!options?.admin} onChanged={load} />
-          <ListFilters label="peserta ujian" active={[search&&"Pencarian",filter&&"Status"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFilter("");setPage(1);}} total={visible.length} loading={listLoading} error={listError}>
-            <SearchField label="Cari siswa/ruang" value={search} maxLength={150} onChange={value=>{setSearch(value);setPage(1);}} />
+          <IncidentPanel key={exam} exam={exam} rows={listLoading||listError?[]:rows} admin={!!options?.admin} onChanged={load} paused={busy||!!dialog||listLoading||!!listError} />
+          <ListFilters label="peserta ujian" active={[search&&"Pencarian",filter&&"Status"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setFilter("");setSelected([]);setPage(1);}} total={visible.length} loading={listLoading} error={listError}>
+            <SearchField label="Cari siswa/ruang" value={search} maxLength={150} onChange={value=>{setSearch(value);setSelected([]);setPage(1);}} />
             <label>
               Status
               <select
                 value={filter}
                 onChange={(e) => {
-                  setFilter(e.target.value);
+                  setFilter(e.target.value);setSelected([]);
                   setPage(1);
                 }}
               >
@@ -489,36 +453,38 @@ export function OperationsPanel({
           </ListFilters>
           <p>
             {visible.length} peserta ·{" "}
-            {rows.filter((r) => r.status === "in_progress").length} aktif ·{" "}
-            {selected.length} dipilih. Diperbarui otomatis; kejadian browser
-            memerlukan peninjauan petugas.
+            {listLoading||listError?'—':rows.filter((r) => r.status === "in_progress").length} aktif ·{" "}
+            {selected.length} / 500 dipilih. Pilihan dibersihkan saat filter berubah.
           </p>
+          {selected.length>0&&!canReview(actionRows,"reset")&&<p className="muted">Tindakan memerlukan 1–100 attempt berizin. Buka kunci hanya untuk diskualifikasi; diskualifikasi hanya untuk sesi aktif.</p>}
           <div className="actions">
             <Button
               variant="outline"
-              disabled={busy || !canAct}
+              disabled={busy || listLoading || !!listError || uncertain || !canReview(actionRows,"unlock")}
               onClick={() => open("unlock")}
             >
               Buka kunci
             </Button>
             <Button
               variant="outline"
-              disabled={busy || !canAct}
+              disabled={busy || listLoading || !!listError || uncertain || !canReview(actionRows,"reset")}
               onClick={() => open("reset")}
             >
               Reset percobaan
             </Button>
             <Button
               variant="outline"
-              disabled={busy || !canAct}
+              disabled={busy || listLoading || !!listError || uncertain || !canReview(actionRows,"disqualify")}
               onClick={() => open("disqualify")}
             >
               Diskualifikasi
             </Button>
-            <Button onClick={() => open("broadcast")}>Kirim notifikasi</Button>
+            <Button disabled={listLoading||!!listError||uncertain} onClick={() => open("broadcast")}>Kirim notifikasi</Button>
             <Button
               variant="outline"
+              disabled={listLoading||!!listError||!visible.length}
               onClick={() => {
+                if(listLoading||listError)return;
                 const data = JSON.stringify(visible, null, 2);
                 const url = URL.createObjectURL(
                   new Blob([data], { type: "application/json" }),
@@ -526,20 +492,15 @@ export function OperationsPanel({
                 const a = document.createElement("a");
                 a.href = url;
                 a.download = "monitor.json";
-                a.click();
-                URL.revokeObjectURL(url);
+                document.body.append(a);a.click();a.remove();
+                setTimeout(()=>URL.revokeObjectURL(url),1000);
               }}
             >
               Ekspor monitor
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
-                setDialog("sent");
-                void api("/api/operations?action=sent")
-                  .then(setHistory)
-                  .catch((e) => setMessage(e.message));
-              }}
+              onClick={() => void readHistory("sent")}
             >
               Riwayat pesan
             </Button>
@@ -552,6 +513,7 @@ export function OperationsPanel({
                     <input
                       type="checkbox"
                       aria-label="Pilih semua pada halaman"
+                      disabled={listLoading||!!listError||uncertain}
                       checked={
                         shown.length > 0 &&
                         shown.every((r) => selected.includes(r.student_id))
@@ -562,7 +524,7 @@ export function OperationsPanel({
                             ? [
                                 ...new Set([
                                   ...selected,
-                                  ...shown.map((r) => r.student_id),
+                                  ...shown.map((r) => r.student_id).slice(0,500-selected.length),
                                 ]),
                               ]
                             : selected.filter(
@@ -587,6 +549,7 @@ export function OperationsPanel({
                       <input
                         type="checkbox"
                         aria-label={"Pilih " + r.student}
+                        disabled={listLoading||!!listError||uncertain||(!selected.includes(r.student_id)&&selected.length>=500)}
                         checked={selected.includes(r.student_id)}
                         onChange={(e) =>
                           setSelected(
@@ -626,15 +589,7 @@ export function OperationsPanel({
                       <Button
                         variant="outline"
                         disabled={!r.attempt_id || !r.can_act}
-                        onClick={() => {
-                          setHistory(null);
-                          setDialog("history");
-                          void api(
-                            "/api/operations?action=history&id=" + r.attempt_id,
-                          )
-                            .then(setHistory)
-                            .catch((e) => setMessage(e.message));
-                        }}
+                        onClick={() => void readHistory("history",r.attempt_id!)}
                       >
                         Riwayat
                       </Button>
@@ -650,32 +605,34 @@ export function OperationsPanel({
           <div className="actions">
             <Button
               variant="outline"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
+              disabled={currentPage <= 1}
+              onClick={() => setPage(currentPage - 1)}
             >
               Sebelumnya
             </Button>
             <span>
-              Halaman {page} / {Math.max(1, Math.ceil(visible.length / 25))}
+              Halaman {currentPage} / {Math.max(1, Math.ceil(visible.length / 25))}
             </span>
             <Button
               variant="outline"
-              disabled={page * 25 >= visible.length}
-              onClick={() => setPage(page + 1)}
+              disabled={currentPage * 25 >= visible.length}
+              onClick={() => setPage(currentPage + 1)}
             >
               Berikutnya
             </Button>
           </div>
         </>
       )}
+      </fieldset>
       <Dialog
         open={!!dialog}
         onOpenChange={(v) => {
-          if (!busy && !v) setDialog("");
+          if (!v) closeDialog();
         }}
         title={
           dialog === "reset"
             ? "Reset percobaan"
+            : dialog === "unlock" ? "Buka kunci peserta" : dialog === "disqualify" ? "Diskualifikasi peserta"
             : dialog === "broadcast"
               ? "Kirim notifikasi"
               : dialog === "history"
@@ -686,12 +643,9 @@ export function OperationsPanel({
         }
         description="Perubahan diperiksa server dan dicatat dalam audit."
       >
-        {dialog==="sent" ? <SentNotifications value={history} /> : dialog==="history" ? (
-          <pre className="answer-text">
-            {history ? JSON.stringify(history, null, 2) : "Memuat…"}
-          </pre>
-        ) : (
-          <form className="stack" onSubmit={submit}>
+        {dialog==='sent'||dialog==='history'?<div className="stack" aria-busy={historyLoading}>{historyLoading?<p role="status">Memuat riwayat…</p>:historyError?<div role="alert"><p>{historyError}</p><Button onClick={()=>void readHistory(dialog,target)}>Coba muat riwayat</Button></div>:dialog==='sent'?<SentNotifications value={history}/>:<pre className="answer-text">{JSON.stringify(history,null,2)}</pre>}</div>:(
+          <form className="stack" onSubmit={submit} aria-busy={busy}>
+            <fieldset className="monitor-controls stack" disabled={busy||uncertain}>
             {["room_save", "session_save"].includes(dialog) && (
               <label>
                 Nama
@@ -819,14 +773,7 @@ export function OperationsPanel({
             {["reset", "unlock", "disqualify"].includes(dialog) && (
               <>
                 <p>
-                  {
-                    rows.filter(
-                      (r) =>
-                        selected.includes(r.student_id) &&
-                        r.attempt_id &&
-                        r.can_act,
-                    ).length
-                  }{" "}
+                  {actionTargets.length}{" "}
                   attempt berizin dipilih. Peserta tanpa attempt tidak diproses.
                   Waktu tidak ditambah; reset mempertahankan semua bukti/jawaban
                   lama.
@@ -865,7 +812,7 @@ export function OperationsPanel({
                     onChange={(e) => setScope(e.target.value)}
                   >
                     <option value="exam">Peserta ujian ini</option>
-                    <option value="selected">
+                    <option value="selected" disabled={!selected.length}>
                       Peserta dipilih ({selected.length})
                     </option>
                     <option value="all">
@@ -898,9 +845,11 @@ export function OperationsPanel({
               </p>
             )}
             <p role="status">{message}</p>
-            <Button disabled={busy}>
+            <Button disabled={busy||uncertain||(dialog==='broadcast'&&scope==='selected'&&!selected.length)}>
               {busy ? "Menyimpan…" : "Konfirmasi"}
             </Button>
+            </fieldset>
+            {uncertain&&<div role="alert"><p>Hasil tindakan perlu diperiksa sebelum mengirim lagi. Tutup dialog dan muat ulang monitor; untuk notifikasi, periksa riwayat pengiriman.</p><Button type="button" variant="outline" onClick={closeDialog}>Tutup dan periksa ulang</Button></div>}
           </form>
         )}
       </Dialog>
@@ -910,6 +859,6 @@ export function OperationsPanel({
 
 function SentNotifications({value}:{value:unknown}){
  if(!Array.isArray(value))return <p role="status">Memuat riwayat pengiriman…</p>;
- const rows=value as {id:string;title?:string;priority?:string;message:string;created_at:string;receipts:{student:string;read_at:string|null}[]|null}[];
+ const rows=sentNotificationsSchema.parse(value);
  return <div className="stack">{!rows.length&&<p>Belum ada pengiriman.</p>}{rows.map(m=><article className="notification-card" key={m.id}><h2>{m.title||'Pesan petugas'}</h2><p>{m.priority==='important'?'Penting':'Informasi'} · {new Date(m.created_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})} WIB</p><p className="answer-text">{m.message}</p><p>{m.receipts?.filter(r=>!!r.read_at).length||0} / {m.receipts?.length||0} penerima berizin sudah membaca.</p><details><summary>Status penerima</summary><ul>{m.receipts?.map((r,i)=><li key={i}>{r.student} · {r.read_at?'Sudah dibaca':'Belum dibaca'}</li>)}</ul></details></article>)}<p className="muted">Status dibaca tidak membuktikan tindakan sudah diselesaikan.</p></div>;
 }
