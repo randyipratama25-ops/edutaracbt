@@ -21,7 +21,7 @@ import {
 } from "../../lib/system/contracts";
 type Values = z.infer<typeof settingsSchema>;
 const policyLabels = {
-  canvas_enabled: "Canvas untuk attempt baru",
+  canvas_enabled: "Area gambar untuk pengerjaan baru",
   results_enabled: "Hasil yang diterbitkan dapat dilihat siswa",
   automation_enabled: "Otomasi jadwal, timeout, backup dan retensi",
   reminders_enabled: "Email pengingat kepada Guru terverifikasi",
@@ -492,7 +492,7 @@ export function SettingsPanel() {
                   ))}
                 </div>
                 <p className="muted">
-                  Canvas berlaku untuk attempt baru. Hasil tetap memerlukan
+                  Area gambar berlaku untuk pengerjaan baru. Hasil tetap memerlukan
                   publikasi Admin. Backup mingguan/semester serta retensi
                   mengikuti otomasi; dua backup terakhir tetap dipertahankan.
                 </p>

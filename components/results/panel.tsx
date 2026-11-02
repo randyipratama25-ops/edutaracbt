@@ -15,6 +15,8 @@ import {AnalysisView} from "./analysis-view";
 import type { analyze } from "../../lib/results/analytics";
 import { reportKinds, reportLabels } from "../../lib/reports/schema";
 import type { ReportSettings } from "../../lib/reports/render";
+const resultStatus: Record<string,string> = {not_started:"Belum mulai",in_progress:"Berlangsung",submitted:"Dikumpulkan",graded:"Dinilai",time_expired:"Waktu habis",disqualified:"Diskualifikasi",reset:"Diatur ulang"};
+const exportStatus: Record<string,string> = {queued:"Menunggu",running:"Diproses",ready:"Siap diunduh",failed:"Gagal",cancelled:"Dibatalkan"};
 const Preview = dynamic(
   () => import("../authoring/preview").then((m) => m.QuestionPreview),
   { ssr: false },
@@ -404,8 +406,8 @@ export function ResultsPanel({
                     </small>
                   </td>
                   <td>
-                    {r.status}
-                    {r.pending > 0 && <p>{r.pending} esai pending</p>}
+                    {resultStatus[r.status] ?? r.status}
+                    {r.pending > 0 && <p>{r.pending} esai belum dikoreksi</p>}
                   </td>
                   <td>{r.score === null ? "Menunggu" : r.score}</td>
                   <td>
@@ -455,8 +457,7 @@ export function ResultsPanel({
         </h2>
         <p>
           Terpilih {ids.length} / 500 hasil. Pilihan dipertahankan antar halaman dan dibersihkan saat filter berubah.
-          Pilih maksimal 500 hasil. Ekspor mempertahankan revisi ledger saat job
-          dibuat.
+          Ekspor menggunakan revisi nilai saat laporan dibuat.
         </p>
         <div className="actions">
           {analyticsFirst&&analysisAction}
@@ -537,7 +538,7 @@ export function ResultsPanel({
                 });
                 await loadJobs();
                 setMessage(
-                  "Job ekspor dibuat. Unduh setelah progres 100%. PDF dapat dicetak dari pembaca PDF.",
+                  "Proses ekspor dibuat. Unduh setelah progres 100%. PDF dapat dicetak dari pembaca PDF.",
                 );
               })
             }
@@ -554,7 +555,7 @@ export function ResultsPanel({
       {analysisError&&<div className="notice" role="alert"><p>{analysisError}</p><Button disabled={selectionBlocked||!ids.length} onClick={()=>void analyzeSelected()}>Coba analisis kembali</Button></div>}
       {analysis&&analysisBasis===selectionKey&&<AnalysisView analysis={analysis} exams={analysisNames}/>}
       <section className="panel stack">
-        <h2>Job ekspor</h2>
+        <h2>Proses ekspor</h2>
         <Button
           variant="outline"
           onClick={() =>
@@ -564,14 +565,14 @@ export function ResultsPanel({
           Muat status ekspor
         </Button>
         {jobsError&&<p role="alert">{jobsError} Status terakhir tetap ditampilkan.</p>}
-        {!jobsError&&!jobs.length && <p>Belum ada job ekspor.</p>}
+        {!jobsError&&!jobs.length && <p>Belum ada proses ekspor.</p>}
         {jobs.map((j) => (
           <div key={j.id}>
             <b>
               {j.kind} / {j.format}
             </b>
             <p>
-              {j.status} · {j.progress}%{j.error ? " — " + j.error : ""}
+              {exportStatus[j.status] ?? j.status} · {j.progress}%{j.error ? " — " + j.error : ""}
             </p>
             {j.status === "ready" ? (
               <a href={"/api/reports/download?job=" + j.id}>

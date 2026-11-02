@@ -149,7 +149,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
               })
             }
           >
-            Ambil alih attempt
+            Ambil alih sesi ujian
           </Button>
         )}
       </>

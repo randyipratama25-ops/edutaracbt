@@ -4,7 +4,7 @@ Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.32 — Penyelarasan
 
 ## Penyelarasan UI dan UX seluruh halaman — 2 November 2026
 
-Inventaris tetap **23 halaman**. Komponen bersama diperbarui untuk hierarki judul, jarak konten, kelompok pencarian/filter, dan dialog. Semua dialog Radix mempertahankan portal, focus trap, pengembalian fokus, kontrol penutupan serta penguncian selama simpan. Area formulir tetap dapat digulir pada layar pendek; tabel mempertahankan area gulir sendiri. Tidak ada perubahan skema, API, hak akses, struktur data atau aturan penilaian; tidak diperlukan migrasi database.
+Inventaris tetap **23 halaman**. Komponen bersama diperbarui untuk hierarki judul, jarak konten, kelompok pencarian/filter, dan dialog. Seluruh 31 penggunaan dialog pada 19 komponen menerima pembaruan bersama. Dialog Radix mempertahankan portal, focus trap, pengembalian fokus, kontrol penutupan serta penguncian selama simpan. Area formulir tetap dapat digulir pada layar pendek; tabel mempertahankan area gulir sendiri. Tidak ada perubahan skema, API, hak akses, struktur data atau aturan penilaian; tidak diperlukan migrasi database.
 
 Judul halaman menjelaskan alur utama secara singkat. Petunjuk pengguna tentang snapshot, engine, ledger, worker dan hash diganti dengan bahasa tindakan atau konsekuensi yang relevan. Panduan keamanan dan uji koneksi AI tersedia dalam pengungkapan terpisah; persetujuan pengiriman data tetap terlihat dan checkbox memakai baris sentuh yang sesuai. Peringatan kehilangan draf, biaya AI, penyimpanan belum pasti, batas akses, data publik dan keterbatasan SEB tetap tersedia.
 
