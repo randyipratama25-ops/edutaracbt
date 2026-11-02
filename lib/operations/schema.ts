@@ -36,7 +36,7 @@ export const operation = z.discriminatedUnion("action", [
     request_id,
     exam_id,
     id,
-    student_ids,
+    student_ids:student_ids.refine(ids=>new Set(ids).size===ids.length,"Peserta tidak boleh duplikat."),
   }),
   z.object({
     action: z.literal("assign"),

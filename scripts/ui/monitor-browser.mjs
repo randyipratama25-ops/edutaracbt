@@ -110,7 +110,7 @@ try {
     }
     return respond(r,200,[]);
   });
-  const click=async(text,scope='')=>page.evaluate(({text,scope})=>{const root=scope?document.querySelector(scope):document;const b=[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===text&&!b.matches(':disabled'));if(!b)throw Error('Unavailable '+text);b.focus();b.click();},{text,scope});
+  const click=async(text,scope='')=>{await page.waitForFunction(({text,scope})=>{const root=scope?document.querySelector(scope):document;return !!root&&[...root.querySelectorAll('button')].some(b=>b.textContent.trim()===text&&!b.matches(':disabled'));},{timeout:15000},{text,scope});return page.evaluate(({text,scope})=>{const root=scope?document.querySelector(scope):document;const b=[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===text&&!b.matches(':disabled'));if(!b)throw Error('Unavailable '+text);b.focus();b.click();},{text,scope});};
   const fill=async(selector,value)=>{const e=await page.$(selector);await e.focus();await page.keyboard.down('Control');await page.keyboard.press('A');await page.keyboard.up('Control');await e.press('Backspace');if(value)await e.type(value);};
   const ready=async()=>page.waitForFunction(()=>document.querySelector('.monitor-freshness')?.textContent.includes('Pembaruan terakhir:'));
   const go=async(role='admin',room=false)=>{audience=role;mode='ok';postMode='ok';historyMode='ok';optionMode='ok';await page.goto(origin+path+'?role='+role+(room?'&rooms=1':''),{waitUntil:'networkidle0'});await ready();};

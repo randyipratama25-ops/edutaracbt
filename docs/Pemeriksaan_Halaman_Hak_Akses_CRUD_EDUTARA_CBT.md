@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.29 — Audit Kartu peserta.
+Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.30 — Audit Ruang, sesi dan pengawas.
+
+## Audit Ruang, sesi dan pengawas — 2 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/rooms` hanya Admin dalam konteks staf; API pembacaan rooms dan seluruh mutasi ruang/sesi/roster/penugasan memeriksa hak yang sama sebelum RPC. Batas organisasi, kapasitas nol tanpa batas, roster peserta yang sudah mulai terkunci, penugasan efektif dan perlindungan riwayat tetap berlaku.
+
+Tampilan ruang dipisahkan dari aturan kolom checkbox monitor. Ada ringkasan, pencarian ruang/sesi/pengawas, pagination 25 dengan clamp, empty/loading/error state dan daftar sesi responsif. Penghapusan ruang/sesi yang masih dirujuk dijelaskan dan dinonaktifkan pada UI; database tetap otoritatif. Penugasan memerlukan ruang/sesi/staf aktif, pengganti mengecualikan pengawas asal, pencabutan hanya ditawarkan bila ada pengganti yang belum dicabut.
+
+Dialog memakai judul dan identitas sasaran; roster memiliki pencarian, pagination 25, pilihan unik maksimal 500, pilih hasil dan kosongkan. Pilihan bertahan antarhalaman/pencarian dalam dialog dan dibersihkan ketika dialog dibuka kembali. Muatan/waktu divalidasi, isian serta penutupan dikunci selama submit. Hasil tak pasti/konflik meminta pemeriksaan daftar; request_id tetap untuk payload sama, tanpa retry mutation otomatis.
+
+Waktu sesi dan periode pengganti ditampilkan/diisi sebagai WIB, dikonversi eksplisit ke UTC, tidak mengikuti zona waktu perangkat. Pembacaan memakai kontrak/abort/generation/single-flight yang sudah ada dan polling dijeda saat dialog. API menolak peserta duplikat, receipt salah, acknowledgement saved:false serta akses non-Admin.
+
+Migrasi `rooms_audit` memperbaiki update sesi yang tidak menemukan target: kini konflik, bukan receipt sukses palsu. Hanya definisi fungsi terkait yang diubah; data, ledger, grant, RLS, audit, idempotensi dan struktur tabel dipertahankan. Pengujian staging/isolasi, browser dan regresi monitor dijelaskan di `docs/rooms-audit.md`.
 
 ## Audit Kartu peserta — 2 November 2026
 

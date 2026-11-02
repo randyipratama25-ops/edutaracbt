@@ -531,3 +531,28 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .cards-job a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline}
 .cards-page .actions{flex-wrap:wrap}
 @media(max-width:640px){.cards-filter-grid,.cards-jobs{grid-template-columns:minmax(0,1fr)}.cards-page .actions>button{flex:1 1 140px;white-space:normal;min-height:44px}.cards-controls select{min-height:44px}}
+
+/* Rooms has identity columns, unlike the monitor selection column. */
+.rooms-page,.rooms-overview,.rooms-dialog{min-width:0;overflow-wrap:anywhere}
+.rooms-page .table-wrap{max-height:65vh}
+.rooms-page table{min-width:760px;table-layout:fixed}
+.rooms-page th,.rooms-page td{overflow-wrap:anywhere;vertical-align:top}
+.rooms-page table th:first-child{width:190px;position:sticky;left:0;background:#fff;z-index:2}
+.rooms-page table thead th{position:sticky;top:0;background:#fff;z-index:3}
+.rooms-page table thead th:first-child{z-index:4}
+.rooms-page tbody tr:nth-child(even) :is(td,th){background:#f5f8f7}
+.rooms-page small{display:block;margin-top:.35rem}
+.rooms-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem}
+.rooms-summary>span{padding:1rem;background:var(--primary-soft);border-radius:12px;min-width:0}
+.rooms-summary strong{display:block;font-size:1.5rem}
+.rooms-sessions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.rooms-sessions h3{margin:0}
+.rooms-page .actions,.rooms-dialog .actions{flex-wrap:wrap}
+.rooms-roster{min-width:0;margin:0;padding:0;border:0}
+.rooms-roster .ops-choice-list{max-height:35dvh;min-width:0;overflow:auto;padding:.25rem}
+.rooms-roster .ops-choice-list label{flex-direction:row;min-width:0;min-height:44px;align-items:flex-start;overflow-wrap:anywhere}
+.rooms-roster input[type=checkbox]{width:24px;height:24px;flex:0 0 24px;min-height:24px;margin-top:3px}
+.rooms-roster label span{min-width:0}
+.rooms-dialog input,.rooms-dialog select{min-width:0;max-width:100%}
+.rooms-target{padding:.75rem;border-radius:8px;background:var(--primary-soft)}
+@media(max-width:640px){.rooms-page .toolbar{display:grid;grid-template-columns:minmax(0,1fr)}.rooms-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.rooms-sessions{grid-template-columns:minmax(0,1fr)}.rooms-page .actions>button,.rooms-dialog .actions>button{flex:1 1 140px;white-space:normal;min-height:44px}.rooms-page select,.rooms-dialog select{min-height:44px}.rooms-pagination{justify-content:space-between}}
