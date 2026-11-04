@@ -137,7 +137,7 @@ try {
           };
         if (action === "publish") {
           published = true;
-          result = { published: true };
+          result = { published: true, id: eid };
         }
         if (action === "signals")
           result = [
@@ -174,8 +174,9 @@ try {
             resolved_at: new Date().toISOString(),
           }));
           resolved = true;
+          result = {resolved:true};
         }
-        if (action === "extend") extension = true;
+        if (action === "extend") {extension = true;result={deadline_at:new Date(Date.now()+600000).toISOString(),minutes:input.minutes};}
         if (action === "import_preview")
           result = input.items.map((i) => ({
             username: i.username,
@@ -186,6 +187,7 @@ try {
       if (url.pathname === "/api/authoring") {
         if (request.method() === "GET")
           result = {
+            canManage: !teacher,
             classes: [{ id: classId, name: "IX A" }],
             subjects: [{ id: classId, name: "IPS" }],
           };

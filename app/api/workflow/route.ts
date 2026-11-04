@@ -7,6 +7,10 @@ import {
   json,
   requireOrigin,
 } from "../../../lib/http";
+import {
+  preparationDataSchema,
+  publishReceipt,
+} from "../../../lib/workflow/preparation-contracts";
 import { resultData } from "../../../lib/results/server";
 import {
   signalsSchema,
@@ -45,7 +49,7 @@ export async function GET(request: Request) {
         ? signalsSchema
         : action === "help_list"
           ? helpListSchema
-          : null;
+          : preparationDataSchema;
     if (schema && !schema.safeParse(value).success)
       throw new HttpError(
         503,
@@ -77,16 +81,18 @@ export async function POST(request: Request) {
       throw new HttpError(409, error.message);
     const value = resultData({ data, error }, true);
     const schema =
-      input.action === "resolve"
-        ? z.object({ resolved: z.literal(true) })
-        : input.action === "extend"
-          ? z.object({
-              deadline_at: z
-                .string()
-                .refine((v) => Number.isFinite(Date.parse(v))),
-              minutes: z.literal(input.minutes),
-            })
-          : null;
+      input.action === "publish"
+        ? publishReceipt(input.exam_id)
+        : input.action === "resolve"
+          ? z.object({ resolved: z.literal(true) })
+          : input.action === "extend"
+            ? z.object({
+                deadline_at: z
+                  .string()
+                  .refine((v) => Number.isFinite(Date.parse(v))),
+                minutes: z.literal(input.minutes),
+              })
+            : null;
     if (schema && !schema.safeParse(value).success)
       throw new HttpError(
         503,
