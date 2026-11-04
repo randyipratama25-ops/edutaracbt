@@ -1,5 +1,5 @@
 "use client";
-import {FeedbackMessage} from "../feedback/state";
+import { FeedbackMessage } from "../feedback/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useLive, type Options } from "./shared";
@@ -23,7 +23,11 @@ const statusLabel = {
   ready: "Siap diunduh",
   failed: "Gagal",
 };
-export function CardsPanel() {
+export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
+  const enabledRef = useRef(enabled);
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
   const [options, setOptions] = useState<Options | null>(null),
     [optionError, setOptionError] = useState(""),
     [optionLoading, setOptionLoading] = useState(true),
@@ -63,6 +67,7 @@ export function CardsPanel() {
     };
   }, [invalidate]);
   useEffect(() => {
+    if (!enabled) return;
     const c = new AbortController();
     let active = true;
     setOptionLoading(true);
@@ -71,7 +76,11 @@ export function CardsPanel() {
       .then((d) => {
         if (active) {
           setOptions(d);
-          setExam((current) => current || d.exams[0]?.id || "");
+          setExam((current) =>
+            d.exams.some((e) => e.id === current)
+              ? current
+              : d.exams[0]?.id || "",
+          );
         }
       })
       .catch((e) => {
@@ -84,9 +93,15 @@ export function CardsPanel() {
       active = false;
       c.abort();
     };
-  }, [optionRetry]);
+  }, [optionRetry, enabled]);
   const load = useCallback(async () => {
-    if (!live.current || writing.current || flight.current) return;
+    if (
+      !enabledRef.current ||
+      !live.current ||
+      writing.current ||
+      flight.current
+    )
+      return;
     const c = new AbortController(),
       g = generation.current;
     flight.current = c;
@@ -135,14 +150,17 @@ export function CardsPanel() {
   }, [exam]);
   useEffect(() => {
     invalidate();
-    setRows([]);
-    setSelected([]);
+    if (!enabled) {
+      setLoading(false);
+      setJobsLoading(false);
+      return invalidate;
+    }
     setListError("");
     setLoading(Boolean(exam));
     void load();
     return invalidate;
-  }, [exam, load, invalidate]);
-  useLive(load);
+  }, [exam, load, invalidate, enabled]);
+  useLive(load, false, enabled);
   const shown = rows.filter((r) =>
       matchesSearch(r.student + " " + r.username, search),
     ),
@@ -347,9 +365,15 @@ export function CardsPanel() {
             gabungan.
           </FeedbackMessage>
         )}
-        {listError && <FeedbackMessage tone="error" role="alert">{listError}</FeedbackMessage>}
+        {listError && (
+          <FeedbackMessage tone="error" role="alert">
+            {listError}
+          </FeedbackMessage>
+        )}
         {loading && rows.length === 0 ? (
-          <FeedbackMessage tone="loading" role="status">Memuat peserta…</FeedbackMessage>
+          <FeedbackMessage tone="loading" role="status">
+            Memuat peserta…
+          </FeedbackMessage>
         ) : !exam ? (
           <p>Pilih ujian untuk melihat peserta.</p>
         ) : !shown.length && !listError ? (
@@ -450,7 +474,11 @@ export function CardsPanel() {
               aria-label={`Progres ${j.format.toUpperCase()} ${j.progress}%`}
             />
             <span>{j.progress}%</span>
-            {j.error && <FeedbackMessage tone="error" role="alert">{j.error}</FeedbackMessage>}
+            {j.error && (
+              <FeedbackMessage tone="error" role="alert">
+                {j.error}
+              </FeedbackMessage>
+            )}
             {j.status === "ready" ? (
               <a href={"/api/cards/download?id=" + j.id}>Unduh kartu</a>
             ) : (

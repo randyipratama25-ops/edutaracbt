@@ -1,12 +1,25 @@
 "use client";
-import {feedbackJSON} from "../../lib/client/feedback-transport";
+import { feedbackJSON } from "../../lib/client/feedback-transport";
 
 import { useEffect, useRef } from "react";
 export class ApiError extends Error {
-  constructor(message: string, public status?: number) { super(message); }
+  constructor(
+    message: string,
+    public status?: number,
+  ) {
+    super(message);
+  }
 }
-export async function api<T>(url: string, input?: object, options?: {signal?: AbortSignal; validateEnvelope?: boolean}): Promise<T> {
-  const {response:r,data:j} = await feedbackJSON<{success?:unknown;data:T;error?:{message?:unknown}}>(
+export async function api<T>(
+  url: string,
+  input?: object,
+  options?: { signal?: AbortSignal; validateEnvelope?: boolean },
+): Promise<T> {
+  const { response: r, data: j } = await feedbackJSON<{
+    success?: unknown;
+    data: T;
+    error?: { message?: unknown };
+  }>(
     url,
     input
       ? {
@@ -17,16 +30,31 @@ export async function api<T>(url: string, input?: object, options?: {signal?: Ab
         }
       : { cache: "no-store", signal: options?.signal },
   );
-  if (!r.ok) throw new ApiError(typeof j?.error?.message === "string" ? j.error.message : "Permintaan gagal.", r.status);
-  if (options?.validateEnvelope && (!j || typeof j !== "object" || j.success !== true || !("data" in j))) throw Error("Respons tidak valid.");
+  if (!r.ok)
+    throw new ApiError(
+      typeof j?.error?.message === "string"
+        ? j.error.message
+        : "Permintaan gagal.",
+      r.status,
+    );
+  if (
+    options?.validateEnvelope &&
+    (!j || typeof j !== "object" || j.success !== true || !("data" in j))
+  )
+    throw Error("Respons tidak valid.");
   return j.data as T;
 }
-export function useLive(load: () => Promise<void>, inbox = false) {
+export function useLive(
+  load: () => Promise<void>,
+  inbox = false,
+  enabled = true,
+) {
   const current = useRef(load);
   useEffect(() => {
     current.current = load;
   }, [load]);
   useEffect(() => {
+    if (!enabled) return;
     let active = true,
       running = false;
     const refresh = async () => {
@@ -34,6 +62,8 @@ export function useLive(load: () => Promise<void>, inbox = false) {
       running = true;
       try {
         await current.current();
+      } catch {
+        // Panels own their error feedback; never leak a rejected timer/SSE task.
       } finally {
         running = false;
       }
@@ -51,7 +81,7 @@ export function useLive(load: () => Promise<void>, inbox = false) {
       source.close();
       window.removeEventListener("online", focus);
     };
-  }, [inbox]);
+  }, [inbox, enabled]);
 }
 export type Option = { id: string; title: string };
 export type Options = {

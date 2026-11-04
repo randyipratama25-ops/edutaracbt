@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.36 — Audit Portal siswa.
+Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.37 — Audit Portal pengawas.
+
+## Audit Portal pengawas — 4 November 2026
+
+Inventaris tetap **23 halaman**. `/supervisor` hanya untuk Pengawas atau Guru dalam konteks pengawas dengan penugasan efektif yang diverifikasi actor/RPC. Tindakan reset, buka kunci, diskualifikasi, pesan, riwayat, bantuan/tanggapan dan kartu peserta dipertahankan. Pengelolaan ruang/sesi/penugasan dan dispensasi waktu tetap hanya Admin; tidak menambah hak CRUD pengawas, mengubah RLS, data jawaban, deadline atau rumus penilaian. Tidak diperlukan migrasi database atau dependency baru.
+
+Dialog bantuan mengunci operasi sinkron, membekukan sasaran dan menjeda monitor induk. Pembacaan bantuan dibatasi, dibatalkan dan diberi generation agar respons lama tidak menimpa sesi dialog. Sukses tindakan dibedakan dari kegagalan refresh. API memvalidasi daftar/riwayat/sinyal/bantuan, ID duplikat dan receipt; batch intervensi memerlukan hasil untuk seluruh target. Respons parsial/malformed menjadi hasil belum pasti, tanpa retry mutation otomatis atau penghapusan isian gagal.
+
+Bantuan menyediakan pencarian, filter menunggu/ditangani/semua dan pagination 10 baris. Indikator jeda tidak lagi dinyatakan terus memuat. Riwayat menampilkan lini masa kejadian/tindakan, alasan, status perhitungan insiden dan waktu WIB; rincian bukti tetap dapat dibuka. Pintasan bantuan menuju panel yang sesuai. Pintasan kartu membuka panel tertutup; pemuatan kartu dimulai saat diperlukan, polling berhenti saat ditutup, pilihan dan identitas retry tetap dipertahankan.
+
+Header, filter bantuan, teks panjang, tombol sentuh, tabel dengan gulir lokal dan dialog memakai batas viewport. Total tetap **34 penggunaan Dialog pada 20 komponen**. Validasi otomatis: 461 tes lulus/3 dilewati, lint/typecheck/build serta regresi database operasional/workflow. Bukti dan batas pengujian tercatat dalam `docs/supervisor-page-audit.md`; browser memakai API simulasi, tanpa intervensi, pesan atau data bantuan palsu pada ujian produksi.
 
 ## Audit Portal siswa — 4 November 2026
 
@@ -448,7 +458,7 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 15 | Audit aktivitas | `/dashboard/audit` | Menelusuri tindakan, pelaku, sasaran dan waktu untuk pengawasan operasional. | Admin saja | R; tidak ada edit/hapus audit melalui halaman. |
 | 16 | Otomasi dan backup | `/dashboard/jobs` | Memantau pekerjaan, meminta backup/probe SMTP, retry, membatalkan backup dan rekonsiliasi status email yang tidak pasti. | Admin saja | C pekerjaan, R status/unduhan, U tindakan terkontrol; bukan halaman restore atau hapus semua data. |
 | 17 | Portal siswa / player ujian | `/student` | Daftar ujian sendiri, mulai/lanjut ujian, jawaban/canvas, sinkronisasi, submit, hasil yang diizinkan, kotak pesan dan permintaan bantuan. | Siswa dalam konteks siswa | C attempt/jawaban sendiri; R sendiri; U jawaban selama ujian terbuka dan status baca pesan; tidak ada D attempt/hasil. |
-| 18 | Portal pengawas | `/supervisor` | Monitoring peserta dan intervensi pada ruang/sesi tugas efektif; pesan, bantuan/tanggapan, indikator koneksi, riwayat, serta kartu peserta dalam panel tambahan. | Pengawas atau Guru dalam konteks pengawas dengan penugasan sah | R peserta tugas, U reset/unlock/diskualifikasi beralasan, C pesan/kartu dalam cakupan; tidak mengelola ruang/penugasan. |
+| 18 | Portal pengawas | `/supervisor` | Monitoring peserta dan intervensi pada ruang/sesi tugas efektif; pesan, bantuan dengan pencarian/filter/pagination, indikator koneksi, lini masa riwayat, serta kartu peserta yang dimuat saat dibuka. Pemeriksaan receipt dan jeda dialog/panel menjaga konsistensi. | Pengawas atau Guru dalam konteks pengawas dengan penugasan sah | R peserta tugas, U reset/unlock/diskualifikasi beralasan, C pesan/kartu dalam cakupan; tidak mengelola ruang/penugasan. |
 | 19 | Persiapan ujian | `/dashboard/preparation` | Wizard pembuatan draf, checklist kesiapan, siklus ujian dan publikasi jadwal. | Admin, Guru konteks staf | Admin C/R/U draf dan U publikasi jadwal setelah pemeriksaan; Guru R kesiapan dalam cakupan authoring. Tidak ada D permanen. |
 | 20 | Bank soal | `/dashboard/bank` | Taksonomi, versi, review, impor, kisi-kisi, paket dan kualitas butir. | Admin, Guru konteks staf | C/R sesuai organisasi/seluruh kelas–mapel; U konten pemilik/Admin, review penilai lain; arsip tanpa D permanen. |
 | 21 | Koreksi dan moderasi | `/dashboard/grading` | Koreksi anonim, rubrik kriteria, moderasi dan jadwal publikasi. | Admin, Guru konteks staf | C/R/U penilaian dalam cakupan snapshot; keputusan moderasi oleh penilai lain; publikasi dan jadwal hanya Admin; tanpa D riwayat. |

@@ -1,0 +1,27 @@
+import React,{act} from 'react';
+import {create} from 'react-test-renderer';
+import {afterEach,it,expect,vi} from 'vitest';
+vi.mock('../lib/client/request',()=>({clientRequest:vi.fn(),ClientRequestError:class extends Error{}}));
+vi.mock('../components/operations/shared',()=>({useLive:vi.fn()}));
+import {clientRequest} from '../lib/client/request';
+import {CardsPanel} from '../components/operations/cards';
+let root;
+const id=n=>`07000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+afterEach(async()=>{if(root)await act(async()=>root.unmount());root=null;vi.clearAllMocks();});
+it('does not fetch hidden cards and preserves selection when collapsed/reopened',async()=>{
+ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+ clientRequest.mockImplementation(async url=>url==='/api/operations'?{admin:false,organization_id:id(90),exams:[{id:id(1),title:'Ujian'}],staff:[]}:url==='/api/cards'?[]:[{student_id:id(2),student:'Siswa uji',username:'siswa',room:null}]);
+ await act(async()=>{root=create(React.createElement(CardsPanel,{enabled:false}));});
+ expect(clientRequest).not.toHaveBeenCalled();
+ await act(async()=>root.update(React.createElement(CardsPanel,{enabled:true})));
+ const checkbox=root.root.findAllByType('input').find(n=>n.props.type==='checkbox');
+ await act(async()=>checkbox.props.onChange({target:{checked:true}}));
+ expect(checkbox.props.checked).toBe(true);
+ await act(async()=>root.update(React.createElement(CardsPanel,{enabled:false})));
+ const before=clientRequest.mock.calls.length;
+ const refresh=root.root.findAllByType('button').find(b=>JSON.stringify(b.children).includes('Perbarui status'));
+ await act(async()=>refresh.props.onClick());
+ expect(clientRequest.mock.calls).toHaveLength(before);
+ await act(async()=>root.update(React.createElement(CardsPanel,{enabled:true})));
+ expect(root.root.findAllByType('input').find(n=>n.props.type==='checkbox').props.checked).toBe(true);
+});
