@@ -1,3 +1,4 @@
+import {FeedbackMessage} from "../feedback/state";
 import { RoleActions } from "./role-actions";
 import { GradingPriority } from "./grading-priority";
 import { PageHeading } from "../layout/page-heading";
@@ -43,9 +44,9 @@ export function DashboardOverview({
                   {count === null ? "—" : formatCount(count)}
                 </strong>
                 {count === null && (
-                  <p role="status">
+                  <FeedbackMessage tone="info" role="status">
                     Data belum dapat dimuat. Perbarui untuk mencoba lagi.
-                  </p>
+                  </FeedbackMessage>
                 )}
               </section>
             ))}

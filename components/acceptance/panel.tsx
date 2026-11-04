@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -83,11 +84,11 @@ export function AcceptancePanel() {
         petugas menyiapkan bukti; pengesahan dilakukan setelah UAT dan
         pemeriksaan artefak asli.
       </p>
-      {loading && <p role="status">Memuat kondisi operasional…</p>}
+      {loading && <FeedbackMessage tone="loading" role="status">Memuat kondisi operasional…</FeedbackMessage>}
       {error && (
-        <p role="alert">
+        <FeedbackMessage tone="error" role="alert">
           {error} Gunakan tombol muat ulang untuk mencoba kembali.
-        </p>
+        </FeedbackMessage>
       )}
       {data && !loading && (
         <>

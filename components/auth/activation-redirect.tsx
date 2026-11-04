@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 
 import { useEffect, useRef, useState } from "react";
 import { homeCallback } from "../../lib/auth/home-callback";
@@ -30,6 +31,6 @@ export function ActivationRedirect() {
     };
   }, []);
   if (status === "idle") return null;
-  if (status === "redirecting") return <p className="notice home-feedback" role="status">Membuka pengaturan password…</p>;
-  return <p className="home-feedback" role="alert">Tautan akun tidak lengkap atau sudah tidak berlaku. Gunakan tautan terbaru dari email, minta Admin mengirim ulang undangan, atau pilih Lupa password pada halaman masuk.</p>;
+  if (status === "redirecting") return <FeedbackMessage tone="info" className="notice home-feedback" role="status">Membuka pengaturan password…</FeedbackMessage>;
+  return <FeedbackMessage tone="error" className="home-feedback" role="alert">Tautan akun tidak lengkap atau sudah tidak berlaku. Gunakan tautan terbaru dari email, minta Admin mengirim ulang undangan, atau pilih Lupa password pada halaman masuk.</FeedbackMessage>;
 }

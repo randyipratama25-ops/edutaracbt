@@ -1,4 +1,7 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
+import {FeedbackMessage, StateCard} from "../feedback/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { z } from "zod";
@@ -200,7 +203,7 @@ export function MediaPanel({ admin = false }: { admin?: boolean }) {
         form.set("file", f);
         let rejected = false;
         try {
-          const r = await fetch("/api/authoring/media", {
+          const r = await feedbackFetch("/api/authoring/media", {
             method: "POST",
             body: form,
             signal: AbortSignal.any([c.signal, AbortSignal.timeout(35000)]),
@@ -354,9 +357,9 @@ export function MediaPanel({ admin = false }: { admin?: boolean }) {
             per batch, 5 MiB per berkas.
           </p>
         </div>
-        <p role="status" aria-live="polite" hidden={!progress&&!message}>
+        <FeedbackMessage tone="info" role="status" aria-live="polite" hidden={!progress&&!message}>
           {progress} {message}
-        </p>
+        </FeedbackMessage>
         <ListFilters
           label="media soal"
           active={
@@ -500,12 +503,12 @@ export function MediaPanel({ admin = false }: { admin?: boolean }) {
           </div>
         )}
         {!loading && !listError && !shown.length && (
-          <div className="empty-state">
+          <StateCard kind="no-results" className="empty-state">
             <h2>Belum ada media yang cocok</h2>
             <p>Unggah berkas atau ubah pencarian dan filter.</p>
-          </div>
+          </StateCard>
         )}
-        {cleanupError && <p role="alert">{cleanupError}</p>}
+        {cleanupError && <FeedbackMessage tone="error" role="alert">{cleanupError}</FeedbackMessage>}
         {!!cleanup.length && (
           <details>
             <summary>Pembersihan tertunda ({cleanup.length})</summary>
@@ -624,7 +627,7 @@ export function MediaPanel({ admin = false }: { admin?: boolean }) {
         <Button disabled={busy || uncertain} onClick={() => void remove()}>
           {busy ? "Menghapus…" : "Hapus permanen"}
         </Button>
-        <p role="status">{message}</p>
+        <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
         {uncertain && (
           <Button
             variant="outline"
@@ -709,7 +712,7 @@ function MediaPreview({ media }: { media: Media }) {
           </Button>
         </div>
       ) : !url ? (
-        <p role="status">Memuat pratinjau…</p>
+        <FeedbackMessage tone="loading" role="status">Memuat pratinjau…</FeedbackMessage>
       ) : media.mime_type.startsWith("image/") ? (
         <Image
           src={url}

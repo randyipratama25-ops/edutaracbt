@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 import {useCallback,useEffect,useId,useRef,useState} from 'react';
 import {api,useLive} from './shared';
 import {Button} from '../ui/button';
@@ -27,11 +28,11 @@ export function Inbox(){
  const unreadIds=data?.rows.filter(m=>!m.read_at).map(m=>m.id)||[];
  return <section className="panel inbox-panel stack" aria-label="Notifikasi petugas">
   <div className="actions"><Button ref={toggle} type="button" variant="outline" aria-expanded={open} aria-controls={id} onClick={()=>setOpen(v=>!v)}>Notifikasi{data?` (${data.unread_total} belum dibaca)`:loading?' · memuat…':''}</Button>{error&&<Button type="button" variant="outline" onClick={()=>void load()}>Coba muat notifikasi</Button>}</div>
-  {error&&<p role="alert">{error}{data?' Menampilkan data terakhir yang berhasil dimuat.':''}</p>}
-  <p role="status" aria-live="polite">{notice}</p>
+  {error&&<FeedbackMessage tone="error" role="alert">{error}{data?' Menampilkan data terakhir yang berhasil dimuat.':''}</FeedbackMessage>}
+  <FeedbackMessage tone="info" role="status" aria-live="polite">{notice}</FeedbackMessage>
   <div id={id} hidden={!open} className="stack">
    <div className="toolbar"><label>Tampilkan<select disabled={!!busy} value={filter} onChange={e=>{setFilter(e.target.value);setPage(1);setNotice('');}}><option value="all">Semua notifikasi</option><option value="unread">Belum dibaca</option></select></label><Button type="button" variant="outline" disabled={!!busy||!unreadIds.length||loading||!!error} onClick={()=>void read(unreadIds)}>Tandai halaman dibaca</Button></div>
-   {loading?<p role="status">Memuat notifikasi…</p>:!error&&data?.rows.length===0?<p>{filter==='unread'?'Tidak ada notifikasi belum dibaca.':'Belum ada notifikasi.'}</p>:null}
+   {loading?<FeedbackMessage tone="loading" role="status">Memuat notifikasi…</FeedbackMessage>:!error&&data?.rows.length===0?<p>{filter==='unread'?'Tidak ada notifikasi belum dibaca.':'Belum ada notifikasi.'}</p>:null}
    <div className="notification-list" role="region" aria-label="Daftar notifikasi" tabIndex={0}>{data?.rows.map(m=><article key={m.id} className={`notification-card${m.read_at?'':' is-unread'}`}>
     <div className="actions"><strong>{m.priority==='important'?'Penting':'Informasi'} · {m.read_at?'Sudah dibaca':'Belum dibaca'}</strong><time dateTime={m.created_at}>{new Date(m.created_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})} WIB</time></div>
     <h2>{m.title||'Pesan petugas'}</h2><p className="answer-text">{m.message}</p>

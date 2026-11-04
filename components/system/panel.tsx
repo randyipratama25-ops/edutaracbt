@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import {AuditPanel} from "./audit";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
@@ -79,7 +81,7 @@ function SystemLists(){
   }
   return (
     <section className="panel stack">
-      <p role="status">{message}</p>
+      <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
       {(
         <>
           <div className="actions">
@@ -259,7 +261,7 @@ function SystemLists(){
         }
         description="Periksa status pengiriman sebelum mengonfirmasi. Email yang belum terkirim dapat dijadwalkan ulang jika penerima masih memenuhi syarat."
       >
-        <form
+        <ValidatedForm
           className="stack"
           onSubmit={(e) => {
             e.preventDefault();
@@ -290,9 +292,9 @@ function SystemLists(){
               onChange={(e) => setDecisionConfirm(e.target.value)}
             />
           </label>
-          <p role="status">{message}</p>
+          <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
           <Button disabled={busy}>Konfirmasi tindakan</Button>
-        </form>
+        </ValidatedForm>
       </Dialog>
     </section>
   );

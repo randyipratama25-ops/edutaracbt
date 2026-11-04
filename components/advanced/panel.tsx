@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
@@ -126,9 +128,9 @@ export function AdvancedPanel() {
   }
   return (
     <div className="stack">
-      <p role="status" aria-live="polite">
+      <FeedbackMessage tone="info" role="status" aria-live="polite">
         {message}
-      </p>
+      </FeedbackMessage>
       <section className="panel stack">
         <h2>Uji kompatibilitas Safe Exam Browser</h2>
         <p>
@@ -149,7 +151,7 @@ export function AdvancedPanel() {
           Key/Config Key. Petunjuk browser dapat dipalsukan; hasil deteksi bukan
           bukti keamanan SEB.
         </p></HelpDisclosure>
-        {local && <p role="status">{local}</p>}
+        {local && <FeedbackMessage tone="info" role="status">{local}</FeedbackMessage>}
         <HelpDisclosure><p>
           Uji login, soal/rumus, media, canvas, pemulihan koneksi dan submit
           pada setiap kombinasi perangkat serta versi SEB. Catat hanya hasil
@@ -176,7 +178,7 @@ export function AdvancedPanel() {
       </section>
       <section className="panel stack">
         <h2>Catat hasil evaluasi perangkat</h2>
-        <form className="stack" onSubmit={(e) => void save(e)} aria-busy={busy}>
+        <ValidatedForm className="stack" onSubmit={(e) => void save(e)} aria-busy={busy}>
           <fieldset className="stack" disabled={busy}>
             <legend>Pengamatan petugas</legend>
             <div className="form-grid">
@@ -267,7 +269,7 @@ export function AdvancedPanel() {
             </p>
             <Button disabled={busy}>Simpan hasil evaluasi</Button>
           </fieldset>
-        </form>
+        </ValidatedForm>
       </section>
       <section className="panel stack">
         <div className="actions">
@@ -284,7 +286,7 @@ export function AdvancedPanel() {
           </Button>
         </div>
         {loading ? (
-          <p role="status">Memuat evaluasi…</p>
+          <FeedbackMessage tone="loading" role="status">Memuat evaluasi…</FeedbackMessage>
         ) : data ? (
           <>
             {!data.rows.length && (

@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 2 November 2026 (WIB). Versi dokumen: 1.33 — Audit aktivitas.
+Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.34 — Feedback dan kondisi aplikasi.
+
+## Feedback dan kondisi aplikasi — 4 November 2026
+
+Inventaris tetap **23 halaman**. Komponen status bersama mencakup Empty, Loading, Error, Offline, Slow Network, No Search Result, Permission Denied, Session Expired, Validasi Form dan Success. Integrasi pada 112 pesan status, 33 formulir dan 12 tampilan kosong; loading/error boundary root/dashboard/global serta dialog bersama ikut diperbarui. Pemberitahuan koneksi tidak menutup kontrol ujian dan tidak menghapus draf atau melakukan retry mutation baru.
+
+Status offline mengikuti browser; respons tertunda 8 detik menampilkan panduan menunggu. Perubahan halaman membersihkan pemberitahuan akses lama. Respons 401/403 pada area privat diperiksa melalui **GET `/api/auth/session`** yang bersifat read-only, private/no-store, menggunakan pemeriksaan `getUser` server dan hanya mengembalikan status autentikasi tanpa identitas/token. Gangguan layanan Auth tidak dinyatakan sebagai sesi kedaluwarsa. Masuk kembali memakai tab baru, lalu pengguna dapat memeriksa sesi lagi; actor/RLS/izin API tetap berlaku.
+
+Enam halaman Admin menampilkan Permission Denied dan tautan kembali bagi peran yang tidak berhak, tanpa memuat komponen/data privat. Validasi native/handler bisnis tetap berlaku; ringkasan isian invalid dapat diklik untuk fokus dan diperbarui saat isi/struktur form berubah. Sukses eksplisit memakai konfirmasi visual, sedangkan antrean dan hasil belum pasti tetap informatif. Tidak ada skema, role, dependency atau migrasi database baru. Rincian pengujian dan batas pada `docs/feedback-states.md`.
 
 ## Audit aktivitas — 2 November 2026
 

@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import {ListFilters, SearchField} from "../ui/list-filters";
 import { useEffect, useCallback, useRef, useState, type FormEvent } from "react";
 import dynamic from "next/dynamic";
@@ -256,9 +258,9 @@ export function ResultsPanel({
   return (
     <div className={`stack results-page${analyticsFirst?" analytics-page":""}`} aria-busy={busy||loading}>
       <div className="actions"><Button asChild variant="outline"><Link href="/dashboard/grading">Koreksi anonim, rubrik & moderasi</Link></Button></div>
-      <p role="status" aria-live="polite">
+      <FeedbackMessage tone="info" role="status" aria-live="polite">
         {message}
-      </p>
+      </FeedbackMessage>
       {(uncertain||detailStale)&&<div role="alert" className="notice"><p>{uncertain?"Hasil perubahan belum dapat dipastikan. Periksa ulang data sebelum melanjutkan.":"Detail atau revisi belum dapat dimuat. Periksa ulang data sebelum melanjutkan."}</p><Button disabled={busy||loading} onClick={()=>void recover()}>Periksa ulang data</Button></div>}
       {supportError&&<div className="notice" role="status"><p>{supportError}</p><Button disabled={busy} onClick={()=>void loadSupport()}>Muat data pendukung</Button></div>}
       <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
@@ -564,7 +566,7 @@ export function ResultsPanel({
         >
           Muat status ekspor
         </Button>
-        {jobsError&&<p role="alert">{jobsError} Status terakhir tetap ditampilkan.</p>}
+        {jobsError&&<FeedbackMessage tone="error" role="alert">{jobsError} Status terakhir tetap ditampilkan.</FeedbackMessage>}
         {!jobsError&&!jobs.length && <p>Belum ada proses ekspor.</p>}
         {jobs.map((j) => (
           <div key={j.id}>
@@ -606,7 +608,7 @@ export function ResultsPanel({
         description="Periksa jawaban dan masukkan nilai. Biarkan kolom kosong jika belum dikoreksi."
       >
         {detail && (
-          <form className="stack" onSubmit={saveGrades}>
+          <ValidatedForm className="stack" onSubmit={saveGrades}>
             {(uncertain||detailStale)&&<div className="notice" role="alert"><p>Muat ulang detail dan periksa revisi sebelum melanjutkan.</p><Button type="button" disabled={busy||loading} onClick={()=>void recover()}>Periksa ulang data</Button></div>}
             <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
             <h3>
@@ -619,7 +621,7 @@ export function ResultsPanel({
                 : detail.attempt.score}{" "}
               · {detail.attempt.pending} esai pending
             </p>
-            {aiLoading&&<p role="status">Memuat penyedia AI… Koreksi manual tetap tersedia.</p>}{aiError&&<div role="status"><p>{aiError}</p><Button type="button" variant="outline" disabled={aiLoading} onClick={()=>setAiVersion(v=>v+1)}>Muat penyedia AI</Button></div>}
+            {aiLoading&&<FeedbackMessage tone="loading" role="status">Memuat penyedia AI… Koreksi manual tetap tersedia.</FeedbackMessage>}{aiError&&<div role="status"><p>{aiError}</p><Button type="button" variant="outline" disabled={aiLoading} onClick={()=>setAiVersion(v=>v+1)}>Muat penyedia AI</Button></div>}
             <label>Penyedia AI<select disabled={aiLoading||!availableAI.length} value={chosenAI} onChange={e=>setChosenAI(e.target.value)}><option value="">Pilih penyedia aktif</option>{availableAI.map(p=><option key={p.provider} value={p.provider}>{p.provider} · {p.model}</option>)}</select></label>
             {detail.questions.map((q) => (
               <section key={q.id} className="question-preview">
@@ -803,8 +805,8 @@ export function ResultsPanel({
                 )}
               </pre>
             </details>
-            <p role="status">{message}</p></fieldset>
-          </form>
+            <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage></fieldset>
+          </ValidatedForm>
         )}
       </Dialog>
       <Dialog
@@ -814,7 +816,7 @@ export function ResultsPanel({
         title="Koreksi per soal"
         description="Periksa nilai setiap peserta. Semua perubahan disimpan bersamaan."
       >
-        <form
+        <ValidatedForm
           className="stack"
           onSubmit={(e) => {
             e.preventDefault();
@@ -904,9 +906,9 @@ export function ResultsPanel({
               );
             })}
           <Button disabled={busy}>Simpan batch</Button>
-          <p role="status">{message}</p></fieldset>
+          <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage></fieldset>
           {(uncertain||detailStale)&&<Button type="button" disabled={busy} onClick={()=>void recover()}>Periksa ulang data</Button>}
-        </form>
+        </ValidatedForm>
       </Dialog>
       <Dialog
         className="results-dialog"
@@ -915,7 +917,7 @@ export function ResultsPanel({
         title="Rekalkulasi hasil"
         description="Hitung ulang hasil dengan soal dan kunci saat peserta mengerjakan ujian. Perubahan kunci terbaru tidak diterapkan."
       >
-        <form
+        <ValidatedForm
           className="stack"
           onSubmit={(e) => {
             e.preventDefault();
@@ -948,9 +950,9 @@ export function ResultsPanel({
             />
           </label>
           <Button disabled={busy}>Rekalkulasi terpilih</Button>
-          <p role="status">{message}</p></fieldset>
+          <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage></fieldset>
           {(uncertain||detailStale)&&<Button type="button" disabled={busy} onClick={()=>void recover()}>Periksa ulang data</Button>}
-        </form>
+        </ValidatedForm>
       </Dialog>
       <Dialog
         className="results-dialog"
@@ -960,7 +962,7 @@ export function ResultsPanel({
         description="Gunakan logo madrasah dari Media soal. Nama pejabat dicetak sebagai identitas, bukan tanda tangan digital."
       >
         {settingsDraft && (
-          <form
+          <ValidatedForm
             className="stack"
             onSubmit={(e) => {
               e.preventDefault();
@@ -1007,9 +1009,9 @@ export function ResultsPanel({
               </label>
             ))}
             <Button disabled={busy}>Simpan kop</Button>
-            <p role="status">{message}</p></fieldset>
+            <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage></fieldset>
             {(uncertain||detailStale)&&<Button type="button" disabled={busy} onClick={()=>void recover()}>Periksa ulang data</Button>}
-          </form>
+          </ValidatedForm>
         )}
       </Dialog>
     </div>
@@ -1021,6 +1023,6 @@ function AnswerImage({id}:{id:string}){
   void clientRequest('/api/results/media?id='+encodeURIComponent(id)+'&kind=canvas',undefined,z.object({url:z.url()}),c).then(d=>{if(live)setUrl(d.url);}).catch(()=>{if(live)setError('Canvas belum dapat dimuat. Periksa koneksi dan izin lampiran.');});
   return()=>{live=false;c.abort();};
  },[id,version]);
- if(error)return <div className="notice"><p role="status">{error}</p><Button type="button" variant="outline" onClick={()=>setVersion(v=>v+1)}>Coba muat canvas</Button></div>;
- return url?<Image src={url} alt="Canvas jawaban peserta" width={1200} height={800} unoptimized style={{width:'100%',height:'auto'}} onError={()=>setError('Canvas belum dapat ditampilkan.')}/>:<p role="status">Memuat canvas…</p>;
+ if(error)return <div className="notice"><FeedbackMessage tone="info" role="status">{error}</FeedbackMessage><Button type="button" variant="outline" onClick={()=>setVersion(v=>v+1)}>Coba muat canvas</Button></div>;
+ return url?<Image src={url} alt="Canvas jawaban peserta" width={1200} height={800} unoptimized style={{width:'100%',height:'auto'}} onError={()=>setError('Canvas belum dapat ditampilkan.')}/>:<FeedbackMessage tone="loading" role="status">Memuat canvas…</FeedbackMessage>;
 }

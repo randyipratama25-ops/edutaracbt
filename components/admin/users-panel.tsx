@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage, StateCard} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { ListFilters, SearchField } from "../ui/list-filters";
@@ -22,12 +24,12 @@ import {
 type Feedback = { kind: "success" | "error" | "info"; text: string } | null;
 function FeedbackText({ value }: { value: Feedback }) {
   return value ? (
-    <p
+    <FeedbackMessage tone={value.kind}
       role={value.kind === "error" ? "alert" : "status"}
       className="users-feedback"
     >
       {value.text}
-    </p>
+    </FeedbackMessage>
   ) : null;
 }
 type ImportRow = ReturnType<typeof parseUserImport>[number];
@@ -680,16 +682,16 @@ export function UsersPanel() {
         </ListFilters>
         <FeedbackText value={message} />
         {loading ? (
-          <p role="status">Memuat pengguna…</p>
+          <FeedbackMessage tone="loading" role="status">Memuat pengguna…</FeedbackMessage>
         ) : listError ? (
           <p className="muted">Gunakan Muat ulang untuk mencoba lagi.</p>
         ) : !rows.length ? (
-          <div className="empty-state">
+          <StateCard kind="no-results" className="empty-state">
             <p>Tidak ada pengguna sesuai filter.</p>
             <p className="muted">
               Ubah pencarian atau reset filter untuk melihat data lainnya.
             </p>
-          </div>
+          </StateCard>
         ) : null}
         <div
           className="table-wrap users-table"
@@ -854,9 +856,9 @@ export function UsersPanel() {
           </a>
         </div>
         {classesLoading ? (
-          <p role="status">Memuat kelas…</p>
+          <FeedbackMessage tone="loading" role="status">Memuat kelas…</FeedbackMessage>
         ) : classesError ? (
-          <p role="alert">{classesError}</p>
+          <FeedbackMessage tone="error" role="alert">{classesError}</FeedbackMessage>
         ) : !classes.length ? (
           <p className="muted">Belum ada kelas aktif dalam cakupan Anda.</p>
         ) : null}
@@ -966,7 +968,7 @@ export function UsersPanel() {
         }
         className="users-dialog"
       >
-        <form
+        <ValidatedForm
           key={editing?.id || "new"}
           className="stack"
           onSubmit={save}
@@ -1062,10 +1064,10 @@ export function UsersPanel() {
                       </select>
                     </label>
                     {(classesError || !classes.length) && !classesLoading && (
-                      <p role="status">
+                      <FeedbackMessage tone="info" role="status">
                         {classesError ||
                           "Belum ada kelas aktif. Periksa Data akademik atau penugasan bersama Admin."}
-                      </p>
+                      </FeedbackMessage>
                     )}
                     <Button
                       type="button"
@@ -1105,7 +1107,7 @@ export function UsersPanel() {
               {busy ? "Menyimpan…" : "Simpan"}
             </Button>
           </div>
-        </form>
+        </ValidatedForm>
       </Dialog>
       <Dialog
         onCloseAutoFocus={restoreListFocus}
@@ -1174,7 +1176,7 @@ export function UsersPanel() {
             <strong>{invitation?.full_name}</strong> · {invitation?.username}
           </p>
           {invitationLoading ? (
-            <p role="status">Memeriksa status akun…</p>
+            <FeedbackMessage tone="loading" role="status">Memeriksa status akun…</FeedbackMessage>
           ) : invitationInfo ? (
             <>
               <p>

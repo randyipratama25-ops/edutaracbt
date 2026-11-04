@@ -1,4 +1,8 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
+import {FeedbackMessage, StateCard} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { ContextHelp } from "../help/context-help";
 import { DevicePreflight } from "./device-preflight";
 import { StudentHelp } from "../workflow/help";
@@ -93,7 +97,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
   useEffect(() => {
     const controller = new AbortController();
     setListState("loading");
-    fetch("/api/attempts", { signal: controller.signal })
+    feedbackFetch("/api/attempts", { signal: controller.signal })
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) throw Error(j.error?.message);
@@ -157,10 +161,10 @@ export function StudentPortal({ studentId }: { studentId: string }) {
   return (
     <main id="main-content" tabIndex={-1} className="workspace student-shell">
       <header className="student-portal-heading"><div><h1>Ujian saya</h1><p className="muted">Pilih ujian. Siapkan PIN dari pengawas.</p></div><div className="actions"><ContextHelp audience="student" page="/student" /><LogoutButton /></div></header>
-      <p role="status">{message}</p>
-      {listState === "loading" && <section aria-busy="true" aria-label="Memuat daftar ujian" className="stack"><div className="skeleton skeleton-card" /><p role="status">Memuat ujian…</p></section>}
-      {listState === "error" && <section className="empty-state"><h2>Daftar ujian belum dapat dimuat</h2><p>Periksa koneksi, lalu coba kembali.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Coba muat ulang</Button></section>}
-      {listState === "ready" && exams.length === 0 && <section className="empty-state"><ClipboardList size={40} aria-hidden="true" /><h2>Belum ada ujian</h2><p>Ujian untuk kelas Anda akan muncul di sini setelah dijadwalkan.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Periksa lagi</Button></section>}
+      <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
+      {listState === "loading" && <section aria-busy="true" aria-label="Memuat daftar ujian" className="stack"><div className="skeleton skeleton-card" /><FeedbackMessage tone="loading" role="status">Memuat ujian…</FeedbackMessage></section>}
+      {listState === "error" && <StateCard kind="error" className="empty-state"><h2>Daftar ujian belum dapat dimuat</h2><p>Periksa koneksi, lalu coba kembali.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Coba muat ulang</Button></StateCard>}
+      {listState === "ready" && exams.length === 0 && <StateCard kind="empty" className="empty-state"><ClipboardList size={40} aria-hidden="true" /><h2>Belum ada ujian</h2><p>Ujian untuk kelas Anda akan muncul di sini setelah dijadwalkan.</p><Button variant="outline" onClick={() => setListVersion(v => v+1)}>Periksa lagi</Button></StateCard>}
       {listState === "ready" && exams.length > 0 && <section className="role-actions" aria-label="Ringkasan ujian saya">
         <div className="role-action"><strong>Belum dimulai</strong><span className="metric">{exams.filter(e=>!e.attempt && e.status!=="closed").length}</span><span>Periksa jadwal dan siapkan PIN pengawas.</span></div>
         <div className="role-action"><strong>Perlu dilanjutkan</strong><span className="metric">{exams.filter(e=>e.attempt && !e.attempt.finalized_at).length}</span><span>Gunakan tombol Lanjutkan pada kartu ujian.</span></div>
@@ -194,7 +198,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
               Lanjutkan / lihat status
             </Button>
           ) : (
-            <form
+            <ValidatedForm
               className="toolbar"
               onSubmit={(ev) => {
                 ev.preventDefault();
@@ -221,7 +225,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
               </label>
               <Button disabled={busy || !client || !deviceReady}>Mulai ujian</Button>
               {!deviceReady && <p className="muted">Selesaikan pemeriksaan perangkat di atas terlebih dahulu.</p>}
-            </form>
+            </ValidatedForm>
           )}
         </section>
       ))}
@@ -609,11 +613,11 @@ export function ExamPlayer({
       </header>
       <div className="exam-status">
         <span className={`status-pill${!connected ? " is-pending" : ""}`}>{connected ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}{connected ? "Terhubung" : "Koneksi terputus"}</span>
-        <p role="status">{mediaDirty ? "Canvas belum tersimpan" : Object.keys(queue.conflicts).length ? "Ada konflik jawaban" : queue.pendingCount ? `${queue.pendingCount} jawaban menunggu simpan` : <><CheckCircle2 size={14} aria-hidden="true" style={{ display: "inline", verticalAlign: "middle" }} /> Semua perubahan tersimpan</>}</p>
+        <FeedbackMessage tone="info" role="status">{mediaDirty ? "Canvas belum tersimpan" : Object.keys(queue.conflicts).length ? "Ada konflik jawaban" : queue.pendingCount ? `${queue.pendingCount} jawaban menunggu simpan` : <><CheckCircle2 size={14} aria-hidden="true" style={{ display: "inline", verticalAlign: "middle" }} /> Semua perubahan tersimpan</>}</FeedbackMessage>
         {queue.lastSavedAt && <small>Respons terakhir {new Date(queue.lastSavedAt).toLocaleTimeString("id-ID")}</small>}
       </div>
-      {remaining > 0 && remaining <= 300 && <p className="notice" role="status">Waktu tersisa 5 menit atau kurang. Periksa jawaban dan status penyimpanan.</p>}
-      {queue.recoveryMessage && <p role="status" className="notice">{queue.recoveryMessage}</p>}
+      {remaining > 0 && remaining <= 300 && <FeedbackMessage tone="info" className="notice" role="status">Waktu tersisa 5 menit atau kurang. Periksa jawaban dan status penyimpanan.</FeedbackMessage>}
+      {queue.recoveryMessage && <FeedbackMessage tone="info" role="status" className="notice">{queue.recoveryMessage}</FeedbackMessage>}
       {submitUncertain && <section className="notice"><p>Menunggu kepastian pengumpulan. Jangan berpindah perangkat.</p><Button disabled={submitting} onClick={() => void submit(submitMode.current)}>Periksa / ulangi pengumpulan</Button></section>}
       {(queue.pendingCount > 0 || Object.keys(queue.conflicts).length > 0) && <p className="muted">{queue.status}</p>}
       {queue.pendingCount > 0 && (
@@ -621,7 +625,7 @@ export function ExamPlayer({
           Coba simpan lagi
         </Button>
       )}
-      <p role="alert">{message || warning}</p>
+      <FeedbackMessage tone="error" role="alert">{message || warning}</FeedbackMessage>
       {Object.entries(queue.conflicts).map(([id, c]) => (
         <section className="notice" key={id}>
           <p>
@@ -812,7 +816,7 @@ export function ExamPlayer({
               variant="outline"
               onClick={async () => {
                 try {
-                  const r = await fetch("/api/attempts/latex", {
+                  const r = await feedbackFetch("/api/attempts/latex", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ canvas_id: record.canvas_id }),
@@ -888,13 +892,13 @@ export function ExamPlayer({
           } finally { setTransferring(false); }
         }}>{transferring ? "Menyimpan…" : "Simpan dan periksa kesiapan"}</Button>
         {mediaDirty && <p>Simpan canvas sebelum menyiapkan perpindahan perangkat.</p>}
-        <p role="status">{transferMessage}</p>
+        <FeedbackMessage tone="info" role="status">{transferMessage}</FeedbackMessage>
       </Dialog>
       <Dialog open={mapOpen} onOpenChange={setMapOpen} title="Daftar soal ujian" description="Pilih nomor soal. Status jawaban dan tanda ragu ditampilkan pada setiap nomor." onCloseAutoFocus={event => {
         if (mapSelection.current) { event.preventDefault(); mapSelection.current = false; focusQuestion(); }
       }}>
         <QuestionNavigation items={navigationItems} index={index} onSelect={next => { if (changePage(next)) { mapSelection.current = true; setMapOpen(false); } }} />
-        {mediaDirty && <p role="status">Simpan canvas sebelum berpindah soal.</p>}
+        {mediaDirty && <FeedbackMessage tone="info" role="status">Simpan canvas sebelum berpindah soal.</FeedbackMessage>}
       </Dialog>
       <Dialog
         open={confirm}
@@ -915,7 +919,7 @@ export function ExamPlayer({
         >
           {submitting ? "Memproses…" : "Ya, akhiri ujian"}
         </Button>
-        <p role="status">{message}</p>
+        <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
       </Dialog>
       <Dialog
         open={reloadConfirm}

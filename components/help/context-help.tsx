@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage, StateCard} from "../feedback/state";
 import { useId, useRef, useState } from 'react';
 import { CircleHelp } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -20,8 +21,8 @@ function HelpPanel({audience,page,duringExam=false}:{audience:HelpAudience;page:
       <div className="stack">
         {duringExam && <p className="notice">Waktu ujian tetap berjalan. Untuk menghubungi pengawas, tutup panduan lalu pilih Minta bantuan pada menu Alat atau layar kendala. Jika offline, hubungi pengawas langsung.</p>}
         <div className="form-grid"><label htmlFor={`${id}-query`}>Cari panduan<input id={`${id}-query`} type="search" maxLength={120} value={query} placeholder="Contoh: simpan, PIN, undangan" onChange={e=>setQuery(e.target.value)} /></label><label htmlFor={`${id}-scope`}>Cakupan<select id={`${id}-scope`} value={allPages?'all':'page'} onChange={e=>setAllPages(e.target.value==='all')}><option value="page">Halaman ini</option><option value="all">Semua panduan peran saya</option></select></label></div>
-        <p role="status" aria-live="polite">{rows.length} panduan ditemukan</p>
-        {rows.length ? <div className="help-topic-list">{rows.map(t=><details key={t.id} className="help-topic"><summary>{t.title}</summary><ol>{t.steps.map(s=><li key={s}>{s}</li>)}</ol><p className="notice">{t.trouble}</p></details>)}</div> : <div className="empty-state"><p>Tidak ada panduan yang cocok. Coba kata lain atau perluas cakupan.</p><Button type="button" variant="outline" onClick={()=>{setQuery('');setAllPages(true);}}>Tampilkan semua panduan peran saya</Button></div>}
+        <FeedbackMessage tone="info" role="status" aria-live="polite">{rows.length} panduan ditemukan</FeedbackMessage>
+        {rows.length ? <div className="help-topic-list">{rows.map(t=><details key={t.id} className="help-topic"><summary>{t.title}</summary><ol>{t.steps.map(s=><li key={s}>{s}</li>)}</ol><p className="notice">{t.trouble}</p></details>)}</div> : <StateCard kind="empty" className="empty-state"><p>Tidak ada panduan yang cocok. Coba kata lain atau perluas cakupan.</p><Button type="button" variant="outline" onClick={()=>{setQuery('');setAllPages(true);}}>Tampilkan semua panduan peran saya</Button></StateCard>}
         <p className="muted">Panduan dapat dibaca tanpa mengirim pesan. Hubungi Admin atau pengawas untuk penanganan kendala.</p>
       </div>
     </Dialog>

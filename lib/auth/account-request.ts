@@ -1,3 +1,4 @@
+import {feedbackFetch} from "../client/feedback-transport";
 export const recoveryAcceptedMessage =
   "Jika akun tersedia, petunjuk pemulihan akan dikirim ke email yang terdaftar.";
 export const activationErrorMessage =
@@ -36,7 +37,7 @@ export async function accountRequest(
 ) {
   const timer = setTimeout(() => controller.abort(), 35000);
   try {
-    const response = await fetch(`/api/auth/${action}`, {
+    const response = await feedbackFetch(`/api/auth/${action}`, {
       method: input === undefined ? "GET" : "POST",
       headers: { "Content-Type": "application/json" },
       body: input === undefined ? undefined : JSON.stringify(input),

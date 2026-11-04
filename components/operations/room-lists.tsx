@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Button } from "../ui/button";
 import { SearchField } from "../ui/list-filters";
@@ -447,10 +448,10 @@ export function RosterChoices({
           Kosongkan pilihan
         </Button>
       </div>
-      <p role="status">
+      <FeedbackMessage tone="info" role="status">
         {selected.length} / 500 dipilih · {shown.length} hasil. Pilihan
         dipertahankan antarhalaman dan pencarian.
-      </p>
+      </FeedbackMessage>
       <div className="ops-choice-list">
         {shown.slice((current - 1) * 25, current * 25).map((p) => (
           <label key={p.id}>

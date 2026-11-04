@@ -1,4 +1,5 @@
 "use client";
+import {StateCard} from "../feedback/state";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { useSummary } from "../dashboard/use-summary";
@@ -103,7 +104,7 @@ export function Workbench({ role = "admin" }: { role?: "admin" | "teacher" }) {
               </ul>
             </>
           ) : (
-            <div className="empty-state">
+            <StateCard kind="empty" className="empty-state">
               <p>
                 {data.exams.length
                   ? "Semua ujian dalam cakupan Anda sudah diarsipkan."
@@ -114,7 +115,7 @@ export function Workbench({ role = "admin" }: { role?: "admin" | "teacher" }) {
                   ? "Buka Persiapan ujian untuk menyiapkan ujian."
                   : "Periksa penugasan kelas dan mata pelajaran bersama Admin."}
               </p>
-            </div>
+            </StateCard>
           )}
         </>
       )}

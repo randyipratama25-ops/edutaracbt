@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { ListFilters, SearchField } from "../ui/list-filters";
 import { matchesSearch } from "../../lib/lists/search";
 import { RoomLists, RosterChoices } from "./room-lists";
@@ -538,8 +540,8 @@ export function OperationsPanel({
             Muat ulang
           </Button>
         </div>
-        <p role="status">{message}</p>
-        {!options && !optionError && <p role="status">Memuat akses…</p>}
+        <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
+        {!options && !optionError && <FeedbackMessage tone="loading" role="status">Memuat akses…</FeedbackMessage>}
         {optionError && (
           <div role="alert">
             <p>{optionError}</p>
@@ -558,12 +560,12 @@ export function OperationsPanel({
             · Pembaruan otomatis dijeda saat dialog dibuka.
           </p>
         )}
-        {mode === "rooms" && listError && <p role="alert">{listError}</p>}
+        {mode === "rooms" && listError && <FeedbackMessage tone="error" role="alert">{listError}</FeedbackMessage>}
         {options && !options.exams.length && (
           <p>Belum ada ujian dalam cakupan Anda.</p>
         )}
         {mode === "rooms" && listLoading && exam && (
-          <p role="status">Memuat ruang, sesi dan penugasan…</p>
+          <FeedbackMessage tone="loading" role="status">Memuat ruang, sesi dan penugasan…</FeedbackMessage>
         )}
         {mode === "rooms" &&
           options?.admin &&
@@ -884,7 +886,7 @@ export function OperationsPanel({
         {dialog === "sent" || dialog === "history" ? (
           <div className="stack" aria-busy={historyLoading}>
             {historyLoading ? (
-              <p role="status">Memuat riwayat…</p>
+              <FeedbackMessage tone="loading" role="status">Memuat riwayat…</FeedbackMessage>
             ) : historyError ? (
               <div role="alert">
                 <p>{historyError}</p>
@@ -901,7 +903,7 @@ export function OperationsPanel({
             )}
           </div>
         ) : (
-          <form className="stack" onSubmit={submit} aria-busy={busy}>
+          <ValidatedForm className="stack" onSubmit={submit} aria-busy={busy}>
             <fieldset
               className="monitor-controls stack"
               disabled={busy || uncertain}
@@ -1144,7 +1146,7 @@ export function OperationsPanel({
                   . Riwayat yang masih dirujuk tidak dihapus.
                 </p>
               )}
-              <p role="status">{message}</p>
+              <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
               <Button
                 disabled={
                   busy ||
@@ -1170,7 +1172,7 @@ export function OperationsPanel({
                 </Button>
               </div>
             )}
-          </form>
+          </ValidatedForm>
         )}
       </Dialog>
     </section>
@@ -1179,7 +1181,7 @@ export function OperationsPanel({
 
 function SentNotifications({ value }: { value: unknown }) {
   if (!Array.isArray(value))
-    return <p role="status">Memuat riwayat pengiriman…</p>;
+    return <FeedbackMessage tone="loading" role="status">Memuat riwayat pengiriman…</FeedbackMessage>;
   const rows = sentNotificationsSchema.parse(value);
   return (
     <div className="stack">

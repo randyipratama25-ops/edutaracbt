@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {z} from "zod";
 import {clientRequest,ClientRequestError} from "../../lib/client/request";
@@ -108,7 +110,7 @@ export function IncidentPanel({
       aria-label="Ringkasan pelaksanaan"
     >
       <h2>Pelaksanaan dan bantuan</h2>
-      {(loading||paused)&&<p role="status">Memuat status pelaksanaan…</p>}
+      {(loading||paused)&&<FeedbackMessage tone="loading" role="status">Memuat status pelaksanaan…</FeedbackMessage>}
       {readError&&<div role="alert"><p>{readError}</p><Button variant="outline" onClick={()=>void load()}>Coba muat bantuan</Button></div>}
       <div className="cards">
         <div>
@@ -142,7 +144,7 @@ export function IncidentPanel({
         perlu diperiksa, bukan bukti pelanggaran. Sesi login tersedia belum
         membuktikan siswa hadir di ruang.
       </p></details>
-      <p role="status">{message}</p>
+      <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
       {stale.length > 0 && (
         <div className="notice">
           <strong>Periksa peserta berikut</strong>
@@ -241,7 +243,7 @@ export function IncidentPanel({
             : "Hanya sesi aktif sebelum deadline. Maksimal 60 menit per tindakan, tidak boleh melewati akhir jadwal."
         }
       >
-        <form
+        <ValidatedForm
           className="stack"
           aria-busy={busy}
           onSubmit={(e) => {
@@ -292,10 +294,10 @@ export function IncidentPanel({
           <Button disabled={busy||uncertain}>
             {ticket ? "Tandai ditangani" : "Berikan dispensasi"}
           </Button>
-          <p role="status">{message}</p>
+          <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
           </fieldset>
           {uncertain&&<div role="alert"><p>Periksa ulang status bantuan atau deadline sebelum mengirim lagi.</p><Button type="button" variant="outline" onClick={close}>Tutup dan periksa ulang</Button></div>}
-        </form>
+        </ValidatedForm>
       </Dialog>
     </section>
   );

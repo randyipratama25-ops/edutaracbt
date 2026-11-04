@@ -1,4 +1,6 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
 import { useEffect, useState } from "react";
 import { command } from "./queue";
 export function useIntegrity(
@@ -89,7 +91,7 @@ export function useIntegrity(
         editing: editing(),
         orientation_recent: Date.now() < graceUntil,
       };
-      void fetch("/api/attempts", {
+      void feedbackFetch("/api/attempts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
