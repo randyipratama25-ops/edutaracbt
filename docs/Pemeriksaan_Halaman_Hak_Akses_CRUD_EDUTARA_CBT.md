@@ -1,6 +1,16 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.34 — Feedback dan kondisi aplikasi.
+Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.35 — Audit Otomasi dan backup.
+
+## Audit Otomasi dan backup — 4 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/jobs` tetap hanya Admin konteks staf. Panel Jobs dipisahkan dari Pengaturan/Audit, dan halaman mengimpor panelnya langsung. Semua tindakan lama dipertahankan: backup manual, retry, pembatalan backup, rekonsiliasi reminder, manifest/ZIP/bagian serta catatan latihan pemulihan. Tidak ada perubahan skema, dependency, role/RLS atau penjadwal; tidak diperlukan migrasi database.
+
+Daftar/status/receipt divalidasi; pembacaan single-flight memakai timeout, abort dan generation. Polling dijeda saat halaman tersembunyi/offline dan saat konfirmasi/bagian backup dibuka. Pengunci sinkron serta fieldset mencegah tindakan ganda/perubahan isian pending; draf gagal tetap tersedia. Request_id backup identik dipertahankan saat hasil belum pasti, termasuk bila tindakan lain dijalankan. Sukses tulis dengan gagal refresh dibedakan dari gagal simpan.
+
+Pencarian/filter jenis/status dan pagination 10 baris hanya mencakup maksimal 100 pekerjaan terbaru; waktu WIB, label status Indonesia, progres dan jumlah percobaan tampil jelas. Guard tindakan selaras dengan cancelled/retention_pending/retired dan reminder uncertain. Ringkasan kondisi layanan menampilkan jumlah tindak lanjut; rincian pemeriksaan dapat dibuka sesuai kebutuhan. Daftar pekerjaan menjadi kartu pada mobile dan tetap tabel pada desktop. Modal konfirmasi menjelaskan konsekuensi sesuai tindakan. Modal bagian membersihkan data lama, mengabaikan respons terlambat dan menyediakan loading/error/empty. Nomor unduhan divalidasi sebagai integer aman; prefix organisasi/job dan pemetaan error RPC dipertahankan. Total **33 penggunaan Dialog pada 20 komponen**; formulir latihan tetap inline.
+
+Validasi: 430 tes lulus/3 dilewati, lint/typecheck/build lulus, pengujian browser 320–1440px, orientasi/layar pendek, teks 200%, axe dan pageerror. API tulis browser disimulasikan, tanpa membuat backup/email/bukti latihan produksi. Rincian temuan, alur, kode dan batas pada `docs/jobs-page-audit.md`.
 
 ## Feedback dan kondisi aplikasi — 4 November 2026
 
