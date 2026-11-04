@@ -30,7 +30,7 @@ Komponen bersama `StateCard`, `FeedbackMessage`, `ValidatedForm`, dan `FeedbackP
 
 ## Validasi
 
-- `npm run check`: lint tanpa error (satu warning ref cleanup AI lama), typecheck, **419 tes lulus / 3 dilewati pada 53 file**, dan build produksi. Tidak ada route fixture pada hasil build.
+- `npm run check`: lint tanpa error (satu warning ref cleanup AI lama), typecheck, **420 tes lulus / 3 dilewati pada 53 file**, dan build produksi. Tidak ada route fixture pada hasil build.
 - `feedback-browser.mjs`: sepuluh state pada 320/390/768/1024/1440, pemindaian tag WCAG/axe, validasi required/email dengan fokus kolom dan tanpa POST invalid, perubahan field form, success/retry, reset pencarian, offline dalam modal/draf tetap, respons 8 detik, permission/session/Auth outage, login tab baru, pemeriksaan ulang, rotasi, layar pendek, teks 200% dan reduced motion lulus.
 - `accessibility-browser.mjs`: keyboard, skip link, fokus modal/fallback, validasi password, navigasi mobile, autosave dan player pada 320/768/1440 lulus. Pemeriksaan akhir diulang setelah perbaikan skip link agar tetap tersembunyi pada teks besar.
 - Regresi browser `settings-browser`, `authoring-browser`, `results-browser` dan `search-filters-browser` lulus. Mencakup lock, konflik/hasil belum pasti, kredensial, koreksi, impor, pagination dan sepuluh panel daftar pada ukuran terkait.

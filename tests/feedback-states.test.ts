@@ -141,3 +141,12 @@ it("cleans up JSON observations when parsing fails and never retries", async () 
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(events[1]).toMatchObject({ phase: "end", status: 403 });
 });
+
+
+it("keeps failed filtering distinct from a successful zero-result search",async()=>{
+ const {createElement}=await import("react");const {renderToStaticMarkup}=await import("react-dom/server");const {ListFilters}=await import("../components/ui/list-filters");
+ const failed=renderToStaticMarkup(createElement(ListFilters,{label:"contoh",active:["Pencarian"],onReset:()=>{},total:0,error:"Layanan gagal",children:null}));
+ expect(failed).toContain('data-state="error"');expect(failed).not.toContain('data-state="no-results"');expect(failed).not.toContain("0 hasil");
+ const empty=renderToStaticMarkup(createElement(ListFilters,{label:"contoh",active:["Pencarian"],onReset:()=>{},total:0,children:null}));
+ expect(empty).toContain('data-state="no-results"');expect(empty).toContain("Tidak ada hasil yang cocok");
+});
