@@ -6,21 +6,21 @@ vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("../components/attempts/integrity", () => ({ useIntegrity: () => "" }));
 vi.mock("../components/ui/dialog", () => ({ Dialog: ({ open, children }) => open ? React.createElement("section", null, children) : null }));
 import { ExamPlayer, StudentPortal } from "../components/attempts/player";
-let root, onUpdate, storage;
+let root, onUpdate, onReload, storage;
 const attempt = {
   id: "attempt", exam_id: "exam", title: "Ujian uji", status: "in_progress",
   deadline_at: new Date(Date.now() + 600000).toISOString(), server_now: new Date().toISOString(),
   epoch: 1, finalized_at: null, grading_pending: 0, score: null, result_visible: false, review_reason: null,
   questions: [{ id: "q", position: 1, version: 1, payload: { type: "PG", stem: "Question", options: [{ id: "A", text: "A" }] } }], answers: [],
 };
-const response = data => new Response(JSON.stringify({ data }), { status: 200 });
+const response = data => new Response(JSON.stringify({ success:true,data }), { status: 200 });
 const buttons = () => root.root.findAllByType("button");
 const button = label => buttons().find(b => b.children.join("") === label);
 const mount = async (a = attempt) => act(async () => { root = create(React.createElement(ExamPlayer, {
-  attempt: a, studentId: "student", clientId: "client", onUpdate, onReload: vi.fn(),
+  attempt: a, studentId: "student", clientId: "client", onUpdate, onReload,
 })); });
 beforeEach(() => {
-  vi.useFakeTimers(); globalThis.IS_REACT_ACT_ENVIRONMENT = true; onUpdate = vi.fn();
+  vi.useFakeTimers(); globalThis.IS_REACT_ACT_ENVIRONMENT = true; onUpdate = vi.fn();onReload=vi.fn();
   vi.stubGlobal("React", React);
   vi.stubGlobal("window", { addEventListener() {}, removeEventListener() {} });
   vi.stubGlobal("document", { addEventListener() {}, removeEventListener() {} });
@@ -96,4 +96,9 @@ describe("student submission fault flow", () => {
     expect(JSON.stringify(root.toJSON())).not.toContain("Koneksi uji terputus");
   });
 
+});
+
+it("requests an active-state-preserving reload after an uncertain submit",async()=>{
+ const sent=[];vi.stubGlobal("fetch",vi.fn(async(_url,init)=>{const input=JSON.parse(init.body);if(input.action==="submit"){sent.push(input);throw TypeError("response lost");}return response(attempt);}));
+ await mount();await act(async()=>button("Akhiri ujian").props.onClick());await act(async()=>button("Ya, akhiri ujian").props.onClick());await act(async()=>button("Muat status server").props.onClick());await act(async()=>button("Simpan dan muat status server").props.onClick());expect(onReload).toHaveBeenCalledWith({preserveActive:true});expect(root.root.findByType("fieldset").props.disabled).toBe(true);await act(async()=>button("Periksa / ulangi pengumpulan").props.onClick());expect(sent[1]).toEqual(sent[0]);
 });

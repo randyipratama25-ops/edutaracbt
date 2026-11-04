@@ -163,6 +163,7 @@ try {
             },
           ];
           result = {
+            id:eid,
             message: "Permintaan tercatat. Tunggu tanggapan pengawas.",
           };
         }

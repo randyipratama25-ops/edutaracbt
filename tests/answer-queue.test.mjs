@@ -124,7 +124,7 @@ describe("versioned autosave queue under network faults", () => {
   });
   it("stops retrying unsaved edits when the server returns a terminal attempt", async () => {
     const send = vi.fn(async () =>
-      response({ id: "a", status: "time_expired", finalized_at: "now" }),
+      response({ id:"a",exam_id:"e",title:"Uji",status:"time_expired",finalized_at:"2026-11-04T00:00:00Z",deadline_at:"2026-11-04T00:00:00Z",server_now:"2026-11-04T00:00:00Z",epoch:1,questions:[],answers:[],grading_pending:0,score:null,result_visible:false,review_reason:null }),
     );
     vi.stubGlobal("fetch", send);
     await act(async () => queue.change("q", ["A"]));
@@ -218,4 +218,13 @@ describe("draft recovery after refresh", () => {
     expect(queue.pendingCount).toBe(1);
     expect(queue.recoveryMessage).toContain("tidak tersedia/penuh");
   });
+});
+
+it("keeps pending answers when acknowledgements repeat the same question",async()=>{
+ vi.stubGlobal("fetch",vi.fn(async()=>response({acknowledgements:[{question_id:"q",saved:true,revision:1},{question_id:"q",saved:true,revision:2}]})));
+ await act(async()=>queue.change("q",["A"]));await act(async()=>vi.advanceTimersByTimeAsync(900));expect(queue.pendingCount).toBe(1);expect(queue.status).toContain("berulang");expect(terminalCallback).not.toHaveBeenCalled();
+});
+it("does not clear drafts or accept a malformed terminal response",async()=>{
+ vi.stubGlobal("fetch",vi.fn(async()=>response({id:"a",status:"submitted",finalized_at:"now"})));
+ await act(async()=>queue.change("q",["A"]));await act(async()=>vi.advanceTimersByTimeAsync(900));expect(queue.pendingCount).toBe(1);expect(terminalCallback).not.toHaveBeenCalled();
 });
