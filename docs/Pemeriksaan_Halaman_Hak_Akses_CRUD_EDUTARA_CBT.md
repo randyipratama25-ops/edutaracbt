@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.37 — Audit Portal pengawas.
+Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.38 — Audit Persiapan ujian.
+
+## Audit Persiapan ujian — 4 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/preparation` tetap untuk Admin/Guru dalam konteks staf; pembuatan/pengaturan jadwal dan publikasi tetap hanya Admin. Guru membaca kesiapan serta memperbaiki soal/media sesuai penugasan; kesiapan akun dan ruang tetap diarahkan ke Admin. Tujuh tahap wizard, penyimpanan draf, bank soal, checklist dan publikasi jadwal dipertahankan; hasil ujian tetap dikelola terpisah.
+
+Respons kesiapan, metadata aktif, ID unik, tautan perbaikan dan receipt divalidasi. Read single-flight dibatasi waktu, dapat dibatalkan dan memakai generation/mounted guard; cleanup Strict Mode tidak menahan flight yang sudah dibatalkan. Selection dari tautan atau daftar lama hanya dipertahankan jika ujian masih tersedia. Data terakhir yang gagal diperbarui tidak mengizinkan publikasi; langkah pemeriksaan tidak maju ketika refresh gagal, dan jumlah soal yang belum diketahui tidak dinyatakan nol.
+
+Pembukaan wizard dan mutation dikunci sinkron; fieldset/dialog mencegah perubahan isian, submit ganda atau penutupan selama tulis. Hasil draf belum pasti menahan payload/request_id yang sama untuk pemeriksaan eksplisit, termasuk setelah dialog ditutup dan dibuka kembali. Publikasi mengikat identitas retry pada ujian sasaran dan mensyaratkan receipt published/id yang sesuai. Tidak ada retry tulis otomatis atau penyimpanan PIN ke storage browser. State retry hanya bertahan selama komponen/tab masih terbuka; navigasi/reload tidak dijanjikan menyimpan wizard.
+
+Jadwal input/output memakai WIB terlepas zona perangkat; durasi divalidasi harus muat dalam jendela jadwal. Metadata kelas/mapel nonaktif tidak ditawarkan. Tautan perbaikan checklist di dialog membuka tab baru agar wizard tidak hilang. Enter di tahap Publikasi menjalankan form publikasi. Progress mobile menampilkan tahap berjalan beserta nomor langkah; daftar kelas dan dialog bergulir lokal, konfigurasi tipe reflow, teks panjang membungkus dan tombol mudah disentuh. Kesalahan, hasil belum pasti, sukses tulis dan gagal refresh dibedakan.
+
+Tidak ada migrasi, dependency, role/grants/RLS atau perubahan formula penilaian, jawaban, snapshot, deadline dan aturan kesiapan/publikasi SQL. Total tetap **34 penggunaan Dialog pada 20 komponen**. Validasi: 475 tes lulus/3 dilewati, lint/typecheck/build dan browser fixture produksi dengan 51 ujian/69 kelas aktif; 320–1440px, orientasi, teks 200% dan axe. Bukti dan batas pengujian pada `docs/preparation-page-audit.md`; browser memakai API simulasi tanpa membuat jadwal, PIN atau publikasi palsu pada produksi.
 
 ## Audit Portal pengawas — 4 November 2026
 

@@ -3,6 +3,7 @@ import { actor } from "../../../lib/auth/actor";
 import { failure, HttpError, json, requireOrigin } from "../../../lib/http";
 import { examSchema, questionSchema } from "../../../lib/authoring/schema";
 import { readBounded } from "../../../lib/operations/media";
+import { commandResultFor } from "../../../lib/authoring/contracts";
 import { readAuthoring } from "../../../lib/authoring/read";
 const columns =
   "id,subject_id,title,starts_at,ends_at,duration_minutes,status,passing_grade,bypass_period,shuffle_questions,shuffle_options";
@@ -141,6 +142,7 @@ export async function POST(request: Request) {
       throw new HttpError(422,error.code==="P0001" ? error.message : "Perubahan ditolak. Periksa isian dan muat ulang data.");
     }
     if(!data) throw new HttpError(503,"Hasil perubahan belum dapat dipastikan. Muat ulang data sebelum mencoba kembali.");
+    if(raw.action==="exam"&&!commandResultFor("exam").safeParse(data).success)throw new HttpError(503,"Hasil penyimpanan draf belum dapat dipastikan. Periksa hasil sebelum mencoba lagi.");
     return json(data);
   } catch (e) {
     return failure(e);
