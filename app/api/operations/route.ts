@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { operator } from "../../../lib/operations/server";
 import { resultData } from "../../../lib/results/server";
-import { operationReceipt } from "../../../lib/operations/contracts";
+import {
+  operationReceipt,
+  operationOptionsSchema,
+  monitorRowsSchema,
+  sentNotificationsSchema,
+  monitorHistorySchema,
+} from "../../../lib/operations/contracts";
 import { roomActions } from "../../../lib/operations/rooms";
 import { operation } from "../../../lib/operations/schema";
 import {
@@ -51,7 +57,23 @@ export async function GET(request: Request) {
     if (action === "history" && !input.id)
       throw new HttpError(422, "Attempt riwayat wajib.");
     const r = await a.client.rpc("ops_command", { input });
-    return json(resultData(r));
+    const data = resultData(r);
+    const schema =
+      action === "options"
+        ? operationOptionsSchema
+        : action === "monitor"
+          ? monitorRowsSchema
+          : action === "sent"
+            ? sentNotificationsSchema
+            : action === "history"
+              ? monitorHistorySchema
+              : null;
+    if (schema && !schema.safeParse(data).success)
+      throw new HttpError(
+        503,
+        "Data operasional belum dapat dimuat. Coba muat ulang.",
+      );
+    return json(data);
   } catch (e) {
     return failure(e);
   }
@@ -94,6 +116,18 @@ export async function POST(request: Request) {
         throw new HttpError(
           503,
           "Hasil perubahan belum dapat dipastikan. Muat ulang daftar dan periksa hasil.",
+        );
+    }
+    if (["reset", "unlock", "disqualify", "broadcast"].includes(input.action)) {
+      const valid = operationReceipt(input.action).safeParse(receipt);
+      if (
+        !valid.success ||
+        ("attempts" in input &&
+          (!Array.isArray(receipt) || receipt.length !== input.attempts.length))
+      )
+        throw new HttpError(
+          503,
+          "Hasil tindakan belum dapat dipastikan. Muat ulang monitor dan periksa riwayat sebelum mencoba lagi.",
         );
     }
     return json(receipt);

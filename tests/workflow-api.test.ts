@@ -48,6 +48,7 @@ describe("workflow API boundaries", () => {
     }
     expect(mocks.rpc).not.toHaveBeenCalled();
     as("admin", "staff");
+    mocks.rpc.mockResolvedValue({data:{deadline_at:"2026-11-04T02:05:00Z",minutes:5},error:null});
     expect((await POST(request(extend))).status).toBe(200);
   });
   it("separates student help from staff resolution", async () => {

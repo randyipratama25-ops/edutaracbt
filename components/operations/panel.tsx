@@ -1,8 +1,9 @@
 "use client";
-import {FeedbackMessage} from "../feedback/state";
-import {ValidatedForm} from "../feedback/validated-form";
+import { FeedbackMessage } from "../feedback/state";
+import { ValidatedForm } from "../feedback/validated-form";
 import { ListFilters, SearchField } from "../ui/list-filters";
 import { matchesSearch } from "../../lib/lists/search";
+import { MonitorHistory } from "./monitor-history";
 import { RoomLists, RosterChoices } from "./room-lists";
 import {
   roomTitles,
@@ -93,6 +94,8 @@ export function OperationsPanel({
     lock = useRef(false),
     dialogRef = useRef(""),
     flight = useRef<{ seq: number; promise: Promise<void> } | null>(null);
+  const incidentOpen = useRef(false);
+  const [incidentDialog, setIncidentDialog] = useState(false);
   const retry = useRef<{ signature: string; id: string } | null>(null);
   const [optionError, setOptionError] = useState(""),
     [historyError, setHistoryError] = useState(""),
@@ -149,7 +152,7 @@ export function OperationsPanel({
       setListLoading(false);
       return;
     }
-    if (dialogRef.current || lock.current) return;
+    if (dialogRef.current || incidentOpen.current || lock.current) return;
     if (flight.current?.seq === seq.current) return flight.current.promise;
     const generation = ++seq.current,
       c = new AbortController();
@@ -348,7 +351,14 @@ export function OperationsPanel({
       const receipt = await request(
         "/api/operations",
         input,
-        operationReceipt(input.action),
+        ["reset", "unlock", "disqualify"].includes(input.action)
+          ? operationReceipt(input.action).refine(
+              (value) =>
+                Array.isArray(value) &&
+                "attempts" in input &&
+                value.length === input.attempts.length,
+            )
+          : operationReceipt(input.action),
       );
       retry.current = null;
       setUncertain(false);
@@ -498,7 +508,10 @@ export function OperationsPanel({
       }
       aria-busy={busy}
     >
-      <fieldset className="monitor-controls stack" disabled={busy}>
+      <fieldset
+        className="monitor-controls stack"
+        disabled={busy || incidentDialog}
+      >
         <div className="toolbar">
           <label>
             Ujian
@@ -540,8 +553,14 @@ export function OperationsPanel({
             Muat ulang
           </Button>
         </div>
-        <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
-        {!options && !optionError && <FeedbackMessage tone="loading" role="status">Memuat akses…</FeedbackMessage>}
+        <FeedbackMessage tone="info" role="status">
+          {message}
+        </FeedbackMessage>
+        {!options && !optionError && (
+          <FeedbackMessage tone="loading" role="status">
+            Memuat akses…
+          </FeedbackMessage>
+        )}
         {optionError && (
           <div role="alert">
             <p>{optionError}</p>
@@ -560,12 +579,18 @@ export function OperationsPanel({
             · Pembaruan otomatis dijeda saat dialog dibuka.
           </p>
         )}
-        {mode === "rooms" && listError && <FeedbackMessage tone="error" role="alert">{listError}</FeedbackMessage>}
+        {mode === "rooms" && listError && (
+          <FeedbackMessage tone="error" role="alert">
+            {listError}
+          </FeedbackMessage>
+        )}
         {options && !options.exams.length && (
           <p>Belum ada ujian dalam cakupan Anda.</p>
         )}
         {mode === "rooms" && listLoading && exam && (
-          <FeedbackMessage tone="loading" role="status">Memuat ruang, sesi dan penugasan…</FeedbackMessage>
+          <FeedbackMessage tone="loading" role="status">
+            Memuat ruang, sesi dan penugasan…
+          </FeedbackMessage>
         )}
         {mode === "rooms" &&
           options?.admin &&
@@ -589,6 +614,14 @@ export function OperationsPanel({
               admin={!!options?.admin}
               onChanged={load}
               paused={busy || !!dialog || listLoading || !!listError}
+              onDialogChange={(open) => {
+                incidentOpen.current = open;
+                setIncidentDialog(open);
+                if (open) {
+                  invalidateRequests();
+                  setRefreshing(false);
+                }
+              }}
             />
             <ListFilters
               label="peserta ujian"
@@ -646,8 +679,9 @@ export function OperationsPanel({
             </p>
             {selected.length > 0 && !canReview(actionRows, "reset") && (
               <p className="muted">
-                Tindakan memerlukan 1–100 sesi ujian yang dapat Anda kelola. Buka kunci hanya
-                untuk diskualifikasi; diskualifikasi hanya untuk sesi aktif.
+                Tindakan memerlukan 1–100 sesi ujian yang dapat Anda kelola.
+                Buka kunci hanya untuk diskualifikasi; diskualifikasi hanya
+                untuk sesi aktif.
               </p>
             )}
             <div className="actions">
@@ -814,7 +848,13 @@ export function OperationsPanel({
                       </td>
                       <td>
                         {r.deadline_at
-                          ? new Date(r.deadline_at).toLocaleTimeString("id-ID")
+                          ? new Date(r.deadline_at).toLocaleString("id-ID", {
+                              timeZone: "Asia/Jakarta",
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }) + " WIB"
                           : "—"}
                       </td>
                       <td>
@@ -834,7 +874,11 @@ export function OperationsPanel({
               </table>
             </div>
             {!listLoading && !listError && !visible.length && (
-              <p>Belum ada peserta dalam cakupan/filter ini.</p>
+              <p>
+                {search || filter
+                  ? "Tidak ada peserta yang cocok. Ubah pencarian atau reset filter."
+                  : "Belum ada peserta dalam penugasan ujian ini. Hubungi Admin jika daftar belum sesuai."}
+              </p>
             )}
             <div className="actions">
               <Button
@@ -880,13 +924,15 @@ export function OperationsPanel({
                       ? "Riwayat pengiriman"
                       : "Pengaturan operasional")
         }
-        className={mode === "rooms" ? "rooms-dialog" : ""}
+        className={mode === "rooms" ? "rooms-dialog" : "monitor-dialog"}
         description="Periksa sasaran dan rincian tindakan sebelum menyimpan."
       >
         {dialog === "sent" || dialog === "history" ? (
           <div className="stack" aria-busy={historyLoading}>
             {historyLoading ? (
-              <FeedbackMessage tone="loading" role="status">Memuat riwayat…</FeedbackMessage>
+              <FeedbackMessage tone="loading" role="status">
+                Memuat riwayat…
+              </FeedbackMessage>
             ) : historyError ? (
               <div role="alert">
                 <p>{historyError}</p>
@@ -897,9 +943,7 @@ export function OperationsPanel({
             ) : dialog === "sent" ? (
               <SentNotifications value={history} />
             ) : (
-              <pre className="answer-text">
-                {JSON.stringify(history, null, 2)}
-              </pre>
+              <MonitorHistory value={history} />
             )}
           </div>
         ) : (
@@ -1046,8 +1090,8 @@ export function OperationsPanel({
               {["reset", "unlock", "disqualify"].includes(dialog) && (
                 <>
                   <p>
-                    {actionTargets.length} sesi ujian dipilih. Peserta
-                    yang belum mulai tidak diproses. Waktu tidak ditambah; reset
+                    {actionTargets.length} sesi ujian dipilih. Peserta yang
+                    belum mulai tidak diproses. Waktu tidak ditambah; reset
                     mempertahankan semua bukti/jawaban lama.
                   </p>
                   <label>
@@ -1146,7 +1190,9 @@ export function OperationsPanel({
                   . Riwayat yang masih dirujuk tidak dihapus.
                 </p>
               )}
-              <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
+              <FeedbackMessage tone="info" role="status">
+                {message}
+              </FeedbackMessage>
               <Button
                 disabled={
                   busy ||
@@ -1181,7 +1227,11 @@ export function OperationsPanel({
 
 function SentNotifications({ value }: { value: unknown }) {
   if (!Array.isArray(value))
-    return <FeedbackMessage tone="loading" role="status">Memuat riwayat pengiriman…</FeedbackMessage>;
+    return (
+      <FeedbackMessage tone="loading" role="status">
+        Memuat riwayat pengiriman…
+      </FeedbackMessage>
+    );
   const rows = sentNotificationsSchema.parse(value);
   return (
     <div className="stack">
