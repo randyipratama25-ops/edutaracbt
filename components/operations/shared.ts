@@ -1,10 +1,12 @@
 "use client";
+import {feedbackJSON} from "../../lib/client/feedback-transport";
+
 import { useEffect, useRef } from "react";
 export class ApiError extends Error {
   constructor(message: string, public status?: number) { super(message); }
 }
 export async function api<T>(url: string, input?: object, options?: {signal?: AbortSignal; validateEnvelope?: boolean}): Promise<T> {
-  const r = await fetch(
+  const {response:r,data:j} = await feedbackJSON<{success?:unknown;data:T;error?:{message?:unknown}}>(
     url,
     input
       ? {
@@ -15,7 +17,6 @@ export async function api<T>(url: string, input?: object, options?: {signal?: Ab
         }
       : { cache: "no-store", signal: options?.signal },
   );
-  const j = await r.json();
   if (!r.ok) throw new ApiError(typeof j?.error?.message === "string" ? j.error.message : "Permintaan gagal.", r.status);
   if (options?.validateEnvelope && (!j || typeof j !== "object" || j.success !== true || !("data" in j))) throw Error("Respons tidak valid.");
   return j.data as T;

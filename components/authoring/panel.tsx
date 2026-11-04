@@ -1,4 +1,8 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import {ListFilters, SearchField} from "../ui/list-filters";
 import {matchesSearch} from "../../lib/lists/search";
 import { HelpDisclosure } from "../ui/help-disclosure";
@@ -340,18 +344,18 @@ export function AuthoringPanel() {
   if (!data)
     return (
       <>
-        <p role="status">
+        <FeedbackMessage tone="info" role="status">
           {loading ? "Memuat…" : readError || message || "Data belum tersedia."}
-        </p>
+        </FeedbackMessage>
         <Button disabled={loading} onClick={() => void load()}>Coba lagi</Button>
       </>
     );
   return (
     <div className="stack authoring-page" aria-busy={busy || loading}>
-      <p role="status" aria-live="polite">
+      <FeedbackMessage tone="info" role="status" aria-live="polite">
         {message}
-      </p>
-      {loading && <p role="status">Memuat data…</p>}
+      </FeedbackMessage>
+      {loading && <FeedbackMessage tone="loading" role="status">Memuat data…</FeedbackMessage>}
       {(readError||uncertain)&&<div className="notice" role="alert"><p>{readError||'Periksa hasil perubahan sebelum melanjutkan.'}</p><Button disabled={busy||loading} onClick={()=>void load()}>Muat ulang data</Button></div>}
       <fieldset className="authoring-controls stack" disabled={blocked}>
       <section className="panel stack">
@@ -463,7 +467,7 @@ export function AuthoringPanel() {
       {data.canManage && (
         <details className="panel">
           <summary>Periode input soal Guru</summary>
-          <form
+          <ValidatedForm
             key={JSON.stringify(data.period)}
             className="stack"
             onSubmit={(e) => {
@@ -512,13 +516,13 @@ export function AuthoringPanel() {
               />
             </label>
             <Button disabled={busy}>Simpan periode</Button>
-          </form>
+          </ValidatedForm>
         </details>
       )}
       {exam && loadedExam===examId && (
         <section className="panel stack">
           <h2 tabIndex={-1} id="authoring-bank-title">Bank soal — {exam.title}</h2>
-          {locked&&<p className="notice" role="status">{locked} Pratinjau dan riwayat tetap tersedia.</p>}
+          {locked&&<FeedbackMessage tone="info" className="notice" role="status">{locked} Pratinjau dan riwayat tetap tersedia.</FeedbackMessage>}
           <p>
             Waktu server: {new Date(data.serverNow).toLocaleString("id-ID")}.
             Soal dikunci saat ujian mulai.
@@ -545,7 +549,7 @@ export function AuthoringPanel() {
               ))}
           </div>
           {data.canManage && (
-            <form
+            <ValidatedForm
               onSubmit={(e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
@@ -575,7 +579,7 @@ export function AuthoringPanel() {
                 />
               </label>
               <Button disabled={busy}>Duplikasi jadwal</Button>
-            </form>
+            </ValidatedForm>
           )}
           <ListFilters label="soal ujian" active={[questionSearch&&"Pencarian"].filter(Boolean) as string[]} onReset={()=>{setQuestionSearch("");setPage(1);}} total={shown.length} loading={loading}><SearchField label="Cari isi soal" value={questionSearch} maxLength={150} onChange={value=>{setQuestionSearch(value);setPage(1);}} /></ListFilters>
           <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel ujian dan soal; geser untuk melihat kolom lain">
@@ -847,7 +851,7 @@ export function AuthoringPanel() {
         title={editing ? "Ubah ujian" : "Tambah ujian"}
         description="Atur jadwal dan aturan ujian. Waktu mengikuti zona waktu perangkat."
       >
-        <form onSubmit={saveExam} className="stack"><fieldset className="authoring-controls stack" disabled={blocked}>
+        <ValidatedForm onSubmit={saveExam} className="stack"><fieldset className="authoring-controls stack" disabled={blocked}>
           <label>
             Judul
             <input
@@ -1023,9 +1027,9 @@ export function AuthoringPanel() {
             </fieldset>
           ))}
           <Button disabled={busy}>Simpan jadwal</Button>
-          <p role="status">{message || readError}</p></fieldset>
+          <FeedbackMessage tone="info" role="status">{message || readError}</FeedbackMessage></fieldset>
           {(uncertain||readError)&&<Button type="button" disabled={busy||loading} onClick={()=>void load()}>Muat ulang data</Button>}
-        </form>
+        </ValidatedForm>
       </Dialog>
       <Dialog
         className="authoring-dialog"
@@ -1034,7 +1038,7 @@ export function AuthoringPanel() {
         title={editingQ ? "Ubah soal" : "Tambah soal"}
         description="Susun pertanyaan, pilihan jawaban, dan penilaian. Kunci serta rubrik hanya terlihat oleh staf berizin."
       >
-        <form onSubmit={saveQuestion} className="stack"><fieldset className="authoring-controls stack" disabled={blocked || !!locked}>
+        <ValidatedForm onSubmit={saveQuestion} className="stack"><fieldset className="authoring-controls stack" disabled={blocked || !!locked}>
           <label>
             Tipe
             <select
@@ -1221,7 +1225,7 @@ export function AuthoringPanel() {
                     const c=new AbortController();controllers.current.add(c);
                     let media:{id:string};
                     try{
-                      const r=await fetch('/api/authoring/media',{method:'POST',body:form,signal:AbortSignal.any([c.signal,AbortSignal.timeout(35000)])});
+                      const r=await feedbackFetch('/api/authoring/media',{method:'POST',body:form,signal:AbortSignal.any([c.signal,AbortSignal.timeout(35000)])});
                       const j=await r.json();
                       if(!r.ok||!j.success)throw Error('Lampiran belum dapat diunggah.');
                       media=z.object({id:z.uuid()}).parse(j.data);
@@ -1255,10 +1259,10 @@ export function AuthoringPanel() {
             </Button>
             <Button disabled={busy}>Simpan versi soal</Button>
           </div>
-          <p role="alert">{questionError || message || readError || locked}</p>
+          <FeedbackMessage tone="error" role="alert">{questionError || message || readError || locked}</FeedbackMessage>
           <QuestionPreview question={draft} /></fieldset>
           {(uncertain||readError)&&<Button type="button" disabled={busy||loading} onClick={()=>void load()}>Muat ulang data</Button>}
-        </form>
+        </ValidatedForm>
       </Dialog>
       <Dialog
         open={!!history}

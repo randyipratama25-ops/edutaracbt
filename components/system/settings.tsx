@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import {
   useCallback,
   useEffect,
@@ -37,6 +39,7 @@ export function SettingsPanel() {
     [loading, setLoading] = useState(true),
     [readError, setReadError] = useState(""),
     [message, setMessage] = useState(""),
+    [messageTone,setMessageTone]=useState<"info"|"success">("info"),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [uncertain, setUncertain] = useState(false),
@@ -115,6 +118,7 @@ export function SettingsPanel() {
     void load();
   }
   async function mutate(action: "save" | "secret" | "smtp_probe") {
+    setMessageTone(action==="smtp_probe"?"info":"success");
     if (lock.current || loading || uncertain || !server || !draft) return;
     let input: z.infer<typeof systemMutation>;
     try {
@@ -260,7 +264,7 @@ export function SettingsPanel() {
           Muat ulang status
         </Button>
       </div>
-      {loading && <p role="status">Memuat pengaturan…</p>}
+      {loading && <FeedbackMessage tone="loading" role="status">Memuat pengaturan…</FeedbackMessage>}
       {readError && (
         <div role="alert">
           <p>{readError}</p>
@@ -275,11 +279,11 @@ export function SettingsPanel() {
         </div>
       )}
       {message && (
-        <p role="status" aria-live="polite">
+        <FeedbackMessage tone={messageTone} role="status" aria-live="polite">
           {message}
-        </p>
+        </FeedbackMessage>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && <FeedbackMessage tone="error" role="alert">{error}</FeedbackMessage>}
       {uncertain && (
         <div className="settings-notice" role="alert">
           <p>
@@ -316,7 +320,7 @@ export function SettingsPanel() {
             className="settings-controls stack"
             disabled={busy || loading || uncertain || !!readError}
           >
-            <form className="stack" onSubmit={submit}>
+            <ValidatedForm className="stack" onSubmit={submit}>
               <fieldset className="settings-section stack">
                 <legend>Identitas dan branding</legend>
                 <div className="settings-grid">
@@ -547,8 +551,8 @@ export function SettingsPanel() {
                   {dirty ? "Perubahan belum disimpan." : "Tidak ada perubahan."}
                 </span>
               </div>
-            </form>
-            <form
+            </ValidatedForm>
+            <ValidatedForm
               className="settings-section stack"
               onSubmit={(e) => {
                 e.preventDefault();
@@ -577,9 +581,9 @@ export function SettingsPanel() {
                   ))}
                 </select>
               </label>
-              <p role="status">
+              <FeedbackMessage tone="info" role="status">
                 {server.secrets[secretKey] ? "Tersimpan" : "Belum tersimpan"}
-              </p>
+              </FeedbackMessage>
               {secretKey === "ai_api_key" && (
                 <p>
                   Kunci lama ini tidak mengaktifkan penyedia AI. Gunakan{" "}
@@ -608,7 +612,7 @@ export function SettingsPanel() {
               <Button disabled={secret.length < 8}>
                 Simpan kredensial baru
               </Button>
-            </form>
+            </ValidatedForm>
             <section
               className="settings-section stack"
               aria-label="Uji koneksi SMTP"

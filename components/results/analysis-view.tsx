@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage, StateCard} from "../feedback/state";
 import {useState} from 'react';
 import type {analyze} from '../../lib/results/analytics';
 import {matchesSearch} from '../../lib/lists/search';
@@ -18,9 +19,9 @@ export function AnalysisView({analysis,exams}:{analysis:Analysis;exams:Record<st
   <h2>Analisis lima tipe</h2>
   <dl className="analysis-metrics"><div><dt>Hasil layak</dt><dd>{analysis.eligible}</dd></div><div><dt>Dikecualikan</dt><dd>{analysis.excluded}</dd></div><div><dt>Butir soal</dt><dd>{analysis.items.length}</dd></div></dl>
   <details className="analysis-guide"><summary>Cara membaca analisis</summary><p>Satu hasil final terbaru per siswa pada setiap ujian. Hasil yang belum selesai dikoreksi, diskualifikasi, pengerjaan lama, atau data tidak lengkap tidak masuk analisis. Versi soal dipisahkan. P = proporsi poin; untuk PG sama dengan proporsi benar. D = selisih kelompok atas/bawah max(1, floor(27% × N)). D belum cukup untuk disimpulkan bila N &lt; 4; N &lt; 30 ditandai sampel kecil.</p></details>
-  {!analysis.items.length?<div className="empty-state"><h3>Belum ada butir yang dapat dianalisis</h3><p>Periksa pilihan hasil dan selesaikan koreksi agar tersedia nilai final.</p></div>:<>
+  {!analysis.items.length?<StateCard kind="empty" className="empty-state"><h3>Belum ada butir yang dapat dianalisis</h3><p>Periksa pilihan hasil dan selesaikan koreksi agar tersedia nilai final.</p></StateCard>:<>
    <ListFilters label="butir analisis" active={[search&&'Pencarian',type!=='all'&&'Tipe soal'].filter(Boolean) as string[]} total={shown.length} onReset={()=>{setSearch('');setType('all');setPage(1);}}><SearchField label="Cari ujian atau isi soal" value={search} onChange={v=>{setSearch(v);setPage(1);}}/><label>Tipe soal<select value={type} onChange={e=>{setType(e.target.value);setPage(1);}}><option value="all">Semua tipe</option>{types.map(t=><option key={t}>{t}</option>)}</select></label></ListFilters>
-   {!shown.length&&<p role="status">Tidak ada butir sesuai pencarian. Ubah atau reset filter analisis.</p>}
+   {!shown.length&&<FeedbackMessage tone="info" role="status">Tidak ada butir sesuai pencarian. Ubah atau reset filter analisis.</FeedbackMessage>}
    {shown.slice((current-1)*20,current*20).map(q=><details className="analysis-item" key={q.id} open={!!expanded[q.id]} onToggle={e=>{const open=e.currentTarget.open;setExpanded(prev=>prev[q.id]===open?prev:{...prev,[q.id]:open});}}>
     <summary><span>{exams[q.exam_id]||'Ujian '+q.exam_id} · {q.type} · versi {q.version}</span><span className="analysis-caption">N={q.n} · P={q.p} ({q.difficulty}) · D={q.d} ({q.discrimination}){q.small_sample?' · sampel kecil':''}</span></summary>
     {expanded[q.id]&&<div className="stack"><p dir="auto">{q.stem.replace(/<[^>]*>/g,'')}</p><p className="muted">Kelompok atas dan bawah: {q.group_size} hasil per sisi.</p><h3>Peserta salah / parsial</h3><Participants rows={q.wrong}/>

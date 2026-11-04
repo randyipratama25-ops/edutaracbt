@@ -1,4 +1,6 @@
 "use client";
+import {ValidatedForm} from "../feedback/validated-form";
+import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
@@ -185,7 +187,7 @@ export function LoginForm({
   }
   return (
     <>
-      <form
+      <ValidatedForm
         method="post"
         action="/api/auth/login"
         onSubmit={submit}
@@ -303,27 +305,27 @@ export function LoginForm({
         </div>
         <Button disabled={blocked}>{busy ? "Memproses…" : "Masuk"}</Button>
         {feedback ? (
-          <p
+          <FeedbackMessage tone={feedback?.kind === "success" ? "success" : "error"}
             id="login-feedback"
             role={feedback.kind === "error" ? "alert" : "status"}
           >
             {feedback.text}
-          </p>
+          </FeedbackMessage>
         ) : (
           <span id="login-feedback" className="sr-only" />
         )}
         {recovering && !recoveryOpen && (
-          <p role="status">
+          <FeedbackMessage tone="info" role="status">
             Permintaan pemulihan sedang diproses. Buka Lupa password untuk
             melihat perkembangannya.
-          </p>
+          </FeedbackMessage>
         )}
         {!recovering && !recoveryOpen && recoveryFeedback && (
-          <p role={recoveryFeedback.kind === "error" ? "alert" : "status"}>
+          <FeedbackMessage tone={recoveryFeedback?.kind === "success" ? "success" : "error"} role={recoveryFeedback.kind === "error" ? "alert" : "status"}>
             {recoveryFeedback.text}
-          </p>
+          </FeedbackMessage>
         )}
-      </form>
+      </ValidatedForm>
       <Dialog
         open={recoveryOpen}
         onOpenChange={(open) => {
@@ -341,7 +343,7 @@ export function LoginForm({
           }
         }}
       >
-        <form
+        <ValidatedForm
           method="post"
           action="/api/auth/recover"
           onSubmit={recover}
@@ -374,24 +376,24 @@ export function LoginForm({
             {recovering ? "Mengirim permintaan…" : "Kirim petunjuk pemulihan"}
           </Button>
           {recovering && (
-            <p role="status">
+            <FeedbackMessage tone="info" role="status">
               Anda dapat menutup dialog. Permintaan tetap diproses; membukanya
               kembali tidak mengirim ulang.
-            </p>
+            </FeedbackMessage>
           )}
-          <p
+          <FeedbackMessage tone={recoveryFeedback?.kind === "success" ? "success" : "error"}
             id="recovery-feedback"
             role={recoveryFeedback?.kind === "error" ? "alert" : "status"}
           >
             {recoveryFeedback?.text}
-          </p>
+          </FeedbackMessage>
           {recoveryFeedback?.kind === "success" && (
             <p className="muted">
               Periksa inbox dan spam. Gunakan tautan terbaru dari email untuk
               mengatur password.
             </p>
           )}
-        </form>
+        </ValidatedForm>
       </Dialog>
     </>
   );

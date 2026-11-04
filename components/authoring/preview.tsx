@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useState } from "react";
 import katex from "katex";
 import Image from "next/image";
@@ -75,8 +76,8 @@ function Attachment({ id, baseUrl }: { id: string; baseUrl: string }) {
       .catch(() => { if (active) setError("Lampiran belum dapat dimuat. Periksa koneksi lalu coba lagi."); });
     return () => { active = false; controller.abort(); };
   }, [id, baseUrl, version]);
-  if (error) return <div className="notice"><p role="status">{error}</p><Button type="button" variant="outline" onClick={() => setVersion(v => v+1)}>Coba muat lampiran</Button></div>;
-  if (!media) return <p role="status">Memuat lampiran…</p>;
+  if (error) return <div className="notice"><FeedbackMessage tone="info" role="status">{error}</FeedbackMessage><Button type="button" variant="outline" onClick={() => setVersion(v => v+1)}>Coba muat lampiran</Button></div>;
+  if (!media) return <FeedbackMessage tone="loading" role="status">Memuat lampiran…</FeedbackMessage>;
   return media.mime.startsWith("image/") ? (
     <Image
       src={media.url}

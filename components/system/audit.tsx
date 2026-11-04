@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage, StateCard} from "../feedback/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -26,6 +27,7 @@ export function AuditPanel() {
     [exporting, setExporting] = useState(false),
     [message, setMessage] = useState(""),
     [detail, setDetail] = useState<AuditRow | null>(null);
+  const [messageTone,setMessageTone]=useState<"info"|"success"|"error">("info");
   const mounted = useRef(true);
   const sequence = useRef(0),
     read = useRef<AbortController | null>(null),
@@ -103,7 +105,7 @@ export function AuditPanel() {
   async function download() {
     if (lock.current || loading || error || invalid) return;
     lock.current = true;
-    setExporting(true);
+    setExporting(true);setMessageTone("info");
     setMessage("");
     const c = new AbortController();
     exportController.current = c;
@@ -129,9 +131,10 @@ export function AuditPanel() {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setMessage(`${data.length} catatan diekspor.`);
+      setMessage(`${data.length} catatan diekspor.`);setMessageTone("success");
     } catch (e) {
       if (!mounted.current) return;
+      setMessageTone(c.signal.aborted?"info":"error");
       if (!c.signal.aborted)
         setMessage(e instanceof Error ? e.message : "Ekspor gagal.");
       else
@@ -226,25 +229,25 @@ export function AuditPanel() {
           </label>
         </ListFilters>
       </fieldset>
-      <p role="status" aria-live="polite">
+      <FeedbackMessage tone={messageTone} role={messageTone==="error"?"alert":"status"} aria-live="polite">
         {message}
-      </p>
+      </FeedbackMessage>
       {loading ? (
-        <p role="status">Memuat catatan aktivitas…</p>
+        <FeedbackMessage tone="loading" role="status">Memuat catatan aktivitas…</FeedbackMessage>
       ) : error || invalid ? (
-        <div className="empty-state">
+        <StateCard kind="error" className="empty-state">
           <h3>Catatan belum dapat ditampilkan</h3>
           <p>
             {invalid
               ? "Perbaiki rentang waktu di atas."
               : "Periksa koneksi lalu muat ulang."}
           </p>
-        </div>
+        </StateCard>
       ) : !rows.length ? (
-        <div className="empty-state">
+        <StateCard kind="no-results" className="empty-state">
           <h3>Belum ada catatan sesuai filter</h3>
           <p>Ubah pencarian atau rentang waktu untuk melihat aktivitas lain.</p>
-        </div>
+        </StateCard>
       ) : (
         <div
           className="table-wrap"

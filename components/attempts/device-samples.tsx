@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 import { useState } from 'react';
 import { QuestionPreview } from '../authoring/preview';
 import type { Question } from '../../lib/authoring/schema';
@@ -12,6 +13,6 @@ export function DeviceSamples() {
     <img src="/preflight-sample.svg" alt="Contoh gambar: lingkaran biru dan segitiga hijau" width={240} height={90} onError={() => setMediaError(true)} />
     <label>Contoh ketik (tidak disimpan)<input maxLength={100} placeholder="Ketik beberapa kata di sini" autoComplete="off" /></label>
     <label>Contoh audio (opsional, tekan Putar)<audio controls preload="none" src="/preflight-tone.wav" onError={() => setMediaError(true)} /></label>
-    {mediaError && <p role="status">Contoh media gagal dimuat. Periksa koneksi lalu muat ulang sebelum ujian. Hubungi pengawas bila media diperlukan.</p>}
+    {mediaError && <FeedbackMessage tone="info" role="status">Contoh media gagal dimuat. Periksa koneksi lalu muat ulang sebelum ujian. Hubungi pengawas bila media diperlukan.</FeedbackMessage>}
   </div>;
 }

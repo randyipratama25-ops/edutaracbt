@@ -1,4 +1,7 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
+import {FeedbackMessage} from "../feedback/state";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
@@ -11,7 +14,7 @@ export function LogoutButton() {
   async function logout() {
     setBusy(true);
     try {
-      const r = await fetch("/api/auth/logout", { method: "POST" });
+      const r = await feedbackFetch("/api/auth/logout", { method: "POST" });
       if (!r.ok) throw Error();
       router.replace("/login");
       router.refresh();
@@ -39,7 +42,7 @@ export function LogoutButton() {
             {busy ? "Memproses…" : "Ya, keluar"}
           </Button>
         </div>
-        <p role="alert">{error}</p>
+        <FeedbackMessage tone="error" role="alert">{error}</FeedbackMessage>
       </Dialog>
     </>
   );

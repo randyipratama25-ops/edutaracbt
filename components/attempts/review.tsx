@@ -1,4 +1,8 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -29,7 +33,7 @@ export function ReviewPanel() {
     [reason, setReason] = useState(""),
     [busy, setBusy] = useState(false);
   async function load() {
-    const r = await fetch("/api/review");
+    const r = await feedbackFetch("/api/review");
     const j = await r.json();
     if (!r.ok) throw Error(j.error?.message);
     setRows(j.data);
@@ -41,7 +45,7 @@ export function ReviewPanel() {
     setBusy(true);
     setMessage("");
     try {
-      const r = await fetch("/api/review", {
+      const r = await feedbackFetch("/api/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,7 +82,7 @@ export function ReviewPanel() {
       >
         Muat ulang monitor
       </Button>
-      <p role="status">{message}</p>
+      <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
       <div className="table-wrap">
         <table>
           <thead>
@@ -165,7 +169,7 @@ export function ReviewPanel() {
             ))}
           </ol>
         ) : (
-          <form
+          <ValidatedForm
             onSubmit={(e) => {
               e.preventDefault();
               if (selected) void run(action, selected);
@@ -183,9 +187,9 @@ export function ReviewPanel() {
               />
             </label>
             <Button disabled={busy}>Simpan keputusan</Button>
-          </form>
+          </ValidatedForm>
         )}
-        <p role="status">{message}</p>
+        <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
       </Dialog>
     </section>
   );

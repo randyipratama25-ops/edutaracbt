@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ListFilters, SearchField } from "../ui/list-filters";
 import { matchesSearch } from "../../lib/lists/search";
@@ -26,12 +28,12 @@ const kindLabel = (kind: MasterKind) =>
   kind === "classes" ? "kelas" : "mata pelajaran";
 function Feedback({ value }: { value: Notice }) {
   return value ? (
-    <p
+    <FeedbackMessage tone={value.kind}
       role={value.kind === "error" ? "alert" : "status"}
       className="master-feedback"
     >
       {value.text}
-    </p>
+    </FeedbackMessage>
   ) : null;
 }
 function Pager({
@@ -628,7 +630,7 @@ export function MasterPanel() {
           />
         </ListFilters>
         <Feedback value={message} />
-        {loading && <p role="status">Memuat data master…</p>}
+        {loading && <FeedbackMessage tone="loading" role="status">Memuat data master…</FeedbackMessage>}
         {data && (loading || error) && (
           <p className="muted">
             Menampilkan data terakhir yang berhasil dimuat. Perubahan
@@ -753,7 +755,7 @@ export function MasterPanel() {
             Pilih pengguna dan referensi aktif. Data yang sama diperbarui tanpa
             membuat tautan ganda.
           </p>
-          <form onSubmit={assign} method="post" action="/api/admin/master">
+          <ValidatedForm onSubmit={assign} method="post" action="/api/admin/master">
             <fieldset
               className="form-grid master-fields"
               disabled={busy || !canWrite || assignmentBlocked}
@@ -818,14 +820,14 @@ export function MasterPanel() {
                 Simpan penugasan
               </Button>
             </fieldset>
-          </form>
+          </ValidatedForm>
           {(!people.length ||
             !classes.length ||
             (assignmentType === "assignment" && !subjects.length)) && (
-            <p role="status">
+            <FeedbackMessage tone="info" role="status">
               Lengkapi pengguna, kelas atau mata pelajaran aktif terlebih
               dahulu.
-            </p>
+            </FeedbackMessage>
           )}
           <Feedback value={assignmentMessage} />
         </section>
@@ -865,7 +867,7 @@ export function MasterPanel() {
         description={`Gunakan nama ${kindLabel(form?.kind || kind)} yang unik, maksimal 100 karakter.`}
         className="master-dialog"
       >
-        <form
+        <ValidatedForm
           onSubmit={submit}
           method="post"
           action="/api/admin/master"
@@ -912,7 +914,7 @@ export function MasterPanel() {
               {busy ? "Menyimpan…" : "Simpan"}
             </Button>
           </div>
-        </form>
+        </ValidatedForm>
       </Dialog>
       <Dialog
         open={!!plan}

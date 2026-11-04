@@ -1,4 +1,6 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
 import { useEffect, useRef, useState } from "react";
 import { pruneAcknowledgedDrafts, clearDeviceDrafts, parseDraft, sameAnswer, type AnswerValue, type RecoveryRow } from "../../lib/attempts/recovery";
 export type Value = AnswerValue;
@@ -7,7 +9,7 @@ export class AttemptError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
 export async function command(input: unknown) {
-  const r = await fetch("/api/attempts", {
+  const r = await feedbackFetch("/api/attempts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),

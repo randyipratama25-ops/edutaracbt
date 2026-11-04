@@ -1,3 +1,4 @@
+import {feedbackFetch} from "../client/feedback-transport";
 export type DeviceCheck = { id: string; label: string; level: 'ok' | 'warning' | 'blocked'; detail: string };
 export type DeviceReport = { checks: DeviceCheck[]; checkedAt: number; expiresAt: number };
 export const PREFLIGHT_TTL = 5 * 60 * 1000;
@@ -29,7 +30,7 @@ export async function inspectDevice(signal: AbortSignal): Promise<DeviceReport> 
   checks.push({ id: 'screen', label: 'Layar', level: innerWidth >= 360 ? 'ok' : 'warning', detail: innerWidth >= 360 ? 'Tata letak responsif tersedia. Pastikan teks nyaman dibaca.' : 'Layar sempit. Coba orientasi mendatar bila teks sulit dibaca.' });
   const start = performance.now();
   try {
-    const r = await fetch('/api/attempts/preflight', { cache: 'no-store', signal });
+    const r = await feedbackFetch('/api/attempts/preflight', { cache: 'no-store', signal });
     const body = await r.json();
     if (!r.ok || body.data?.ready !== true) throw Error(r.status === 403 ? 'Sesi siswa tidak tersedia. Masuk ulang sebelum memulai.' : 'Layanan belum dapat dijangkau. Periksa internet lalu ulangi pemeriksaan.');
     const ms = Math.round(performance.now() - start);

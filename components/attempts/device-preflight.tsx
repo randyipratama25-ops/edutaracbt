@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '../ui/button';
@@ -41,7 +42,7 @@ export function DevicePreflight({ onReadyChange }: { onReadyChange: (ready: bool
   }
   return <section className="panel stack device-preflight" aria-labelledby="device-check-title">
     <div className="actions"><h2 id="device-check-title">Pemeriksaan perangkat</h2><Button type="button" variant="outline" disabled={busy} onClick={() => void run()}>{busy ? 'Memeriksa…' : report ? 'Periksa ulang perangkat' : 'Periksa perangkat'}</Button></div>
-    <p role="status" aria-live="polite">{ready ? 'Siap memulai · hasil berlaku 5 menit sejak pemeriksaan.' : message}</p>
+    <FeedbackMessage tone="info" role="status" aria-live="polite">{ready ? 'Siap memulai · hasil berlaku 5 menit sejak pemeriksaan.' : message}</FeedbackMessage>
     <p className="muted">Periksa sebelum ujian baru. Waktu ujian belum dimulai. Melanjutkan ujian yang sudah berjalan tetap tersedia.</p>
     {report && <>
       <ul className="device-check-list">{report.checks.map(c => <li key={c.id}><details open={c.level !== 'ok'}><summary>{c.label} · {c.level === 'ok' ? 'Lulus' : c.level === 'warning' ? 'Perhatian' : 'Perlu diperbaiki'}</summary><p>{c.detail}</p></details></li>)}</ul>

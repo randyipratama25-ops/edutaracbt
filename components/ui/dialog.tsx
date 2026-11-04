@@ -1,4 +1,5 @@
 "use client";
+import {ConnectionNotice} from "../feedback/provider";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
@@ -47,6 +48,7 @@ export function Dialog({
           <DialogPrimitive.Description className="dialog-description">
             {description}
           </DialogPrimitive.Description>
+          <ConnectionNotice compact/>
           {children}
           <DialogPrimitive.Close
             type="button"

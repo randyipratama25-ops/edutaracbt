@@ -1,4 +1,6 @@
 "use client";
+import {ValidatedForm} from "../feedback/validated-form";
+import {FeedbackMessage} from "../feedback/state";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
@@ -212,7 +214,7 @@ export function PasswordForm() {
     setFeedback(null);
   }
   return (
-    <form
+    <ValidatedForm
       method="post"
       action="/api/auth/password"
       onSubmit={submit}
@@ -222,11 +224,11 @@ export function PasswordForm() {
       }
     >
       {(phase === "checking" || phase === "redirecting") && (
-        <p role="status">
+        <FeedbackMessage tone="loading" role="status">
           {phase === "checking"
             ? "Memeriksa tautan dan sesi akun…"
             : "Membuka verifikasi tautan…"}
-        </p>
+        </FeedbackMessage>
       )}
       <label htmlFor="new-password">
         Password baru
@@ -312,7 +314,7 @@ export function PasswordForm() {
           {phase === "saving" ? "Menyimpan…" : "Simpan password"}
         </Button>
       )}
-      <p
+      <FeedbackMessage tone={feedback?.kind === "success" ? "success" : feedback?.kind === "warning" ? "validation" : "error"}
         ref={feedbackNode}
         id="password-feedback"
         tabIndex={-1}
@@ -323,7 +325,7 @@ export function PasswordForm() {
         }
       >
         {feedback?.text}
-      </p>
+      </FeedbackMessage>
       {phase === "blocked" && canRetry && (
         <Button
           type="button"
@@ -340,6 +342,6 @@ export function PasswordForm() {
             : "Kembali ke login"}
         </Link>
       </Button>
-    </form>
+    </ValidatedForm>
   );
 }

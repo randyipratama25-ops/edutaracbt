@@ -1,4 +1,7 @@
 "use client";
+import {feedbackFetch} from "../../lib/client/feedback-transport";
+
+import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { parseCanvasDraft, storeCanvasDraft } from "../../lib/attempts/recovery";
 import { Button } from "../ui/button";
@@ -92,7 +95,7 @@ export function EssayCanvas({
         } catch { setStorageWarning("Draf canvas perangkat tidak tersedia."); }
         let src = local?.image;
         if (!src && initialSavedId.current) {
-          const r = await fetch("/api/attempts/canvas?id=" + initialSavedId.current, { signal: AbortSignal.timeout(12000) });
+          const r = await feedbackFetch("/api/attempts/canvas?id=" + initialSavedId.current, { signal: AbortSignal.timeout(12000) });
           if (!r.ok) throw Error("Canvas lama belum dapat dimuat. Muat ulang status sebelum menggambar agar gambar lama tidak tertimpa.");
           url = URL.createObjectURL(await r.blob()); src = url;
         }
@@ -152,7 +155,7 @@ export function EssayCanvas({
         question_id: questionId,
       }))
         form.set(k, String(v));
-      const r = await fetch("/api/attempts/canvas", {
+      const r = await feedbackFetch("/api/attempts/canvas", {
         signal: AbortSignal.timeout(20000),
         method: "POST",
         body: form,
@@ -285,8 +288,8 @@ export function EssayCanvas({
       >
         Simpan / coba unggah canvas lagi
       </Button>
-      <p role="status">{loading ? "Canvas belum siap. " : ""}{message}</p>
-      {storageWarning && <p role="alert">{storageWarning}</p>}
+      <FeedbackMessage tone="info" role="status">{loading ? "Canvas belum siap. " : ""}{message}</FeedbackMessage>
+      {storageWarning && <FeedbackMessage tone="error" role="alert">{storageWarning}</FeedbackMessage>}
     </section>
   );
 }

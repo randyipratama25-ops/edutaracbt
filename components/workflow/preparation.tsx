@@ -1,4 +1,6 @@
 "use client";
+import {FeedbackMessage, StateCard} from "../feedback/state";
+import {ValidatedForm} from "../feedback/validated-form";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
@@ -254,9 +256,9 @@ export function PreparationPanel() {
   }
   return (
     <div className="stack">
-      <p role="status" aria-live="polite">
+      <FeedbackMessage tone="info" role="status" aria-live="polite">
         {message}
-      </p>
+      </FeedbackMessage>
       <div className="actions">
         {data?.admin && (
           <Button disabled={busy} onClick={() => void begin()}>
@@ -274,7 +276,7 @@ export function PreparationPanel() {
           <Link href="/dashboard/exams">Bank soal & pengaturan lanjutan</Link>
         </Button>
       </div>
-      {loading && <p role="status">Memeriksa kesiapan…</p>}
+      {loading && <FeedbackMessage tone="loading" role="status">Memeriksa kesiapan…</FeedbackMessage>}
       {data && (
         <>
           <label>
@@ -296,14 +298,14 @@ export function PreparationPanel() {
             </select>
           </label>
           {!data.exams.length && (
-            <section className="panel empty-state">
+            <StateCard kind="empty" className="panel empty-state">
               <h2>Belum ada ujian</h2>
               <p>
                 {data.admin
                   ? "Mulai dari identitas, peserta, dan jadwal. Simpan sebagai draf sebelum mengisi soal."
                   : "Ujian yang ditugaskan kepada Anda akan tampil di sini."}
               </p>
-            </section>
+            </StateCard>
           )}
         </>
       )}
@@ -335,7 +337,7 @@ export function PreparationPanel() {
             )}
           </div>
           {data?.admin && exam.status === "draft" && (
-            <form
+            <ValidatedForm
               className="stack"
               onSubmit={(e) => {
                 e.preventDefault();
@@ -363,7 +365,7 @@ export function PreparationPanel() {
               >
                 Publikasikan jadwal
               </Button>
-            </form>
+            </ValidatedForm>
           )}
         </section>
       )}
@@ -378,7 +380,7 @@ export function PreparationPanel() {
         title="Persiapan ujian terpandu"
         description="Draf disimpan pada langkah Jadwal dan Aturan. Waktu input mengikuti zona waktu perangkat."
       >
-        <form onSubmit={next} className="stack" aria-busy={busy}>
+        <ValidatedForm onSubmit={next} className="stack" aria-busy={busy}>
           <ol className="wizard-steps" aria-label="Tahap persiapan">
             {steps.map((s, i) => (
               <li key={s} aria-current={step === i ? "step" : undefined}>
@@ -613,7 +615,7 @@ export function PreparationPanel() {
               </label>
             </>
           )}
-          <p role="status">{message}</p>
+          <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
           <div className="actions">
             <Button
               type="button"
@@ -650,7 +652,7 @@ export function PreparationPanel() {
               Tutup {id ? "(draf tersimpan)" : "wizard"}
             </Button>
           </div>
-        </form>
+        </ValidatedForm>
       </Dialog>
     </div>
   );

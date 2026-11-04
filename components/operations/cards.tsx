@@ -1,4 +1,5 @@
 "use client";
+import {FeedbackMessage} from "../feedback/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useLive, type Options } from "./shared";
@@ -333,22 +334,22 @@ export function CardsPanel() {
             Buat {selected.length} kartu
           </Button>
         </div>
-        <p role="status">
+        <FeedbackMessage tone="info" role="status">
           {selected.length} dipilih dari {shown.length} hasil
           {shown.length > limit
             ? `; pilih hasil mengambil ${limit} peserta pertama`
             : ""}
           . Pencarian atau pergantian ujian mengosongkan pilihan.
-        </p>
+        </FeedbackMessage>
         {over && (
-          <p role="alert">
+          <FeedbackMessage tone="error" role="alert">
             Pilihan melebihi batas {limit}. Kurangi pilihan atau gunakan PDF
             gabungan.
-          </p>
+          </FeedbackMessage>
         )}
-        {listError && <p role="alert">{listError}</p>}
+        {listError && <FeedbackMessage tone="error" role="alert">{listError}</FeedbackMessage>}
         {loading && rows.length === 0 ? (
-          <p role="status">Memuat peserta…</p>
+          <FeedbackMessage tone="loading" role="status">Memuat peserta…</FeedbackMessage>
         ) : !exam ? (
           <p>Pilih ujian untuk melihat peserta.</p>
         ) : !shown.length && !listError ? (
@@ -410,9 +411,9 @@ export function CardsPanel() {
           </nav>
         )}
       </fieldset>
-      <p role="status" aria-live="polite">
+      <FeedbackMessage tone="info" role="status" aria-live="polite">
         {busy ? "Menjadwalkan proses kartu…" : message}
-      </p>
+      </FeedbackMessage>
       <div className="actions">
         <h2>Proses kartu</h2>
         <Button
@@ -424,15 +425,15 @@ export function CardsPanel() {
         </Button>
       </div>
       {uncertain && (
-        <p role="alert">
+        <FeedbackMessage tone="error" role="alert">
           Hasil belum pasti. Periksa status sebelum mencoba kembali dengan isian
           yang sama.
-        </p>
+        </FeedbackMessage>
       )}
       {jobsError && (
-        <p role="alert">
+        <FeedbackMessage tone="error" role="alert">
           {jobsError} Daftar terakhir yang berhasil dimuat dipertahankan.
-        </p>
+        </FeedbackMessage>
       )}
       {!jobsLoading && !jobsError && !jobs.length && (
         <p>Belum ada proses kartu. Pilih peserta lalu buat kartu.</p>
@@ -449,7 +450,7 @@ export function CardsPanel() {
               aria-label={`Progres ${j.format.toUpperCase()} ${j.progress}%`}
             />
             <span>{j.progress}%</span>
-            {j.error && <p role="alert">{j.error}</p>}
+            {j.error && <FeedbackMessage tone="error" role="alert">{j.error}</FeedbackMessage>}
             {j.status === "ready" ? (
               <a href={"/api/cards/download?id=" + j.id}>Unduh kartu</a>
             ) : (

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import {FeedbackProvider} from "../components/feedback/provider";
 
 export const metadata: Metadata = {
   title: "EDUTARA CBT",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="id">
-      <body><a className="skip-link" href="#main-content">Lewati ke konten utama</a>{children}</body>
+      <body><a className="skip-link" href="#main-content">Lewati ke konten utama</a><FeedbackProvider>{children}</FeedbackProvider></body>
     </html>
   );
 }

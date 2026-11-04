@@ -1,4 +1,6 @@
 "use client";
+import {ValidatedForm} from "../feedback/validated-form";
+import {FeedbackMessage} from "../feedback/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../operations/shared";
 import { Dialog } from "../ui/dialog";
@@ -44,7 +46,7 @@ export function StudentHelp({ attemptId }: { attemptId: string }) {
         title="Bantuan pengawas"
         description="Jawaban tetap tersimpan dan waktu terus berjalan. Jika koneksi terputus, hubungi pengawas langsung."
       >
-        <form
+        <ValidatedForm
           className="stack"
           aria-busy={busy}
           onSubmit={async (e) => {
@@ -90,7 +92,7 @@ export function StudentHelp({ attemptId }: { attemptId: string }) {
           <Button disabled={busy || rows.some((r) => !r.resolved_at)}>
             Kirim permintaan
           </Button>
-          <p role="status">{message}</p>
+          <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>
           <ul className="agenda-list">
             {rows.map((r) => (
               <li key={r.id}>
@@ -105,7 +107,7 @@ export function StudentHelp({ attemptId }: { attemptId: string }) {
             ))}
           </ul>
           {!rows.length && <p>Belum ada permintaan bantuan.</p>}
-        </form>
+        </ValidatedForm>
       </Dialog>
     </>
   );
