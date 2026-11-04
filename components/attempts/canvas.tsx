@@ -1,9 +1,18 @@
 "use client";
-import {feedbackFetch} from "../../lib/client/feedback-transport";
+import { feedbackFetch } from "../../lib/client/feedback-transport";
 
-import {FeedbackMessage} from "../feedback/state";
-import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { parseCanvasDraft, storeCanvasDraft } from "../../lib/attempts/recovery";
+import { FeedbackMessage } from "../feedback/state";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
+import {
+  parseCanvasDraft,
+  storeCanvasDraft,
+} from "../../lib/attempts/recovery";
 import { Button } from "../ui/button";
 type Stroke = {
   color: string;
@@ -33,15 +42,31 @@ export function EssayCanvas({
 }) {
   const initialSavedId = useRef(savedId);
   const draftKey = `edutara:canvas:v1:${recoveryScope}:${writer.attempt_id}:${writer.client_id}:${writer.epoch}:${questionId}`;
-  const [loading, setLoading] = useState(true);
-  const [olderDrafts, setOlderDrafts] = useState<{ key: string; image: string; updatedAt: number }[]>([]);
+  const [loading, setLoading] = useState(true),
+    [restoreVersion, setRestoreVersion] = useState(0),
+    [restoreError, setRestoreError] = useState(false),
+    [uploadBusy, setUploadBusy] = useState(false);
+  const mounted = useRef(false),
+    uploadController = useRef<AbortController | null>(null),
+    savedGeneration = useRef(0),
+    pointer = useRef<number | null>(null);
+  const [olderDrafts, setOlderDrafts] = useState<
+    { key: string; image: string; updatedAt: number }[]
+  >([]);
   const [storageWarning, setStorageWarning] = useState("");
-  function saveLocal(mediaId?: string) {
-    try {
-      const image = ref.current?.toDataURL("image/png");
-      if (image) storeCanvasDraft(draftKey, image, mediaId);
-    } catch { setStorageWarning("Draf canvas belum dapat disimpan di perangkat. Jangan muat ulang sebelum unggahan dan jawaban diakui server."); }
-  }
+  const saveLocal = useCallback(
+    (mediaId?: string) => {
+      try {
+        const image = ref.current?.toDataURL("image/png");
+        if (image) storeCanvasDraft(draftKey, image, mediaId);
+      } catch {
+        setStorageWarning(
+          "Draf canvas belum dapat disimpan di perangkat. Jangan muat ulang sebelum unggahan dan jawaban diakui server.",
+        );
+      }
+    },
+    [draftKey],
+  );
   const ref = useRef<HTMLCanvasElement>(null),
     paths = useRef<Stroke[]>([]),
     base = useRef<HTMLImageElement | null>(null),
@@ -78,11 +103,19 @@ export function EssayCanvas({
   }
   useEffect(() => {
     let active = true;
+    mounted.current = true;
+    setLoading(true);
+    setRestoreError(false);
+    const controller = new AbortController();
     let url: string | undefined;
     redraw();
     async function restore() {
       try {
-        let local: { image: string; mediaId?: string; updatedAt: number } | null = null;
+        let local: {
+          image: string;
+          mediaId?: string;
+          updatedAt: number;
+        } | null = null;
         try {
           const raw = localStorage.getItem(draftKey);
           if (raw) {
@@ -92,25 +125,58 @@ export function EssayCanvas({
             localStorage.removeItem(draftKey);
             local = null;
           }
-        } catch { setStorageWarning("Draf canvas perangkat tidak tersedia."); }
+        } catch {
+          setStorageWarning("Draf canvas perangkat tidak tersedia.");
+        }
         let src = local?.image;
         if (!src && initialSavedId.current) {
-          const r = await feedbackFetch("/api/attempts/canvas?id=" + initialSavedId.current, { signal: AbortSignal.timeout(12000) });
-          if (!r.ok) throw Error("Canvas lama belum dapat dimuat. Muat ulang status sebelum menggambar agar gambar lama tidak tertimpa.");
-          url = URL.createObjectURL(await r.blob()); src = url;
+          const r = await feedbackFetch(
+            "/api/attempts/canvas?id=" + initialSavedId.current,
+            {
+              signal: AbortSignal.any([
+                controller.signal,
+                AbortSignal.timeout(12000),
+              ]),
+            },
+          );
+          if (!r.ok)
+            throw Error(
+              "Canvas lama belum dapat dimuat. Muat ulang status sebelum menggambar agar gambar lama tidak tertimpa.",
+            );
+          const blob = await r.blob();
+          if (!active) return;
+          url = URL.createObjectURL(blob);
+          src = url;
         }
         if (src) {
           const img = new Image();
           await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve(); img.onerror = () => reject(Error("Gambar canvas belum dapat dipulihkan.")); img.src = src!;
+            img.onload = () => resolve();
+            img.onerror = () =>
+              reject(Error("Gambar canvas belum dapat dipulihkan."));
+            img.src = src!;
           });
-          if (active) { base.current = img; redraw(); }
+          if (active) {
+            base.current = img;
+            redraw();
+          }
         }
         if (active) {
-          if (local) { gen.current++; onDirty(true); setMessage("Draf canvas dipulihkan. Tekan Simpan untuk mengunggah dan menghubungkannya ke jawaban."); }
+          if (local) {
+            gen.current++;
+            onDirty(true);
+            setMessage(
+              "Draf canvas dipulihkan. Tekan Simpan untuk mengunggah dan menghubungkannya ke jawaban.",
+            );
+          }
           setLoading(false);
         }
-      } catch (e) { if (active) setMessage(e instanceof Error ? e.message : "Canvas gagal dimuat."); }
+      } catch (e) {
+        if (active) {
+          setRestoreError(true);
+          setMessage(e instanceof Error ? e.message : "Canvas gagal dimuat.");
+        }
+      }
     }
     void restore();
     try {
@@ -118,23 +184,54 @@ export function EssayCanvas({
       const drafts = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (!key || key === draftKey || !key.startsWith(prefix) || !key.endsWith(`:${questionId}`)) continue;
+        if (
+          !key ||
+          key === draftKey ||
+          !key.startsWith(prefix) ||
+          !key.endsWith(`:${questionId}`)
+        )
+          continue;
         const d = parseCanvasDraft(localStorage.getItem(key));
-        if (d && (!d.mediaId || d.mediaId !== initialSavedId.current)) drafts.push({ key, image: d.image, updatedAt: d.updatedAt });
+        if (d && (!d.mediaId || d.mediaId !== initialSavedId.current))
+          drafts.push({ key, image: d.image, updatedAt: d.updatedAt });
       }
-      setOlderDrafts(drafts.sort((a,b) => b.updatedAt-a.updatedAt).slice(0,3));
-    } catch { /* Persistent device storage may be blocked. */ }
+      setOlderDrafts(
+        drafts.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3),
+      );
+    } catch {
+      /* Persistent device storage may be blocked. */
+    }
     return () => {
       active = false;
+      mounted.current = false;
+      controller.abort();
+      uploadController.current?.abort();
       if (url) URL.revokeObjectURL(url);
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [draftKey, onDirty, questionId, recoveryScope, writer.attempt_id]);
+  }, [
+    draftKey,
+    onDirty,
+    questionId,
+    recoveryScope,
+    writer.attempt_id,
+    restoreVersion,
+  ]);
   async function upload() {
-    if (disabled || loading || uploading.current) return;
+    if (
+      !mounted.current ||
+      disabled ||
+      loading ||
+      uploading.current ||
+      drawing.current
+    )
+      return;
     const canvas = ref.current;
     if (!canvas) return;
     uploading.current = true;
+    setUploadBusy(true);
+    const controller = new AbortController();
+    uploadController.current = controller;
     const current = gen.current;
     setMessage("Mengunggah canvas utuh…");
     try {
@@ -144,6 +241,7 @@ export function EssayCanvas({
           "image/png",
         ),
       );
+      if (!mounted.current || controller.signal.aborted) return;
       if (blob.size > 5242880)
         throw Error(
           "Canvas melebihi 5 MiB. Tidak ada data yang dipotong; kurangi gambar sebelum menyimpan.",
@@ -156,23 +254,34 @@ export function EssayCanvas({
       }))
         form.set(k, String(v));
       const r = await feedbackFetch("/api/attempts/canvas", {
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.any([
+          controller.signal,
+          AbortSignal.timeout(20000),
+        ]),
         method: "POST",
         body: form,
       });
       const j = await r.json();
       if (!r.ok) throw Error(j.error?.message);
+      if (!j.data || typeof j.data.id !== "string" || !j.data.id)
+        throw Error(
+          "Respons unggahan belum dapat dipastikan. Draf canvas tetap tersedia; coba unggah lagi.",
+        );
+      if (!mounted.current) return;
       if (current === gen.current) {
+        savedGeneration.current = current;
         saveLocal(j.data.id);
         onSaved(j.data.id);
         onDirty(false);
         setMessage("Canvas tersimpan di Storage; menunggu pengakuan jawaban.");
       } else schedule();
     } catch (e) {
+      if (!mounted.current) return;
       setMessage(e instanceof Error ? e.message : "Unggah gagal.");
       onDirty(true);
     } finally {
       uploading.current = false;
+      if (mounted.current) setUploadBusy(false);
     }
   }
   function schedule() {
@@ -181,6 +290,23 @@ export function EssayCanvas({
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void upload(), 1000);
   }
+  function finishStroke() {
+    if (!drawing.current) return;
+    drawing.current = false;
+    pointer.current = null;
+    schedule();
+  }
+  useEffect(() => {
+    const preserve = () => {
+      if (gen.current > savedGeneration.current) saveLocal();
+    };
+    window.addEventListener("pagehide", preserve);
+    window.addEventListener("beforeunload", preserve);
+    return () => {
+      window.removeEventListener("pagehide", preserve);
+      window.removeEventListener("beforeunload", preserve);
+    };
+  }, [draftKey, saveLocal]);
   function point(e: PointerEvent<HTMLCanvasElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     return {
@@ -239,15 +365,45 @@ export function EssayCanvas({
           Bersihkan canvas
         </Button>
       </div>
-      {olderDrafts.length > 0 && <section className="notice">
-        <p>Ada draf canvas dari tab/sesi sebelumnya. Memulihkan draf mengganti gambar editor; unggah sebelum melanjutkan.</p>
-        {olderDrafts.map(d => <Button key={d.key} disabled={disabled || loading} variant="outline" onClick={() => {
-          const img = new Image();
-          img.onload = () => { base.current = img; paths.current = []; gen.current++; redraw(); saveLocal(); onDirty(true); setMessage("Draf canvas dipulihkan; simpan untuk mengunggah."); setOlderDrafts([]); };
-          img.onerror = () => setMessage("Draf canvas belum dapat dimuat.");
-          img.src = d.image;
-        }}>Pulihkan canvas {new Date(d.updatedAt).toLocaleTimeString("id-ID")}</Button>)}
-      </section>}
+      {olderDrafts.length > 0 && (
+        <section className="notice">
+          <p>
+            Ada draf canvas dari tab/sesi sebelumnya. Memulihkan draf mengganti
+            gambar editor; unggah sebelum melanjutkan.
+          </p>
+          {olderDrafts.map((d) => (
+            <Button
+              key={d.key}
+              disabled={disabled || loading}
+              variant="outline"
+              onClick={() => {
+                const img = new Image();
+                img.onload = () => {
+                  if (!mounted.current) return;
+                  base.current = img;
+                  paths.current = [];
+                  gen.current++;
+                  redraw();
+                  saveLocal();
+                  onDirty(true);
+                  setMessage(
+                    "Draf canvas dipulihkan; simpan untuk mengunggah.",
+                  );
+                  setOlderDrafts([]);
+                };
+                img.onerror = () => {
+                  if (mounted.current)
+                    setMessage("Draf canvas belum dapat dimuat.");
+                };
+                img.src = d.image;
+              }}
+            >
+              Pulihkan canvas{" "}
+              {new Date(d.updatedAt).toLocaleTimeString("id-ID")}
+            </Button>
+          ))}
+        </section>
+      )}
       <canvas
         ref={ref}
         width={canvasWidth}
@@ -255,8 +411,14 @@ export function EssayCanvas({
         className="essay-canvas"
         aria-label="Canvas jawaban esai; gunakan kotak teks sebagai alternatif yang dapat diakses"
         onPointerDown={(e) => {
-          if (disabled || loading) return;
-          e.currentTarget.setPointerCapture(e.pointerId);
+          if (disabled || loading || e.isPrimary === false || drawing.current)
+            return;
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch {
+            return;
+          }
+          pointer.current = e.pointerId;
           drawing.current = true;
           paths.current.push({ color, width, points: [point(e)] });
           gen.current++;
@@ -264,32 +426,48 @@ export function EssayCanvas({
           redraw();
         }}
         onPointerMove={(e) => {
-          if (!drawing.current || disabled || loading) return;
+          if (
+            !drawing.current ||
+            disabled ||
+            loading ||
+            e.pointerId !== pointer.current
+          )
+            return;
           paths.current.at(-1)?.points.push(point(e));
           gen.current++;
           redraw();
         }}
-        onPointerUp={() => {
-          if (drawing.current) {
-            drawing.current = false;
-            schedule();
-          }
-        }}
-        onPointerCancel={() => {
-          drawing.current = false;
-          schedule();
-        }}
+        onPointerUp={() => finishStroke()}
+        onPointerCancel={() => finishStroke()}
+        onLostPointerCapture={() => finishStroke()}
       />
       <Button
         type="button"
-        disabled={disabled || loading}
+        disabled={disabled || loading || uploadBusy}
         variant="outline"
         onClick={() => void upload()}
       >
         Simpan / coba unggah canvas lagi
       </Button>
-      <FeedbackMessage tone="info" role="status">{loading ? "Canvas belum siap. " : ""}{message}</FeedbackMessage>
-      {storageWarning && <FeedbackMessage tone="error" role="alert">{storageWarning}</FeedbackMessage>}
+      {restoreError && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setRestoreVersion((v) => v + 1)}
+        >
+          Coba muat canvas
+        </Button>
+      )}
+      <FeedbackMessage tone="info" role="status">
+        {uploadBusy ? "Mengunggah… " : ""}
+        {loading ? "Canvas belum siap. " : ""}
+        {message}
+      </FeedbackMessage>
+      {storageWarning && (
+        <FeedbackMessage tone="error" role="alert">
+          {storageWarning}
+        </FeedbackMessage>
+      )}
     </section>
   );
 }

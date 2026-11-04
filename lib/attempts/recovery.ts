@@ -32,7 +32,7 @@ export function secondsRemaining(deadline: string, serverTime: number, elapsed: 
   return Math.max(0, Math.ceil((Date.parse(deadline) - serverTime - Math.max(0, elapsed)) / 1000));
 }
 export function receiptOf(a: { id: string; status: string; finalized_at: string | null }) {
-  return a.finalized_at && ['submitted', 'time_expired'].includes(a.status)
+  return a.finalized_at && ['submitted', 'time_expired', 'graded'].includes(a.status)
     ? { number: `EDU-${a.id}`, receivedAt: a.finalized_at, status: a.status }
     : null;
 }

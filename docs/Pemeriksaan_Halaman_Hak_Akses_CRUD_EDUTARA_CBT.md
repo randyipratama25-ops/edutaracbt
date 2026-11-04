@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.35 — Audit Otomasi dan backup.
+Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.36 — Audit Portal siswa.
+
+## Audit Portal siswa — 4 November 2026
+
+Inventaris tetap **23 halaman**. `/student` tetap hanya Siswa dalam konteks siswa, dengan kepemilikan/organisasi/writer epoch/deadline diperiksa backend. Daftar, PIN/preflight, mulai/lanjut/ambil alih, lima tipe soal, autosave, pemulihan, canvas, bantuan, pengumpulan dan hasil dipertahankan. Total **34 penggunaan Dialog pada 20 komponen**; tidak ada dependency baru.
+
+Migrasi **`20261104152013_student_payload_privacy.sql`** diterapkan di staging dan produksi untuk menghapus metadata `distractors` dari proyeksi siswa, termasuk snapshot lama. Pilihan gabungan/acak menjodohkan tetap tersedia. Payload penilaian, snapshot immutable, jawaban, perhitungan nilai dan deadline tidak diubah; grants/RLS tetap. Uji RPC pada database terisolasi membuktikan privasi, pilihan lengkap, snapshot/penilaian tetap identik dan epoch/deadline tidak berubah.
+
+Kontrak runtime mencegah daftar/soal/terminal malformed dan ACK berulang masuk ke state. Metadata policy/saved_at/checksum dipertahankan; recovery tambahan yang rusak tidak memblokir canonical resume. Pembukaan terkunci sinkron dan memakai timeout/abort/generation; pesan sesi tidak tersembunyi di player. Dialog ambil alih menjelaskan konsekuensi. Reload pada pengumpulan belum pasti mempertahankan instance aktif, edit lock dan request_id yang sama; respons lama tidak menurunkan epoch atau membuka kembali sesi final. Operasi submit/pindah perangkat/reload diselaraskan dan deadline mengikuti respons server.
+
+Canvas memvalidasi ID unggahan, menjaga draf saat gagal, mengabaikan callback setelah unmount dan menangani pointer terputus. Bantuan pengawas memiliki loading/error/retry dan receipt yang divalidasi tanpa menghapus isian pada kegagalan. Hasil menyediakan kembali ke daftar sesudah finalisasi dan bukti untuk graded. Jadwal/PIN/kartu dirapikan; header/menu/teks/modal beradaptasi pada layar sempit dan pendek. Ujian closed tanpa attempt tidak menyediakan form mulai.
+
+Validasi: 448 tes lulus/3 dilewati; lint/typecheck/build, browser fixture produksi dengan 43 ujian/70 soal, lima tipe jawaban, uncertain reload/retry, preflight, canvas, keyboard/axe, 320–1440px, orientasi/layar pendek dan teks 200%. API tulis browser disimulasikan tanpa menjalankan ujian atau mengubah jawaban siswa produksi. Bukti dan batas: `docs/student-page-audit.md`.
 
 ## Audit Otomasi dan backup — 4 November 2026
 

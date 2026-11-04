@@ -1,22 +1,61 @@
 "use client";
-import {feedbackFetch} from "../../lib/client/feedback-transport";
+import { feedbackFetch } from "../../lib/client/feedback-transport";
 
+import { parseAttempt } from "../../lib/attempts/contracts";
 import { useEffect, useRef, useState } from "react";
-import { pruneAcknowledgedDrafts, clearDeviceDrafts, parseDraft, sameAnswer, type AnswerValue, type RecoveryRow } from "../../lib/attempts/recovery";
+import {
+  pruneAcknowledgedDrafts,
+  clearDeviceDrafts,
+  parseDraft,
+  sameAnswer,
+  type AnswerValue,
+  type RecoveryRow,
+} from "../../lib/attempts/recovery";
 export type Value = AnswerValue;
 export type Saved = { question_id: string; revision: number; value: Value };
 export class AttemptError extends Error {
-  constructor(message: string, public status: number) { super(message); }
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
 }
-export async function command(input: unknown) {
+export async function command(
+  input: unknown,
+  options?: { signal?: AbortSignal },
+) {
   const r = await feedbackFetch("/api/attempts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
-    signal: AbortSignal.timeout(12000),
+    signal: options?.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(12000)])
+      : AbortSignal.timeout(12000),
   });
-  const j = await r.json();
-  if (!r.ok) throw new AttemptError(j.error?.message || "Permintaan gagal.", r.status);
+  const j = await r.json().catch(() => {
+    throw new AttemptError(
+      "Respons ujian belum dapat dibaca. Periksa koneksi dan status sebelum mencoba lagi.",
+      r.ok ? 503 : r.status,
+    );
+  });
+  if (!r.ok)
+    throw new AttemptError(j.error?.message || "Permintaan gagal.", r.status);
+  if (!j || typeof j !== "object" || !("data" in j) || j.success === false)
+    throw Error(
+      "Respons ujian belum dapat dipastikan. Periksa status sebelum mengulang.",
+    );
+  const action = (input as { action?: string })?.action;
+  if (["start", "resume", "takeover", "submit"].includes(action || "")) {
+    try {
+      return parseAttempt(j.data);
+    } catch {
+      throw new AttemptError(
+        "Status ujian belum dapat dipastikan. Periksa status sebelum mengulang.",
+        503,
+      );
+    }
+  }
   return j.data;
 }
 type Pending = { value: Value; generation: number };
@@ -25,7 +64,12 @@ export function useAnswerQueue(
   writer: { attempt_id: string; client_id: string; epoch: number },
   initial: Saved[],
   onTerminal: (data: unknown) => void,
-  recovery?: { ownerId: string; enabled: boolean; finalized?: boolean; questionIds: string[] },
+  recovery?: {
+    ownerId: string;
+    enabled: boolean;
+    finalized?: boolean;
+    questionIds: string[];
+  },
 ) {
   const [values, setValues] = useState<Record<string, Value>>(() =>
     Object.fromEntries(initial.map((a) => [a.question_id, a.value])),
@@ -36,19 +80,36 @@ export function useAnswerQueue(
   const [tick, setTick] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState("");
-  const mounted = useRef(true), transientFailure = useRef(false);
-  const storageKey = recovery ? `edutara:draft:v1:${recovery.ownerId}:${writer.attempt_id}:${writer.client_id}` : null;
+  const mounted = useRef(true),
+    transientFailure = useRef(false);
+  const storageKey = recovery
+    ? `edutara:draft:v1:${recovery.ownerId}:${writer.attempt_id}:${writer.client_id}`
+    : null;
   const currentValues = useRef(values);
   const serverValues = useRef({ ...values });
   function persist() {
     if (!storageKey || !mounted.current) return;
     try {
       if (!pending.current.size) localStorage.removeItem(storageKey);
-      else localStorage.setItem(storageKey, JSON.stringify({ version: 1, epoch: writer.epoch,
-        updatedAt: Date.now(), rows: Object.fromEntries(Array.from(pending.current, ([id, row]) =>
-          [id, { value: row.value, revision: revisions.current[id] || 0 }])) }));
+      else
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            version: 1,
+            epoch: writer.epoch,
+            updatedAt: Date.now(),
+            rows: Object.fromEntries(
+              Array.from(pending.current, ([id, row]) => [
+                id,
+                { value: row.value, revision: revisions.current[id] || 0 },
+              ]),
+            ),
+          }),
+        );
     } catch {
-      setRecoveryMessage("Penyimpanan draf perangkat tidak tersedia/penuh. Jangan muat ulang sebelum jawaban tersimpan di server.");
+      setRecoveryMessage(
+        "Penyimpanan draf perangkat tidak tersedia/penuh. Jangan muat ulang sebelum jawaban tersimpan di server.",
+      );
     }
   }
   const revisions = useRef<Record<string, number>>(
@@ -108,7 +169,11 @@ export function useAnswerQueue(
         } catch (e) {
           const msg =
             e instanceof Error ? e.message : "Jaringan tidak tersedia.";
-          if ((e instanceof AttemptError && e.status < 500) || /CONFLICT|AUTH|valid|terlalu besar/i.test(msg) || attempt === 2)
+          if (
+            (e instanceof AttemptError && e.status < 500) ||
+            /CONFLICT|AUTH|valid|terlalu besar/i.test(msg) ||
+            attempt === 2
+          )
             throw e;
           await new Promise((resolve) =>
             setTimeout(resolve, 500 * 2 ** attempt),
@@ -118,36 +183,82 @@ export function useAnswerQueue(
       if (!mounted.current) return false;
       transientFailure.current = false;
       if (result?.id && result?.status) {
+        try {
+          result = parseAttempt(result);
+        } catch {
+          throw Error(
+            "Status akhir dari server belum lengkap; jawaban tetap dalam antrean.",
+          );
+        }
+        if (result.status === "in_progress" && !result.finalized_at)
+          throw Error(
+            "Status simpan tidak valid; jawaban tetap dalam antrean.",
+          );
         stalled.current = true;
         retryBatch.current = null;
         setStatus(
           "Attempt tidak menerima perubahan lagi; gunakan status akhir dari server.",
         );
         if (result.finalized_at && storageKey) {
-          try { clearDeviceDrafts(recovery!.ownerId, writer.attempt_id); } catch { /* Keep server receipt available. */ }
+          try {
+            clearDeviceDrafts(recovery!.ownerId, writer.attempt_id);
+          } catch {
+            /* Keep server receipt available. */
+          }
         }
         onTerminal(result);
         return false;
       }
       if (!Array.isArray(result?.acknowledgements))
         throw Error("Server belum memberikan pengakuan simpan.");
-      if (result.acknowledgements.some((ack: { question_id: string; revision: number; saved: boolean }) =>
-        !ack || typeof ack.question_id !== "string" || typeof ack.saved !== "boolean" || !Number.isInteger(ack.revision) || ack.revision < 0))
-        throw Error("Pengakuan server tidak valid; jawaban tetap dalam antrean.");
-      const received = new Set(result.acknowledgements.map((ack: { question_id: string }) => ack.question_id));
-      if (batch.rows.some(row => !received.has(row.id))) throw Error("Pengakuan server tidak lengkap; batch akan diperiksa ulang.");
+      if (
+        result.acknowledgements.some(
+          (ack: { question_id: string; revision: number; saved: boolean }) =>
+            !ack ||
+            typeof ack.question_id !== "string" ||
+            typeof ack.saved !== "boolean" ||
+            !Number.isInteger(ack.revision) ||
+            ack.revision < 0,
+        )
+      )
+        throw Error(
+          "Pengakuan server tidak valid; jawaban tetap dalam antrean.",
+        );
+      const received = new Set(
+        result.acknowledgements.map(
+          (ack: { question_id: string }) => ack.question_id,
+        ),
+      );
+      if (received.size !== result.acknowledgements.length)
+        throw Error("Pengakuan server berulang; jawaban tetap dalam antrean.");
+      if (batch.rows.some((row) => !received.has(row.id)))
+        throw Error(
+          "Pengakuan server tidak lengkap; batch akan diperiksa ulang.",
+        );
       const nextConflicts = { ...conflictRef.current };
       for (const ack of result.acknowledgements) {
         const row = batch.rows.find((r) => r.id === ack.question_id);
         if (!row) continue;
         if (ack.saved) {
           revisions.current[ack.question_id] = ack.revision;
-          const sent = (batch.input as { answers: { question_id: string; value: Value }[] }).answers.find(answer => answer.question_id === ack.question_id);
+          const sent = (
+            batch.input as { answers: { question_id: string; value: Value }[] }
+          ).answers.find((answer) => answer.question_id === ack.question_id);
           if (sent) {
             serverValues.current[ack.question_id] = sent.value;
             if (recovery) {
-              try { pruneAcknowledgedDrafts(recovery.ownerId, writer.attempt_id, ack.question_id, sent.value); }
-              catch { setRecoveryMessage("Jawaban diakui server; cache draf perangkat belum dapat dibersihkan."); }
+              try {
+                pruneAcknowledgedDrafts(
+                  recovery.ownerId,
+                  writer.attempt_id,
+                  ack.question_id,
+                  sent.value,
+                );
+              } catch {
+                setRecoveryMessage(
+                  "Jawaban diakui server; cache draf perangkat belum dapat dibersihkan.",
+                );
+              }
             }
           }
           if (
@@ -161,7 +272,8 @@ export function useAnswerQueue(
           };
       }
       retryBatch.current = null;
-      if (result.acknowledgements.some((ack: { saved: boolean }) => ack.saved)) setLastSavedAt(new Date().toISOString());
+      if (result.acknowledgements.some((ack: { saved: boolean }) => ack.saved))
+        setLastSavedAt(new Date().toISOString());
       persist();
       conflictRef.current = nextConflicts;
       setConflicts(nextConflicts);
@@ -205,19 +317,25 @@ export function useAnswerQueue(
   function importDraft(id: string, value: Value, baseRevision: number) {
     if (!recovery?.enabled || !recovery.questionIds.includes(id)) return;
     const serverValue = serverValues.current[id] || {};
-    const serverRevision = conflictRef.current[id]?.revision ?? (revisions.current[id] || 0);
+    const serverRevision =
+      conflictRef.current[id]?.revision ?? (revisions.current[id] || 0);
     delete conflictRef.current[id];
     revisions.current[id] = serverRevision;
     stalled.current = false;
     setConflicts({ ...conflictRef.current });
     change(id, value);
     if (serverRevision !== baseRevision) {
-      conflictRef.current[id] = { revision: serverRevision, value: serverValue };
+      conflictRef.current[id] = {
+        revision: serverRevision,
+        value: serverValue,
+      };
       revisions.current[id] = baseRevision;
       setConflicts({ ...conflictRef.current });
       stalled.current = true;
       persist();
-      setStatus("Draf dipulihkan tetapi revisi server berbeda. Pilih jawaban sebelum menyimpan.");
+      setStatus(
+        "Draf dipulihkan tetapi revisi server berbeda. Pilih jawaban sebelum menyimpan.",
+      );
     }
   }
   function resolve(id: string, local: boolean) {
@@ -243,21 +361,35 @@ export function useAnswerQueue(
     if (storageKey) {
       try {
         if (!recovery?.enabled) {
-          if (recovery?.finalized) clearDeviceDrafts(recovery.ownerId, writer.attempt_id);
-        }
-        else {
+          if (recovery?.finalized)
+            clearDeviceDrafts(recovery.ownerId, writer.attempt_id);
+        } else {
           const draft = parseDraft(localStorage.getItem(storageKey));
           if (draft && draft.epoch === writer.epoch) {
             const allowed = new Set(recovery.questionIds);
-            const server = Object.fromEntries(initial.map(row => [row.question_id, row]));
-            for (const [id, row] of Object.entries(draft.rows) as [string, RecoveryRow][]) {
+            const server = Object.fromEntries(
+              initial.map((row) => [row.question_id, row]),
+            );
+            for (const [id, row] of Object.entries(draft.rows) as [
+              string,
+              RecoveryRow,
+            ][]) {
               if (!allowed.has(id)) continue;
               const saved = server[id];
               if (saved && sameAnswer(row.value, saved.value)) continue;
-              currentValues.current = { ...currentValues.current, [id]: row.value };
-              pending.current.set(id, { value: row.value, generation: ++generation.current });
+              currentValues.current = {
+                ...currentValues.current,
+                [id]: row.value,
+              };
+              pending.current.set(id, {
+                value: row.value,
+                generation: ++generation.current,
+              });
               if ((saved?.revision || 0) !== row.revision) {
-                conflictRef.current[id] = { revision: saved?.revision || 0, value: saved?.value || {} };
+                conflictRef.current[id] = {
+                  revision: saved?.revision || 0,
+                  value: saved?.value || {},
+                };
                 revisions.current[id] = row.revision;
               }
             }
@@ -265,15 +397,26 @@ export function useAnswerQueue(
             setPendingCount(pending.current.size);
             setConflicts({ ...conflictRef.current });
             stalled.current = Object.keys(conflictRef.current).length > 0;
-            if (pending.current.size) setRecoveryMessage("Draf perangkat dipulihkan. Status tersimpan hanya diberikan setelah pengakuan server; periksa konflik jika ada.");
+            if (pending.current.size)
+              setRecoveryMessage(
+                "Draf perangkat dipulihkan. Status tersimpan hanya diberikan setelah pengakuan server; periksa konflik jika ada.",
+              );
             persist();
           } else if (draft) {
-            setRecoveryMessage("Draf sesi sebelumnya tidak dikirim karena kewenangan perangkat telah berubah. Jawaban server digunakan; salinan lama dapat dipilih melalui pemulihan draf.");
+            setRecoveryMessage(
+              "Draf sesi sebelumnya tidak dikirim karena kewenangan perangkat telah berubah. Jawaban server digunakan; salinan lama dapat dipilih melalui pemulihan draf.",
+            );
           }
         }
-      } catch { setRecoveryMessage("Penyimpanan draf perangkat tidak tersedia. Jangan muat ulang sebelum simpan selesai."); }
+      } catch {
+        setRecoveryMessage(
+          "Penyimpanan draf perangkat tidak tersedia. Jangan muat ulang sebelum simpan selesai.",
+        );
+      }
     }
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
     // A queue is mounted per attempt/epoch. Server reload creates a fresh queue.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -294,7 +437,13 @@ export function useAnswerQueue(
       }
     };
     const retryTimer = setInterval(() => {
-      if (transientFailure.current && pending.current.size && !sending.current && navigator.onLine !== false) online();
+      if (
+        transientFailure.current &&
+        pending.current.size &&
+        !sending.current &&
+        navigator.onLine !== false
+      )
+        online();
     }, 15000);
     window.addEventListener("online", online);
     window.addEventListener("beforeunload", unload);
