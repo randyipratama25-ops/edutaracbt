@@ -687,3 +687,21 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .question-editor summary{cursor:pointer;min-height:44px;align-content:center}
 .question-math mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
 .question-math mjx-container[display="true"]{display:block;text-align:center;margin-block:.7em}
+
+/* Short, optional instructions that stay next to the page's first task. */
+.start-here{margin-block:.75rem 0;min-width:0;max-width:100%;border:1px solid var(--border);border-radius:.75rem;background:var(--surface-subtle,#f7faf9);overflow-wrap:anywhere}
+.start-here>summary{display:flex;align-items:center;gap:.65rem;cursor:pointer;padding:.55rem .85rem;min-height:44px;color:var(--primary);list-style:none}
+.start-here>summary::-webkit-details-marker{display:none}
+.start-here>summary::after{content:"";inline-size:.55rem;block-size:.55rem;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-inline-start:auto;flex:none}
+.start-here[open]>summary::after{transform:rotate(225deg)}
+.start-here>summary>svg{flex:none}
+.start-here>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:.65rem}
+.start-here ol{margin:0;padding:.25rem 1rem .85rem 2.4rem;font-size:.9rem;line-height:1.55}
+.start-here li+li{margin-top:.35rem}
+.dashboard-menu-search{padding:.15rem .15rem .5rem}
+.dashboard-menu-search input{min-height:44px}
+.dashboard-menu-empty{padding-inline:.65rem;overflow-wrap:anywhere}
+@media(max-width:480px){.workspace-header>button:not(.mobile-menu){max-width:calc(100% - 95px)}}
+.dashboard-menu-search{position:sticky;top:0;z-index:1;background:#fff}
+.dashboard-menu-search .search-input{min-width:0}
+.dashboard-menu-search input{width:100%;min-width:0}

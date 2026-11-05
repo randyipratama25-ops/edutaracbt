@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StartHere } from "../../components/help/start-here";
 import { ContextHelp } from "../../components/help/context-help";
 import { LoginForm } from "../../components/auth/login-form";
 import { LoginBrand } from "../../components/auth/login-brand";
@@ -33,6 +34,7 @@ export default async function Login({
         <LoginBrand key={b.logo} name={b.name} logo={b.logo} />
         <h1 id="login-title">Masuk ke EDUTARA</h1>
         <p className="muted">{b.subtitle}</p>
+      <StartHere page="/login" />
         <LoginForm
           key={params.error === "activation" ? "activation" : "login"}
           activationError={params.error === "activation"}

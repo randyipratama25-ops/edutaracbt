@@ -195,7 +195,7 @@ export function LoginForm({
         aria-busy={blocked}
       >
         <label htmlFor="login-context">
-          Konteks masuk
+          Masuk sebagai
           <select
             id="login-context"
             name="context"
@@ -212,7 +212,7 @@ export function LoginForm({
           </select>
         </label>
         <label htmlFor="login-username">
-          Username
+          Nama pengguna (username)
           <input
             ref={nameInput}
             id="login-username"

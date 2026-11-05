@@ -1,4 +1,5 @@
 import { GraduationCap, ShieldCheck, UserRound, UsersRound } from "lucide-react";
+import { StartHere } from "../components/help/start-here";
 import { ContextHelp } from "../components/help/context-help";
 import { ActivationRedirect } from "../components/auth/activation-redirect";
 import { SignInLink } from "../components/home/sign-in-link";
@@ -16,13 +17,13 @@ export default function Home() {
         <section className="panel home-hero" aria-labelledby="home-title">
           <div className="home-intro">
             <p className="eyebrow">Ruang ujian madrasah</p>
-            <h1 id="home-title">Ujian madrasah.<br />Lebih terarah.</h1>
+            <h1 id="home-title">Ujian madrasah dalam satu aplikasi</h1>
             <p className="home-description">Persiapkan, laksanakan, dan tinjau ujian dalam satu aplikasi.</p>
             <div className="actions home-actions">
               <SignInLink />
               <ContextHelp audience="public" page="/" />
             </div>
-            <p className="home-account">Gunakan akun yang diberikan madrasah.</p>
+            <StartHere page="/" />
           </div>
           <aside className="home-access" aria-labelledby="home-access-title">
             <h2 id="home-access-title">Akses sesuai peran</h2>
@@ -31,7 +32,7 @@ export default function Home() {
               <li><UsersRound size={21} aria-hidden="true" /><div><h3>Admin &amp; Guru</h3><p>Siapkan soal dan kelola penilaian.</p></div></li>
               <li><ShieldCheck size={21} aria-hidden="true" /><div><h3>Pengawas</h3><p>Pantau peserta sesuai penugasan.</p></div></li>
             </ul>
-            <p className="home-access-note">Pilih konteks yang sesuai saat masuk.</p>
+            <p className="home-access-note">Pilih peran yang sesuai saat masuk.</p>
           </aside>
         </section>
         <footer className="home-footer"><p>Belum memiliki akun? Hubungi Admin madrasah.</p><span>EDUTARA · Computer Based Test</span></footer>

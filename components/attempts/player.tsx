@@ -3,6 +3,7 @@ import { feedbackFetch } from "../../lib/client/feedback-transport";
 
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
+import { StartHere } from "../help/start-here";
 import { ContextHelp } from "../help/context-help";
 import { DevicePreflight } from "./device-preflight";
 import { StudentHelp } from "../workflow/help";
@@ -298,6 +299,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
           <LogoutButton />
         </div>
       </header>
+      <StartHere page="/student" />
       <div ref={sessionNotice} tabIndex={-1}>
         {" "}
         <FeedbackMessage

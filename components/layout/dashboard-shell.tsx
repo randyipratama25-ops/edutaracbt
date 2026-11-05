@@ -6,24 +6,29 @@ import { usePathname } from "next/navigation";
 import { Activity, BarChart3, BookOpen, CalendarDays, ClipboardCheck, DoorOpen, GraduationCap, ImageIcon, LayoutDashboard, Menu, Printer, Settings, ShieldCheck, Users, Workflow } from "lucide-react";
 import { LogoutButton } from "../auth/logout-button";
 import { Button } from "../ui/button";
+import { SearchField } from "../ui/list-filters";
+import { matchesSearch } from "../../lib/lists/search";
+import { pageGuides } from "../../lib/help/start-here";
 import { Dialog } from "../ui/dialog";
 
 const groups = [
-  { label: "Ruang kerja", items: [
+  { label: "Akun & data madrasah", items: [
     { href: "/dashboard", label: "Ringkasan", icon: LayoutDashboard },
     { href: "/dashboard/users", label: "Pengguna", icon: Users },
     { href: "/dashboard/master-data", label: "Data akademik", icon: BookOpen },
   ] },
-  { label: "Ujian", items: [
+  { label: "Persiapan ujian", items: [
     { href: "/dashboard/bank", label: "Bank soal", icon: BookOpen },
     { href: "/dashboard/preparation", label: "Persiapan ujian", icon: ClipboardCheck },
     { href: "/dashboard/exams", label: "Ujian & bank soal", icon: CalendarDays },
-    { href: "/dashboard/monitor", label: "Monitoring", icon: Activity },
-    { href: "/dashboard/rooms", label: "Ruang & pengawas", icon: DoorOpen, admin: true },
-    { href: "/dashboard/cards", label: "Kartu peserta", icon: Printer },
     { href: "/dashboard/media", label: "Media soal", icon: ImageIcon },
   ] },
-  { label: "Penilaian", items: [
+  { label: "Pelaksanaan ujian", items: [
+    { href: "/dashboard/monitor", label: "Pantau ujian", icon: Activity },
+    { href: "/dashboard/rooms", label: "Ruang & pengawas", icon: DoorOpen, admin: true },
+    { href: "/dashboard/cards", label: "Kartu peserta", icon: Printer },
+  ] },
+  { label: "Nilai & laporan", items: [
     { href: "/dashboard/grading", label: "Koreksi & moderasi", icon: ClipboardCheck },
     { href: "/dashboard/results", label: "Hasil & koreksi", icon: ClipboardCheck },
     { href: "/dashboard/analytics", label: "Analitik & laporan", icon: BarChart3 },
@@ -37,9 +42,20 @@ const groups = [
   ] },
 ];
 export function DashboardNavigation({ role, pathname, onNavigate }: { role: "admin" | "teacher"; pathname: string; onNavigate?: () => void }) {
+  const [query, setQuery] = useState("");
+  const terms = query.trim().split(/\s+/).filter(Boolean);
+  const visibleGroups = groups.map(group => ({
+    ...group,
+    items: group.items.filter(item =>
+      (!("admin" in item && item.admin) || role === "admin") &&
+      terms.every(term => matchesSearch(`${item.label} ${pageGuides[item.href]?.keywords ?? ""}`, term))
+    ),
+  })).filter(group => group.items.length > 0);
   return <nav aria-label="Navigasi utama" className="dashboard-navigation">
-    {groups.map(group => {
-      const items = group.items.filter(item => !("admin" in item && item.admin) || role === "admin");
+    <div className="dashboard-menu-search"><SearchField label="Cari menu" value={query} onChange={setQuery} maxLength={80} /></div>
+    {visibleGroups.length === 0 && <p className="muted dashboard-menu-empty" role="status">Menu tidak ditemukan. Coba kata lain, misalnya “soal” atau “nilai”.</p>}
+    {visibleGroups.map(group => {
+      const items = group.items;
       return items.length > 0 ? <section key={group.label} className="nav-group">
         <p className="nav-group-label">{group.label}</p>
         {items.map(({ href, label, icon: Icon }) => <Link href={href} key={href} onClick={onNavigate} aria-current={pathname === href ? "page" : undefined}>
@@ -76,7 +92,7 @@ export function DashboardShell({ name, role, children }: { name: string; role: "
     </aside>
     <div className="shell-body">
       <header className="workspace-header">
-        <Button ref={menuTrigger} className="mobile-menu" variant="outline" aria-label="Buka navigasi" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={20} aria-hidden="true" /></Button>
+        <Button ref={menuTrigger} className="mobile-menu" variant="outline" aria-label="Buka navigasi" aria-haspopup="dialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={20} aria-hidden="true" /><span>Menu</span></Button>
         <nav aria-label="Jejak navigasi" className="breadcrumbs"><Link href="/dashboard">Ruang kerja</Link><span aria-hidden="true">/</span><span>{page}</span></nav>
         <ContextHelp audience={role} page={pathname} />
         <span className="role-badge">{role === "admin" ? "Admin" : "Guru"}</span>

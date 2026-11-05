@@ -1,3 +1,4 @@
+import { pageGuides } from '../lib/help/start-here';
 import { describe, expect, it } from 'vitest';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,6 +8,13 @@ describe('contextual help coverage and isolation',()=>{
  it('covers every production page with a specific eligible article',()=>{
   for(const page of pages())expect(helpTopics.some(t=>t.pages.includes(page)),page).toBe(true);
   expect(new Set(helpTopics.map(t=>t.id)).size).toBe(helpTopics.length);
+ });
+ it('provides a first step and next step for every production page',()=>{
+  expect(Object.keys(pageGuides).sort()).toEqual(pages().sort());
+  for(const guide of Object.values(pageGuides)){
+   expect(guide.first.trim()).not.toBe('');
+   expect(guide.next.trim()).not.toBe('');
+  }
  });
  it('filters role-specific articles even when searching all pages',()=>{
   for(const role of ['teacher','supervisor','student','public'] as HelpAudience[]){

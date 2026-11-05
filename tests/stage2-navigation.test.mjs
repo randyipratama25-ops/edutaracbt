@@ -21,6 +21,15 @@ describe("role-aware navigation and question map",()=>{
   for(const name of ["rooms","settings","audit","jobs","acceptance","advanced"])expect(hrefs).not.toContain(`/dashboard/${name}`);
   expect(hrefs).toContain("/dashboard/users");
  });
+ it("finds menus by task without exposing Admin-only pages",async()=>{
+  await act(async()=>{root=create(React.createElement(DashboardNavigation,{role:"teacher",pathname:"/dashboard"}));});
+  const input=root.root.findByProps({type:"search"});
+  await act(async()=>input.props.onChange({target:{value:"cetak kartu"}}));
+  expect(root.root.findAllByType("a").map(a=>a.props.href)).toEqual(["/dashboard/cards"]);
+  await act(async()=>input.props.onChange({target:{value:"backup"}}));
+  expect(root.root.findAllByType("a")).toHaveLength(0);
+  expect(root.root.findByProps({role:"status"}).props.children).toContain("Menu tidak ditemukan");
+ });
  it("opens mobile navigation and closes it after choosing a destination",async()=>{
   await act(async()=>{root=create(React.createElement(DashboardShell,{role:"teacher",name:"Guru Uji"},React.createElement("h1",null,"Halaman")));});
   await act(async()=>root.root.findByProps({"aria-label":"Buka navigasi"}).props.onClick());
