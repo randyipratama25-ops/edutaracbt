@@ -1,25 +1,36 @@
-export type Snapshot = {
-  observed_at: string;
-  operational_accepted: false;
-  active_attempts: number;
-  automation_enabled: boolean;
-  reminders_enabled: boolean;
-  retention_days: number;
-  smtp_configured: boolean;
-  worker_approved: boolean;
-  schedulers: { name: string; active: boolean; schedule: string }[];
-  job_issues: number;
-  stalled_jobs: number;
-  pending_moderations: number;
-  blocked_publications: number;
-  backup: {
-    id: string;
-    completed_at: string;
-    checksum: string | null;
-    parts: number;
-    captured_after_coverage_fix: boolean;
-  } | null;
-};
+import { z } from "zod";
+
+const count = z.number().int().nonnegative();
+const timestamp = z.iso.datetime({ offset: true });
+
+export const snapshotSchema = z.object({
+  observed_at: timestamp,
+  operational_accepted: z.literal(false),
+  active_attempts: count,
+  automation_enabled: z.boolean(),
+  reminders_enabled: z.boolean(),
+  retention_days: z.number().int().min(7).max(730),
+  smtp_configured: z.boolean(),
+  worker_approved: z.boolean(),
+  schedulers: z.array(
+    z.object({ name: z.string(), active: z.boolean(), schedule: z.string() }),
+  ),
+  job_issues: count,
+  stalled_jobs: count,
+  pending_moderations: count,
+  blocked_publications: count,
+  backup: z
+    .object({
+      id: z.string().min(1),
+      completed_at: timestamp,
+      checksum: z.string().nullable(),
+      parts: count,
+      captured_after_coverage_fix: z.boolean(),
+    })
+    .nullable(),
+});
+
+export type Snapshot = z.infer<typeof snapshotSchema>;
 export const humanChecks = [
   {
     id: "uat",
@@ -72,7 +83,10 @@ export function technicalChecks(s: Snapshot, now = Date.now()) {
     {
       title: "Snapshot terkini",
       passed: Number.isFinite(age) && age >= -5000 && age <= 300000,
-      detail: "Muat ulang maksimal lima menit sebelum keputusan.",
+      detail:
+        age > 300000
+          ? "Ringkasan lebih dari lima menit. Muat ulang untuk memperbarui pemeriksaan."
+          : "Gunakan ringkasan berusia maksimal lima menit sebelum mengambil keputusan.",
       href: "",
     },
     {
@@ -83,12 +97,12 @@ export function technicalChecks(s: Snapshot, now = Date.now()) {
     },
     {
       title: "Scheduler sesuai fungsi",
-      passed: Object.entries(expected).every(
-        ([name, schedule]) =>
-          s.schedulers.filter(
-            (j) => j.name === name && j.active && j.schedule === schedule,
-          ).length === 1,
-      ),
+      passed: Object.entries(expected).every(([name, schedule]) => {
+        const jobs = s.schedulers.filter((job) => job.name === name);
+        return (
+          jobs.length === 1 && jobs[0].active && jobs[0].schedule === schedule
+        );
+      }),
       detail:
         "Satu job untuk operasi, satu retensi draf dan satu publikasi hasil; ketiganya memiliki tujuan berbeda.",
       href: "/dashboard/jobs",
@@ -121,8 +135,9 @@ export function technicalChecks(s: Snapshot, now = Date.now()) {
         s.backup.parts > 0 &&
         backupAge >= 0 &&
         backupAge <= 3600000,
-      detail:
-        "Memerlukan backup baru setelah perbaikan cakupan, selesai ≤1 jam. Tetap perlu pemeriksaan bytes dan latihan restore terpisah.",
+      detail: !s.backup
+        ? "Belum ada backup berhasil yang tercatat. Periksa pekerjaan backup."
+        : "Memerlukan backup baru setelah perbaikan cakupan, selesai ≤1 jam. Tetap perlu pemeriksaan bytes dan latihan restore terpisah.",
       href: "/dashboard/jobs",
     },
     {
