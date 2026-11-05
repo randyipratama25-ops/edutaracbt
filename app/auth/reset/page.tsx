@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { KeyRound } from "lucide-react";
+import { StartHere } from "../../../components/help/start-here";
 import { ContextHelp } from "../../../components/help/context-help";
 import { PasswordForm } from "../../../components/auth/password-form";
 export const metadata = { title: "Atur password | EDUTARA CBT" };
@@ -18,8 +19,9 @@ export default function Reset() {
         </div>
         <h1 id="reset-title">Atur password</h1>
         <p className="muted">
-          Buat password baru untuk akun Anda.
+          Buat password baru, lalu gunakan untuk masuk kembali.
         </p>
+      <StartHere page="/auth/reset" />
         <PasswordForm />
         <footer className="reset-footer">
           <Link href="/">Kembali ke Beranda</Link>

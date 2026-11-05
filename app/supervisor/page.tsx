@@ -1,3 +1,4 @@
+import { StartHere } from "../../components/help/start-here";
 import { ContextHelp } from "../../components/help/context-help";
 import { RoleActions } from "../../components/dashboard/role-actions";
 import { SupervisorCards } from "../../components/operations/supervisor-cards";
@@ -31,6 +32,7 @@ export default async function Supervisor() {
           <LogoutButton />
         </div>
       </header>
+      <StartHere page="/supervisor" />
       <RoleActions role="supervisor" />
       <section id="pelaksanaan" aria-label="Pelaksanaan ujian">
         <OperationsPanel />
