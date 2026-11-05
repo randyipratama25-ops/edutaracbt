@@ -666,3 +666,13 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .assessment-workspace .actions>span{min-width:0;overflow-wrap:anywhere}
 .assessment-workspace .grading-grid>*{min-width:0}
 @media(max-width:900px){.assessment-workspace .grading-grid{grid-template-columns:minmax(0,1fr)}}
+
+.acceptance-workspace,.acceptance-workspace :is(section,li){min-width:0;overflow-wrap:anywhere}
+.acceptance-workspace :is(h2,h3,p){margin:0}
+.acceptance-workspace .button{min-height:44px;white-space:normal}
+.acceptance-checks{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.acceptance-checks .summary-link{align-self:start}
+.acceptance-evidence{margin:0;padding-inline-start:1.5rem}
+.acceptance-evidence .role-badge{display:inline-block;margin:.25rem .5rem}
+@media(max-width:760px){.acceptance-checks{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:480px){.acceptance-workspace .actions>.button{flex:1 1 100%}}

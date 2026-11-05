@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { technicalChecks, type Snapshot } from "../lib/acceptance/readiness";
+import {
+  technicalChecks,
+  snapshotSchema,
+  type Snapshot,
+} from "../lib/acceptance/readiness";
 import { evaluateSlo } from "../lib/acceptance/slo.mjs";
 import { evaluateRelease } from "../scripts/release/gate.mjs";
 const now = Date.parse("2026-10-30T06:00:00Z");
@@ -72,6 +76,26 @@ describe("operational evidence is fail closed", () => {
     s.schedulers[2] = { ...s.schedulers[0] };
     expect(technicalChecks(s, now)[2].passed).toBe(false);
   });
+  it("rejects a duplicate scheduler even when one copy has the correct schedule", () => {
+    const s = snapshot();
+    s.schedulers.push({ ...s.schedulers[0], schedule: "*/5 * * * *" });
+    expect(technicalChecks(s, now)[2].passed).toBe(false);
+  });
+  it("accepts PostgreSQL offset timestamps and rejects invalid snapshots", () => {
+    expect(
+      snapshotSchema.safeParse({
+        ...snapshot(),
+        observed_at: "2026-11-05T10:20:00.123456+00:00",
+      }).success,
+    ).toBe(true);
+    expect(
+      snapshotSchema.safeParse({ ...snapshot(), operational_accepted: true })
+        .success,
+    ).toBe(false);
+    expect(
+      snapshotSchema.safeParse({ ...snapshot(), schedulers: null }).success,
+    ).toBe(false);
+  });
   it("flags active sessions, uncertain work and pending moderation", () => {
     const s = snapshot();
     s.active_attempts = 1;
@@ -118,10 +142,27 @@ describe("acceptance API authorization", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
   it("reads only the constrained snapshot RPC for Admin", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: snapshot(), error: null });
+    const rpc = vi
+      .fn()
+      .mockReturnValue({
+        abortSignal: vi
+          .fn()
+          .mockResolvedValue({ data: snapshot(), error: null }),
+      });
     staff.mockResolvedValue({ role: "admin", client: { rpc } });
     expect((await GET()).status).toBe(200);
     expect(rpc).toHaveBeenCalledWith("operational_snapshot");
+  });
+  it("rejects a missing or invalid snapshot rather than returning an empty success", async () => {
+    for (const data of [null, { ...snapshot(), active_attempts: -1 }]) {
+      const rpc = vi
+        .fn()
+        .mockReturnValue({
+          abortSignal: vi.fn().mockResolvedValue({ data, error: null }),
+        });
+      staff.mockResolvedValue({ role: "admin", client: { rpc } });
+      expect((await GET()).status).toBe(503);
+    }
   });
   it("does not reveal database error internals", async () => {
     staff.mockResolvedValue({
@@ -129,11 +170,15 @@ describe("acceptance API authorization", () => {
       client: {
         rpc: vi
           .fn()
-          .mockResolvedValue({ error: { message: "secret SQL details" } }),
+          .mockReturnValue({
+            abortSignal: vi
+              .fn()
+              .mockResolvedValue({ error: { message: "secret SQL details" } }),
+          }),
       },
     });
     const r = await GET();
-    expect(r.status).toBe(422);
+    expect(r.status).toBe(503);
     expect(await r.text()).not.toContain("secret SQL details");
   });
 });
