@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { ListFilters, SearchField } from "../ui/list-filters";
 import { HelpDisclosure } from "../ui/help-disclosure";
+import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -578,6 +579,8 @@ export function UsersPanel() {
   const validCount = preview.filter((r) => r.valid).length;
   return (
     <div className="stack users-page">
+      <TaskTabs label="Pengguna" items={[
+        { id: "users", label: "Daftar pengguna", content: (
       <section className="panel stack" aria-labelledby="users-list-title">
         <div className="users-heading">
           <h2 id="users-list-title" tabIndex={-1}>
@@ -815,6 +818,8 @@ export function UsersPanel() {
           </Button>
         </nav>
       </section>
+        ) },
+        { id: "import", label: "Impor pengguna", content: (
       <section
         className="panel stack users-import"
         aria-labelledby="users-import-title"
@@ -955,6 +960,8 @@ export function UsersPanel() {
           </div>
         )}
       </section>
+        ) },
+      ]} />
       <Dialog
         open={open}
         onOpenChange={(v) => {

@@ -1,4 +1,5 @@
 "use client";
+import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
@@ -155,14 +156,17 @@ export function RoomLists({
           setAp(1);
         }}
       />
-      <section className="stack" aria-label="Daftar ruang">
-        <h2>Ruang</h2>
-        <div
+      <TaskTabs label="Ruang dan pengawas" items={[
+        { id: "rooms", label: "Ruang", content: (
+          <div className="stack">
+          <section className="stack" aria-label="Daftar ruang">
+          <h2>Ruang</h2>
+          <div
           className="table-wrap"
           tabIndex={0}
           role="region"
           aria-label="Daftar ruang; geser untuk melihat tindakan"
-        >
+          >
           <table>
             <thead>
               <tr>
@@ -229,28 +233,32 @@ export function RoomLists({
               })}
             </tbody>
           </table>
-        </div>
-        {!rooms.length && (
+          </div>
+          {!rooms.length && (
           <p>
             {search
               ? "Tidak ada ruang yang cocok."
               : "Belum ada ruang. Tambahkan ruang sebelum menempatkan peserta."}
           </p>
-        )}
-        <Pager
+          )}
+          <Pager
           page={rpage}
           total={rooms.length}
           onChange={setRp}
           label="ruang"
-        />
-      </section>
-      <section className="stack" aria-label="Daftar sesi">
-        <h2>Sesi</h2>
-        <p className="muted">
+          />
+          </section>
+          </div>
+        ) },
+        { id: "sessions", label: "Sesi ujian", content: (
+          <div className="stack">
+          <section className="stack" aria-label="Daftar sesi">
+          <h2>Sesi</h2>
+          <p className="muted">
           Jadwal ditampilkan dan diisi dalam WIB. Sesi harus berada dalam jadwal
           ujian.
-        </p>
-        <div className="rooms-sessions" tabIndex={0} role="region" aria-label="Kartu sesi; gulir untuk melihat jadwal lainnya">
+          </p>
+          <div className="rooms-sessions" tabIndex={0} role="region" aria-label="Kartu sesi; gulir untuk melihat jadwal lainnya">
           {sessions.slice((spage - 1) * 25, spage * 25).map((s) => {
             const pinned = value.assignments.some((a) => a.session_id === s.id);
             return (
@@ -285,29 +293,33 @@ export function RoomLists({
               </article>
             );
           })}
-        </div>
-        {!sessions.length && (
+          </div>
+          {!sessions.length && (
           <p>
             {search
               ? "Tidak ada sesi yang cocok."
               : "Belum ada sesi. Tambahkan jadwal sesi ujian."}
           </p>
-        )}
-        <Pager
+          )}
+          <Pager
           page={spage}
           total={sessions.length}
           onChange={setSp}
           label="sesi"
-        />
-      </section>
-      <section className="stack" aria-label="Daftar penugasan">
-        <h2>Penugasan pengawas</h2>
-        <div
+          />
+          </section>
+          </div>
+        ) },
+        { id: "staff", label: "Penugasan pengawas", content: (
+          <div className="stack">
+          <section className="stack" aria-label="Daftar penugasan">
+          <h2>Penugasan pengawas</h2>
+          <div
           className="table-wrap"
           tabIndex={0}
           role="region"
           aria-label="Daftar penugasan; geser untuk melihat tindakan"
-        >
+          >
           <table>
             <thead>
               <tr>
@@ -380,21 +392,25 @@ export function RoomLists({
               ))}
             </tbody>
           </table>
-        </div>
-        {!assignments.length && (
+          </div>
+          {!assignments.length && (
           <p>
             {search
               ? "Tidak ada penugasan yang cocok."
               : "Belum ada penugasan pengawas."}
           </p>
-        )}
-        <Pager
+          )}
+          <Pager
           page={apage}
           total={assignments.length}
           onChange={setAp}
           label="penugasan"
-        />
-      </section>
+          />
+          </section>
+          </div>
+        ) }
+      ]} />
+
     </div>
   );
 }

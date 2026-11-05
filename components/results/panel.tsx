@@ -1,4 +1,5 @@
 "use client";
+import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import {FeedbackMessage} from "../feedback/state";
 import {ValidatedForm} from "../feedback/validated-form";
@@ -265,8 +266,11 @@ export function ResultsPanel({
       {(uncertain||detailStale)&&<div role="alert" className="notice"><p>{uncertain?"Hasil perubahan belum dapat dipastikan. Periksa ulang data sebelum melanjutkan.":"Detail atau revisi belum dapat dimuat. Periksa ulang data sebelum melanjutkan."}</p><Button disabled={busy||loading} onClick={()=>void recover()}>Periksa ulang data</Button></div>}
       {supportError&&<div className="notice" role="status"><p>{supportError}</p><Button disabled={busy} onClick={()=>void loadSupport()}>Muat data pendukung</Button></div>}
       <fieldset className="results-controls stack" disabled={busy||uncertain||detailStale}>
-      <section className="panel stack">
-        <ListFilters label="hasil ujian" active={[search&&"Pencarian",classId&&"Kelas",subjectId&&"Mapel",examId&&"Ujian",state!=="all"&&"Status",sort!=="name"&&"Urutan"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setClassId("");setSubjectId("");setExamId("");setState("all");setSort("name");setPage(1);}} total={total} loading={loading} error={listError}>
+      <TaskTabs label="Hasil ujian" items={[
+        { id: "results", label: "Daftar hasil", content: (
+          <div className="stack">
+          <section className="panel stack">
+          <ListFilters label="hasil ujian" active={[search&&"Pencarian",classId&&"Kelas",subjectId&&"Mapel",examId&&"Ujian",state!=="all"&&"Status",sort!=="name"&&"Urutan"].filter(Boolean) as string[]} onReset={()=>{setSearch("");setClassId("");setSubjectId("");setExamId("");setState("all");setSort("name");setPage(1);}} total={total} loading={loading} error={listError}>
           <SearchField label="Cari siswa/username" value={search} maxLength={150} onChange={value=>{setSearch(value);setPage(1);}} />
           <label>
             Kelas
@@ -342,8 +346,8 @@ export function ResultsPanel({
               <option value="score_desc">Nilai tertinggi</option>
             </select>
           </label>
-        </ListFilters>
-        <div className="actions">
+          </ListFilters>
+          <div className="actions">
           <Button
             variant="outline"
             disabled={selectionBlocked||!rows.length||ids.length>=500}
@@ -364,9 +368,9 @@ export function ResultsPanel({
               Bersihkan pilihan ({ids.length})
             </Button>
           </MoreActions>
-        </div>
-        {loading && <p>Memuat hasil…</p>}
-        <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel hasil ujian; geser untuk melihat kolom lain">
+          </div>
+          {loading && <p>Memuat hasil…</p>}
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel hasil ujian; geser untuk melihat kolom lain">
           <table>
             <thead>
               <tr>
@@ -435,11 +439,11 @@ export function ResultsPanel({
               ))}
             </tbody>
           </table>
-        </div>
-        {!loading && !listError && !rows.length && (
+          </div>
+          {!loading && !listError && !rows.length && (
           <p>Belum ada hasil sesuai filter dan cakupan akses.</p>
-        )}
-        <div className="actions">
+          )}
+          <div className="actions">
           <Button disabled={page === 1||loading||!!listError} onClick={() => setPage(page - 1)}>
             Sebelumnya
           </Button>
@@ -452,19 +456,23 @@ export function ResultsPanel({
           >
             Berikutnya
           </Button>
-        </div>
-      </section>
-      <section className="panel stack">
-        <h2>
+          </div>
+          </section>
+          </div>
+        ) },
+        { id: "reports", label: "Koreksi dan laporan", content: (
+          <div className="stack">
+          <section className="panel stack">
+          <h2>
           {analyticsFirst
             ? "Analisis dan tindakan terpilih"
             : "Koreksi dan laporan terpilih"}
-        </h2>
-        <p>
+          </h2>
+          <p>
           Terpilih {ids.length} / 500 hasil. Pilihan dipertahankan antar halaman dan dibersihkan saat filter berubah.
           Ekspor menggunakan revisi nilai saat laporan dibuat.
-        </p>
-        <div className="actions">
+          </p>
+          <div className="actions">
           {analyticsFirst&&analysisAction}
           <Button
             disabled={selectionBlocked || !ids.length}
@@ -512,8 +520,8 @@ export function ResultsPanel({
               </>
             )}
           </MoreActions>
-        </div>
-        <div className="toolbar">
+          </div>
+          <div className="toolbar">
           <label>
             Jenis laporan
             <select
@@ -557,23 +565,23 @@ export function ResultsPanel({
               Atur kop / logo / pejabat
             </Button>
           )}
-        </div>
-      </section>
-      {analysisError&&<div className="notice" role="alert"><p>{analysisError}</p><Button disabled={selectionBlocked||!ids.length} onClick={()=>void analyzeSelected()}>Coba analisis kembali</Button></div>}
-      {analysis&&analysisBasis===selectionKey&&<AnalysisView analysis={analysis} exams={analysisNames}/>}
-      <section className="panel stack">
-        <h2>Proses ekspor</h2>
-        <Button
+          </div>
+          </section>
+          {analysisError&&<div className="notice" role="alert"><p>{analysisError}</p><Button disabled={selectionBlocked||!ids.length} onClick={()=>void analyzeSelected()}>Coba analisis kembali</Button></div>}
+          {analysis&&analysisBasis===selectionKey&&<AnalysisView analysis={analysis} exams={analysisNames}/>}
+          <section className="panel stack">
+          <h2>Proses ekspor</h2>
+          <Button
           variant="outline"
           onClick={() =>
             void loadJobs()
           }
-        >
+          >
           Muat status ekspor
-        </Button>
-        {jobsError&&<FeedbackMessage tone="error" role="alert">{jobsError} Status terakhir tetap ditampilkan.</FeedbackMessage>}
-        {!jobsError&&!jobs.length && <p>Belum ada proses ekspor.</p>}
-        {jobs.map((j) => (
+          </Button>
+          {jobsError&&<FeedbackMessage tone="error" role="alert">{jobsError} Status terakhir tetap ditampilkan.</FeedbackMessage>}
+          {!jobsError&&!jobs.length && <p>Belum ada proses ekspor.</p>}
+          {jobs.map((j) => (
           <div key={j.id}>
             <b>
               {j.kind} / {j.format}
@@ -602,8 +610,11 @@ export function ResultsPanel({
               </Button>
             )}
           </div>
-        ))}
-      </section>
+          ))}
+          </section>
+          </div>
+        ) }
+      ]} />
       </fieldset>
       <Dialog
         className="results-dialog"

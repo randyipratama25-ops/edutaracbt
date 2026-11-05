@@ -715,3 +715,12 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .more-actions-content{margin-top:.5rem;padding:.65rem;border:1px solid var(--border);border-radius:.65rem;background:var(--surface-subtle,#f7faf9)}
 .more-actions-content>.button{max-width:100%;min-height:44px;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:480px){.more-actions-content>.button{flex:1 1 100%}}
+
+.task-tabs,.task-tab-panel{min-width:0;max-width:100%}
+.task-tab-panel[hidden]{display:none!important}
+.task-tab-list{display:flex;flex-wrap:wrap;gap:.4rem;padding:.35rem;margin-bottom:1rem;border:1px solid var(--border);border-radius:.75rem;background:var(--surface-subtle,#f7faf9)}
+.task-tab-list>button{flex:0 1 auto;min-width:0;min-height:44px;padding:.5rem .85rem;border:1px solid transparent;border-radius:.5rem;background:transparent;color:var(--foreground);font-weight:650;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.task-tab-list>button[aria-selected=true]{background:var(--primary);color:#fff}
+.task-tab-list>button:not([aria-selected=true]):hover{background:#e9f2ee}
+.task-tab-list>button:focus-visible,.task-tab-panel:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media(max-width:480px){.task-tab-list>button{flex:1 1 8rem}}

@@ -1,4 +1,5 @@
 "use client";
+import { TaskTabs } from "../ui/task-tabs";
 import {FeedbackMessage} from "../feedback/state";
 import {ValidatedForm} from "../feedback/validated-form";
 import {
@@ -319,8 +320,11 @@ export function SettingsPanel() {
             className="settings-controls stack"
             disabled={busy || loading || uncertain || !!readError}
           >
-            <ValidatedForm className="stack" onSubmit={submit}>
-              <fieldset className="settings-section stack">
+            <TaskTabs label="Pengaturan aplikasi" items={[
+              { id: "general", label: "Pengaturan umum", content: (
+                <div className="stack">
+                <ValidatedForm className="stack" onSubmit={submit}>
+                <fieldset className="settings-section stack">
                 <legend>Identitas dan branding</legend>
                 <div className="settings-grid">
                   <label>
@@ -409,8 +413,8 @@ export function SettingsPanel() {
                   login dapat diakses publik. Perubahan terlihat saat halaman
                   login dimuat ulang.
                 </p>
-              </fieldset>
-              <fieldset className="settings-section stack">
+                </fieldset>
+                <fieldset className="settings-section stack">
                 <legend>Kebijakan ujian dan otomasi</legend>
                 <div className="settings-grid">
                   <label>
@@ -499,8 +503,8 @@ export function SettingsPanel() {
                   publikasi Admin. Backup mingguan/semester serta retensi
                   mengikuti otomasi; dua backup terakhir tetap dipertahankan.
                 </p>
-              </fieldset>
-              <fieldset className="settings-section stack">
+                </fieldset>
+                <fieldset className="settings-section stack">
                 <legend>Email pengingat</legend>
                 <label>
                   Email pengirim Gmail / Google Workspace
@@ -541,30 +545,34 @@ export function SettingsPanel() {
                     dan 31 Desember pukul 23.30.
                   </p>
                 </details>
-              </fieldset>
-              <div className="actions">
+                </fieldset>
+                <div className="actions">
                 <Button disabled={!dirty}>
                   {busy ? "Menyimpan…" : "Simpan pengaturan"}
                 </Button>
                 <span className="muted">
                   {dirty ? "Perubahan belum disimpan." : "Tidak ada perubahan."}
                 </span>
-              </div>
-            </ValidatedForm>
-            <ValidatedForm
-              className="settings-section stack"
-              onSubmit={(e) => {
+                </div>
+                </ValidatedForm>
+                </div>
+              ) },
+              { id: "email", label: "Kredensial dan uji email", content: (
+                <div className="stack">
+                <ValidatedForm
+                className="settings-section stack"
+                onSubmit={(e) => {
                 e.preventDefault();
                 void mutate("secret");
-              }}
-              aria-label="Kredensial rahasia"
-            >
-              <h2>Kredensial rahasia</h2>
-              <p>
+                }}
+                aria-label="Kredensial rahasia"
+                >
+                <h2>Kredensial rahasia</h2>
+                <p>
                 Hanya status penyimpanan yang dapat dibaca. Mengganti kredensial
                 tidak menyimpan draf pengaturan umum.
-              </p>
-              <label>
+                </p>
+                <label>
                 Jenis kredensial
                 <select
                   value={secretKey}
@@ -579,24 +587,24 @@ export function SettingsPanel() {
                     </option>
                   ))}
                 </select>
-              </label>
-              <FeedbackMessage tone="info" role="status">
+                </label>
+                <FeedbackMessage tone="info" role="status">
                 {server.secrets[secretKey] ? "Tersimpan" : "Belum tersimpan"}
-              </FeedbackMessage>
-              {secretKey === "ai_api_key" && (
+                </FeedbackMessage>
+                {secretKey === "ai_api_key" && (
                 <p>
                   Kunci lama ini tidak mengaktifkan penyedia AI. Gunakan{" "}
                   <a href="/dashboard/advanced">Pengaturan penyedia AI</a> untuk
                   konfigurasi aktif.
                 </p>
-              )}
-              {secretKey === "drive_access_token" && (
+                )}
+                {secretKey === "drive_access_token" && (
                 <p>
                   Token tersimpan tidak otomatis mengaktifkan integrasi Drive.
                   Adaptor tetap mengikuti konfigurasi server.
                 </p>
-              )}
-              <label>
+                )}
+                <label>
                 Nilai kredensial baru
                 <input
                   required
@@ -607,21 +615,21 @@ export function SettingsPanel() {
                   value={secret}
                   onChange={(e) => setSecret(e.target.value)}
                 />
-              </label>
-              <Button disabled={secret.length < 8}>
+                </label>
+                <Button disabled={secret.length < 8}>
                 Simpan kredensial baru
-              </Button>
-            </ValidatedForm>
-            <section
-              className="settings-section stack"
-              aria-label="Uji koneksi SMTP"
-            >
-              <h2>Uji SMTP tersimpan</h2>
-              <p>
+                </Button>
+                </ValidatedForm>
+                <section
+                className="settings-section stack"
+                aria-label="Uji koneksi SMTP"
+                >
+                <h2>Uji SMTP tersimpan</h2>
+                <p>
                 Uji koneksi memakai email dan App password tersimpan saat
                 pekerjaan diproses, tanpa mengirim pesan.
-              </p>
-              <Button
+                </p>
+                <Button
                 type="button"
                 variant="outline"
                 disabled={
@@ -630,27 +638,30 @@ export function SettingsPanel() {
                   !!secret
                 }
                 onClick={() => void mutate("smtp_probe")}
-              >
+                >
                 Jadwalkan uji koneksi SMTP
-              </Button>
-              {!smtpReady && (
+                </Button>
+                {!smtpReady && (
                 <p className="muted">
                   Uji memerlukan layanan email aktif, email pengirim dan App password
                   yang sudah tersimpan.
                 </p>
-              )}
-              {draft.smtp_sender !== server.smtp_sender && (
+                )}
+                {draft.smtp_sender !== server.smtp_sender && (
                 <p className="muted">
                   Simpan perubahan email pengirim terlebih dahulu.
                 </p>
-              )}
-              {probeId && (
+                )}
+                {probeId && (
                 <p>
                   Nomor pekerjaan: <code>{probeId}</code> ·{" "}
                   <a href="/dashboard/jobs">Lihat hasil uji</a>
                 </p>
-              )}
-            </section>
+                )}
+                </section>
+                </div>
+              ) }
+            ]} />
           </fieldset>
           <nav
             className="actions settings-links"
