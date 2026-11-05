@@ -1,13 +1,12 @@
 "use client";
-import {FeedbackMessage} from "../feedback/state";
+import { FeedbackMessage } from "../feedback/state";
 import { useEffect, useState } from "react";
-import katex from "katex";
 import Image from "next/image";
-import "katex/dist/katex.min.css";
-import {z} from "zod";
-import {clientRequest} from "../../lib/client/request";
+import { z } from "zod";
+import { clientRequest } from "../../lib/client/request";
 import { Button } from "../ui/button";
-import { safeHtml, type Question } from "../../lib/authoring/schema";
+import { type Question } from "../../lib/authoring/schema";
+import { MathContent } from "./math-content";
 export function QuestionPreview({
   question: q,
   showKey = true,
@@ -21,28 +20,19 @@ export function QuestionPreview({
   showMeta?: boolean;
   attachmentBaseUrl?: string;
 }) {
-  const html = safeHtml(q.stem).replace(
-    /\$\$([^$]+)\$\$|\$([^$]+)\$/g,
-    (_, block, inline) =>
-      katex.renderToString(block || inline, {
-        displayMode: !!block,
-        throwOnError: false,
-        trust: false,
-        strict: "warn",
-      }),
-  );
   return (
     <section className="question-preview" dir={q.direction}>
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+      <MathContent html={q.stem} />
       {q.attachments.map((id) => (
         <Attachment key={id} id={id} baseUrl={attachmentBaseUrl} />
       ))}
-      {showOptions && q.options.map((o, i) => (
-        <p key={o.id}>
-          <b>{o.id}.</b> {o.text}
-          {showKey && q.type === "JODOH" ? ` → ${q.key[i]}` : ""}
-        </p>
-      ))}
+      {showOptions &&
+        q.options.map((o, i) => (
+          <p key={o.id}>
+            <b>{o.id}.</b> {o.text}
+            {showKey && q.type === "JODOH" ? ` → ${q.key[i]}` : ""}
+          </p>
+        ))}
       {showKey && (
         <>
           <p>
@@ -51,44 +41,100 @@ export function QuestionPreview({
           <p>
             <b>Rubrik:</b> {q.rubric || "—"}
           </p>
-          {!!q.rubricCriteria?.length&&<ul>{q.rubricCriteria.map(c=><li key={c.id}>{c.label}: maksimal {c.maxPoints} poin</li>)}</ul>}
-          <div dangerouslySetInnerHTML={{ __html: safeHtml(q.explanation) }} />
+          {!!q.rubricCriteria?.length && (
+            <ul>
+              {q.rubricCriteria.map((c) => (
+                <li key={c.id}>
+                  {c.label}: maksimal {c.maxPoints} poin
+                </li>
+              ))}
+            </ul>
+          )}
+          <MathContent html={q.explanation} />
         </>
       )}
-      {showMeta && <p className="muted">
-        {q.points} poin · {q.required ? "Wajib" : "Opsional"}
-        {q.type === "Esai" ? ` · minimal ${q.minChars} karakter` : ""}
-      </p>}
+      {showMeta && (
+        <p className="muted">
+          {q.points} poin · {q.required ? "Wajib" : "Opsional"}
+          {q.type === "Esai" ? ` · minimal ${q.minChars} karakter` : ""}
+        </p>
+      )}
     </section>
   );
 }
 
 function Attachment({ id, baseUrl }: { id: string; baseUrl: string }) {
-  const [media, setMedia] = useState<{ url: string; mime: string } | null>(null);
+  const [media, setMedia] = useState<{ url: string; mime: string } | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const [version, setVersion] = useState(0);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    setMedia(null); setError("");
-    clientRequest(baseUrl + "?id=" + encodeURIComponent(id),undefined,z.object({url:z.url(),mime:z.string()}),controller)
-      .then((media) => { if (active) setMedia(media); })
-      .catch(() => { if (active) setError("Lampiran belum dapat dimuat. Periksa koneksi lalu coba lagi."); });
-    return () => { active = false; controller.abort(); };
+    setMedia(null);
+    setError("");
+    clientRequest(
+      baseUrl + "?id=" + encodeURIComponent(id),
+      undefined,
+      z.object({ url: z.url(), mime: z.string() }),
+      controller,
+    )
+      .then((media) => {
+        if (active) setMedia(media);
+      })
+      .catch(() => {
+        if (active)
+          setError(
+            "Lampiran belum dapat dimuat. Periksa koneksi lalu coba lagi.",
+          );
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [id, baseUrl, version]);
-  if (error) return <div className="notice"><FeedbackMessage tone="info" role="status">{error}</FeedbackMessage><Button type="button" variant="outline" onClick={() => setVersion(v => v+1)}>Coba muat lampiran</Button></div>;
-  if (!media) return <FeedbackMessage tone="loading" role="status">Memuat lampiran…</FeedbackMessage>;
+  if (error)
+    return (
+      <div className="notice">
+        <FeedbackMessage tone="info" role="status">
+          {error}
+        </FeedbackMessage>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setVersion((v) => v + 1)}
+        >
+          Coba muat lampiran
+        </Button>
+      </div>
+    );
+  if (!media)
+    return (
+      <FeedbackMessage tone="loading" role="status">
+        Memuat lampiran…
+      </FeedbackMessage>
+    );
   return media.mime.startsWith("image/") ? (
     <Image
       src={media.url}
       alt="Lampiran soal"
-      onError={() => setError("Gambar lampiran belum dapat ditampilkan. Coba muat ulang.")}
+      onError={() =>
+        setError("Gambar lampiran belum dapat ditampilkan. Coba muat ulang.")
+      }
       unoptimized
       width={1200}
       height={800}
       style={{ width: "100%", height: "auto" }}
     />
   ) : (
-    <audio src={media.url} controls preload="metadata" onError={() => setError("Audio lampiran belum dapat diputar. Coba muat ulang.")} />
+    <audio
+      src={media.url}
+      controls
+      preload="metadata"
+      onError={() =>
+        setError("Audio lampiran belum dapat diputar. Coba muat ulang.")
+      }
+    />
   );
 }
