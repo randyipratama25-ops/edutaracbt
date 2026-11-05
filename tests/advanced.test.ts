@@ -2,7 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { writeFile, mkdir } from "node:fs/promises";
 import ExcelJS from "exceljs";
 import { PDFDocument } from "pdf-lib";
-import { evaluationSchema } from "../lib/advanced/schema";
+import {
+  evaluationList,
+  evaluationReceipt,
+  evaluationSchema,
+} from "../lib/advanced/schema";
 import { pilotConfig } from "../lib/advanced/seb";
 import { exchangeHeaders, exchangeRow } from "../lib/reports/exchange";
 import { renderXLSX, reportHTML, renderPDF } from "../lib/reports/render";
@@ -85,6 +89,15 @@ describe("controlled advanced features", () => {
     expect(
       evaluationSchema.safeParse({ ...v, checks: { login: true } }).success,
     ).toBe(false);
+  });
+  it("rejects malformed history and requires an actual write receipt", () => {
+    const list = { ai_enabled: false, seb_enforced: false, rows: [], total: 0 };
+    expect(evaluationList.safeParse(list).success).toBe(true);
+    expect(evaluationList.safeParse({ ...list, rows: [null] }).success).toBe(
+      false,
+    );
+    expect(evaluationReceipt.safeParse(null).success).toBe(false);
+    expect(evaluationReceipt.safeParse({ id }).success).toBe(true);
   });
   it("exports final zero while leaving provisional and disqualified scores empty", () => {
     expect(exchangeRow(detail())[9]).toBe(0);

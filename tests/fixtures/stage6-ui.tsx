@@ -5,7 +5,7 @@ export default function Fixture() {
   return (
     <DashboardShell role="admin" name="Petugas Pengujian">
       <h1>Fitur lanjutan</h1>
-      <AdvancedPanel />
+      <div className="advanced-workspace stack"><AdvancedPanel /></div>
     </DashboardShell>
   );
 }

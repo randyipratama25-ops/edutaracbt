@@ -676,3 +676,9 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .acceptance-evidence .role-badge{display:inline-block;margin:.25rem .5rem}
 @media(max-width:760px){.acceptance-checks{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.acceptance-workspace .actions>.button{flex:1 1 100%}}
+
+.advanced-workspace,.advanced-workspace :is(section,fieldset,form,label,.ai-provider-card){min-width:0;overflow-wrap:anywhere}
+.advanced-workspace :is(input,select,textarea){min-width:0;max-width:100%}
+.advanced-workspace .button{min-height:44px;white-space:normal}
+.advanced-workspace .moderation-list p{white-space:pre-wrap}
+@media(max-width:600px){.advanced-workspace .form-grid{grid-template-columns:minmax(0,1fr)}.advanced-workspace .actions>.button{flex:1 1 140px}}

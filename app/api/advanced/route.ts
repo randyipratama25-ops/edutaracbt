@@ -5,8 +5,13 @@ import {
   HttpError,
   json,
   requireOrigin,
+  rpcData,
 } from "../../../lib/http";
-import { evaluationSchema } from "../../../lib/advanced/schema";
+import {
+  evaluationList,
+  evaluationReceipt,
+  evaluationSchema,
+} from "../../../lib/advanced/schema";
 export async function GET(request: Request) {
   try {
     const a = await staff();
@@ -15,13 +20,19 @@ export async function GET(request: Request) {
     const page = Number(p.get("page") || 1);
     if (!Number.isInteger(page) || page < 1 || page > 10000)
       throw new HttpError(422, "Halaman tidak valid.");
-    const r = await a.client.rpc("advanced_command", {
-      input: { action: "list", page },
-    });
-    if (r.error) throw new HttpError(422, "Evaluasi belum dapat dimuat.");
+    const r = await a.client
+      .rpc("advanced_command", {
+        input: { action: "list", page },
+      })
+      .abortSignal(AbortSignal.timeout(15000));
+    const raw = rpcData(r);
+    const result = evaluationList.safeParse(raw);
+    if (!result.success)
+      throw new HttpError(503, "Evaluasi belum dapat dimuat.");
+    const sha = process.env.VERCEL_GIT_COMMIT_SHA;
     return json({
-      ...r.data,
-      candidate_sha: process.env.VERCEL_GIT_COMMIT_SHA || null,
+      ...result.data,
+      candidate_sha: sha && /^[a-f0-9]{40}$/.test(sha) ? sha : null,
     });
   } catch (e) {
     return failure(e);
@@ -34,12 +45,10 @@ export async function POST(request: Request) {
     if (a.role !== "admin") throw new HttpError(403, "Hanya Admin.");
     const input = evaluationSchema.parse(await body(request));
     const r = await a.client.rpc("advanced_command", { input });
-    if (r.error)
-      throw new HttpError(
-        r.error.message.includes("CONFLICT") ? 409 : 422,
-        r.error.message,
-      );
-    return json(r.data);
+    const receipt = evaluationReceipt.safeParse(rpcData(r, true));
+    if (!receipt.success)
+      throw new HttpError(503, "Hasil pencatatan belum dapat dipastikan.");
+    return json(receipt.data);
   } catch (e) {
     return failure(e);
   }

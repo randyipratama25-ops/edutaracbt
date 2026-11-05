@@ -1,5 +1,6 @@
 import {
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   writeFileSync,
   rmSync,
@@ -20,7 +21,7 @@ const originals = Object.fromEntries(
     existsSync(p) ? readFileSync(p, "utf8") : null,
   ]),
 );
-let server, browser;
+let server, browser, downloadPath;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 if (existsSync(route)) throw Error("Temporary route already exists");
 try {
@@ -31,8 +32,15 @@ try {
   );
   const log = createWriteStream("/tmp/edutara-stage6-dev.log");
   server = spawn(
-    "npm",
-    ["run", "dev", "--", "--hostname", "127.0.0.1", "--port", String(port)],
+    process.execPath,
+    [
+      "node_modules/next/dist/bin/next",
+      "dev",
+      "--hostname",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
     {
       env: {
         ...process.env,
@@ -53,12 +61,14 @@ try {
   }
   browser = await puppeteer.launch({
     args: chromium.args,
-    executablePath: await chromium.executablePath(),
+    executablePath:
+      process.env.EDUTARA_TEST_CHROME || (await chromium.executablePath()),
     headless: true,
   });
   const page = await browser.newPage();
   const errors = [];
   let fail = false;
+  let loseReceipt = true;
   const rows = [];
   const calls = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -80,10 +90,11 @@ try {
         ...v,
         id: "00000000-0000-4000-8000-000000000001",
         recorded_at: new Date().toISOString(),
-        actor_id: "operator",
+        actor_id: "00000000-0000-4000-8000-000000000002",
       };
-      rows.push(r);
-      data = { id: r.id };
+      if (!rows.some((row) => row.request_id === v.request_id)) rows.push(r);
+      data = loseReceipt ? null : { id: r.id };
+      loseReceipt = false;
     }
     if (url.pathname === "/api/advanced/seb") {
       void req.respond({
@@ -101,7 +112,9 @@ try {
       status: fail ? 503 : 200,
       contentType: "application/json",
       body: JSON.stringify(
-        fail ? { error: { message: "Uji kegagalan koneksi" } } : { data },
+        fail
+          ? { error: { message: "Uji kegagalan koneksi" } }
+          : { success: true, data },
       ),
     });
   });
@@ -121,25 +134,32 @@ try {
     await handle.click();
   }
 
-  const downloadPath = "/tmp/edutara-stage6-download";
-  mkdirSync(downloadPath, { recursive: true });
+  downloadPath = mkdtempSync("/tmp/edutara-stage6-download-");
   await (
     await page.createCDPSession()
   ).send("Page.setDownloadBehavior", { behavior: "allow", downloadPath });
-  for (const width of [320, 390, 768, 1440]) {
-    await page.setViewport({ width, height: 900 });
+  for (const [width, height] of [
+    [320, 320],
+    [390, 844],
+    [844, 390],
+    [768, 1024],
+    [1440, 900],
+  ]) {
+    await page.setViewport({ width, height });
     await page.goto(origin + "/stage6-check", { waitUntil: "networkidle0" });
     await page.waitForFunction(() =>
       document.body.textContent.includes("Belum ada pengamatan perangkat"),
     );
     assert(
       await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
       ),
       `overflow ${width}`,
     );
     assert(
-      await page.evaluate(() => document.body.textContent.includes("Nonaktif")),
+      await page.evaluate(() => document.body.textContent.includes("belum menjadi syarat")),
     );
     await page.screenshot({
       path: `/tmp/edutara-stage6-shots/advanced-${width}.png`,
@@ -161,15 +181,22 @@ try {
   await page.type("textarea", "Semua skenario diamati pada perangkat uji.");
   await click("Simpan hasil evaluasi");
   await page.waitForFunction(() =>
+    document.body.textContent.includes("Pencatatan belum dapat dipastikan"),
+  );
+  await click("Simpan hasil evaluasi");
+  await page.waitForFunction(() =>
     document.body.textContent.includes("Seluruh skenario dilaporkan lulus"),
   );
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].request_id, calls[1].request_id);
   assert.equal(Object.keys(calls[0].checks).length, 6);
   assert.equal(calls[0].candidate_sha, "a".repeat(40));
   await page.setViewport({ width: 320, height: 900 });
   assert(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
     ),
     "history overflow",
   );
@@ -207,7 +234,8 @@ try {
   );
 } finally {
   await browser?.close();
-  if (server) {
+  if (downloadPath) rmSync(downloadPath, { recursive: true, force: true });
+  if (server && server.exitCode === null) {
     server.kill("SIGTERM");
     await new Promise((r) => server.once("exit", r));
   }
