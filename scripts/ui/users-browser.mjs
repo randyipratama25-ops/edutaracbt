@@ -298,6 +298,8 @@ try {
         () => getComputedStyle(document.body).pointerEvents !== "none",
       );
     await h.evaluate((e) => {
+      const panel = e.closest('[role="tabpanel"][hidden]');
+      if (panel) document.getElementById(panel.getAttribute("aria-labelledby"))?.click();
       e.closest("details.more-actions:not([open])")?.querySelector("summary")?.click();
       e.scrollIntoView({ block: "center" });
     });
@@ -305,7 +307,11 @@ try {
     await h.dispose();
   };
   const set = async (selector, value) => {
-    await page.$eval(selector, (e) => (e.value = ""));
+    await page.$eval(selector, (e) => {
+      const panel = e.closest('[role="tabpanel"][hidden]');
+      if (panel) document.getElementById(panel.getAttribute("aria-labelledby"))?.click();
+      e.value = "";
+    });
     await page.type(selector, value);
   };
   const overflow = async (label) =>

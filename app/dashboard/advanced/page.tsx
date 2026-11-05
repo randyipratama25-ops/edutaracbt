@@ -1,3 +1,4 @@
+import { TaskTabs } from "../../../components/ui/task-tabs";
 import { AccessDenied } from "../../../components/feedback/access-denied";
 import { PageHeading } from "../../../components/layout/page-heading";
 import { AISettings } from "../../../components/ai/settings";
@@ -15,8 +16,10 @@ export default async function Page() {
         description="Kelola penyedia AI, pertukaran nilai, dan evaluasi perangkat."
       />
       <div className="advanced-workspace stack">
-        <AISettings />
-        <AdvancedPanel />
+        <TaskTabs label="Fitur lanjutan" items={[
+          { id: "ai", label: "Penyedia AI", content: <AISettings /> },
+          { id: "device", label: "Evaluasi perangkat", content: <AdvancedPanel /> },
+        ]} />
       </div>
     </>
   );

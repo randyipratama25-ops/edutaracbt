@@ -1,4 +1,5 @@
 "use client";
+import { TaskTabs } from "../ui/task-tabs";
 import {FeedbackMessage} from "../feedback/state";
 import {ValidatedForm} from "../feedback/validated-form";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -562,8 +563,11 @@ export function MasterPanel() {
     subjects = data?.subjects.filter((s) => s.active) || [];
   return (
     <div className="stack master-page">
-      <section className="panel stack" aria-labelledby="master-list-title">
-        <div className="master-heading">
+      <TaskTabs label="Data akademik" items={[
+        { id: "data", label: "Kelas dan mata pelajaran", content: (
+          <div className="stack">
+          <section className="panel stack" aria-labelledby="master-list-title">
+          <div className="master-heading">
           <h2 id="master-list-title" tabIndex={-1}>
             {kind === "classes" ? "Kelas" : "Mata pelajaran"}
           </h2>
@@ -590,8 +594,8 @@ export function MasterPanel() {
               Muat ulang
             </Button>
           </div>
-        </div>
-        <ListFilters
+          </div>
+          <ListFilters
           label="data akademik"
           active={q ? ["Pencarian"] : []}
           onReset={() => {
@@ -601,7 +605,7 @@ export function MasterPanel() {
           total={data ? rows.length : undefined}
           loading={loading}
           error={error}
-        >
+          >
           <label>
             Jenis data
             <select
@@ -628,16 +632,16 @@ export function MasterPanel() {
               setPage(1);
             }}
           />
-        </ListFilters>
-        <Feedback value={message} />
-        {loading && <FeedbackMessage tone="loading" role="status">Memuat data master…</FeedbackMessage>}
-        {data && (loading || error) && (
+          </ListFilters>
+          <Feedback value={message} />
+          {loading && <FeedbackMessage tone="loading" role="status">Memuat data master…</FeedbackMessage>}
+          {data && (loading || error) && (
           <p className="muted">
             Menampilkan data terakhir yang berhasil dimuat. Perubahan
             dinonaktifkan sampai pembaruan berhasil.
           </p>
-        )}
-        {data && (
+          )}
+          {data && (
           <>
             <div
               className="table-wrap master-main-table"
@@ -691,13 +695,17 @@ export function MasterPanel() {
               disabled={busy}
             />
           </>
-        )}
-      </section>
-      {data?.canManage && (
-        <section
+          )}
+          </section>
+          </div>
+        ) },
+        { id: "assign", label: "Penugasan dan keanggotaan", content: (
+          <div className="stack">
+          {data?.canManage && (
+          <section
           className="panel stack master-bulk"
           aria-labelledby="master-bulk-title"
-        >
+          >
           <h2 id="master-bulk-title" tabIndex={-1}>
             Tambah {kindLabel(kind)} massal
           </h2>
@@ -743,13 +751,13 @@ export function MasterPanel() {
               </ul>
             </div>
           )}
-        </section>
-      )}
-      {data?.canManage && (
-        <section
+          </section>
+          )}
+          {data?.canManage && (
+          <section
           className="panel stack master-assignment"
           aria-labelledby="master-assignment-title"
-        >
+          >
           <h2 id="master-assignment-title">Penugasan akademik</h2>
           <p className="muted">
             Pilih pengguna dan referensi aktif. Data yang sama diperbarui tanpa
@@ -830,10 +838,10 @@ export function MasterPanel() {
             </FeedbackMessage>
           )}
           <Feedback value={assignmentMessage} />
-        </section>
-      )}
-      {data && (
-        <>
+          </section>
+          )}
+          {data && (
+          <>
           <RelationList
             data={data}
             busy={busy}
@@ -855,8 +863,11 @@ export function MasterPanel() {
               setToggleBlocked(false);
             }}
           />
-        </>
-      )}
+          </>
+          )}
+          </div>
+        ) }
+      ]} />
       <Dialog
         open={!!form}
         onOpenChange={(v) => {

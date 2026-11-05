@@ -1,4 +1,5 @@
 "use client";
+import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import { QuestionEditor } from "./question-editor";
 import { QuestionMedia } from "./question-media";
@@ -77,6 +78,7 @@ const iso = (s: string) => new Date(s).toISOString();
 export function AuthoringPanel() {
   const [data, setData] = useState<Data | null>(null),
     [examId, setExamId] = useState(""),
+    [activeTab, setActiveTab] = useState("exams"),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true);
@@ -129,7 +131,7 @@ export function AuthoringPanel() {
     mounted.current=true;
     const activeControllers=controllers.current;
     const requested=new URLSearchParams(location.search).get('exam')||'';
-    setExamId(requested);void load(requested);
+    setExamId(requested);if(requested)setActiveTab('questions');void load(requested);
     const timer=setInterval(()=>setClock(Date.now()),1000);
     return()=>{mounted.current=false;loadController.current?.abort();activeControllers.forEach(c=>c.abort());clearInterval(timer);};
     // Initial URL is read once; choosing an exam explicitly loads its bank.
@@ -241,6 +243,7 @@ export function AuthoringPanel() {
       });
       setExamOpen(false);
       setExamId(result.id);
+      setActiveTab("questions");
       await load(result.id);
       setMessage("Jadwal disimpan.");
     });
@@ -361,6 +364,9 @@ export function AuthoringPanel() {
       {loading && <FeedbackMessage tone="loading" role="status">Memuat data…</FeedbackMessage>}
       {(readError||uncertain)&&<div className="notice" role="alert"><p>{readError||'Periksa hasil perubahan sebelum melanjutkan.'}</p><Button disabled={busy||loading} onClick={()=>void load()}>Muat ulang data</Button></div>}
       <fieldset className="authoring-controls stack" disabled={blocked}>
+      <TaskTabs label="Ujian dan bank soal" value={activeTab} onValueChange={setActiveTab} items={[
+        { id: "exams", label: "Daftar ujian", content: (
+          <div className="stack">
       <section className="panel stack">
         <div className="actions">
           {data.canManage && (
@@ -427,6 +433,10 @@ export function AuthoringPanel() {
                               if(blocked)return;
                               setImportText('');setPreview([]);setImportRequestId('');setCopyTarget('');setQuestionSearch('');setMessage('');
                               setExamId(e.id);
+                              setActiveTab("questions");
+                              requestAnimationFrame(() => {
+                                document.querySelector<HTMLElement>('.authoring-page [role="tabpanel"]:not([hidden])')?.focus();
+                              });
                               setSelectedQuestions([]);
                               setPage(1);
                               void load(e.id);
@@ -524,6 +534,11 @@ export function AuthoringPanel() {
           </ValidatedForm>
         </details>
       )}
+          </div>
+        ) },
+        { id: "questions", label: "Soal ujian", content: (
+          <>
+            {!exam && !loading && <p className="panel">Pilih ujian dari tab Daftar ujian untuk melihat soalnya.</p>}
       {exam && loadedExam===examId && (
         <section className="panel stack">
           <h2 tabIndex={-1} id="authoring-bank-title">Bank soal — {exam.title}</h2>
@@ -848,6 +863,9 @@ export function AuthoringPanel() {
           </details>
         </section>
       )}
+          </>
+        ) },
+      ]} />
       </fieldset>
       <Dialog
         className="authoring-dialog"

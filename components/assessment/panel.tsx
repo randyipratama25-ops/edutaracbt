@@ -1,4 +1,5 @@
 "use client";
+import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
@@ -382,16 +383,19 @@ export function AssessmentPanel() {
           {notice.text}
         </FeedbackMessage>
       )}
-      <section className="panel stack">
-        <h2>Antrean koreksi</h2>
-        <ListFilters
+      <TaskTabs label="Koreksi dan moderasi" items={[
+        { id: "queue", label: "Antrean dan koreksi", content: (
+          <div className="stack">
+          <section className="panel stack">
+          <h2>Antrean koreksi</h2>
+          <ListFilters
           label="antrean koreksi"
           active={[exam && "Ujian"].filter(Boolean) as string[]}
           onReset={() => changeExam("")}
           total={total}
           loading={loading}
           error={listError}
-        >
+          >
           <label>
             Ujian
             <select
@@ -412,12 +416,12 @@ export function AssessmentPanel() {
               Pilihan ujian gagal dimuat. Gunakan Muat ulang penilaian.
             </FeedbackMessage>
           )}
-        </ListFilters>
-        {loading ? (
+          </ListFilters>
+          {loading ? (
           <FeedbackMessage tone="loading" role="status">
             Memuat antrean koreksi…
           </FeedbackMessage>
-        ) : rows.length > 0 ? (
+          ) : rows.length > 0 ? (
           <div
             className="table-wrap"
             role="region"
@@ -462,7 +466,7 @@ export function AssessmentPanel() {
               </tbody>
             </table>
           </div>
-        ) : (
+          ) : (
           !listError && (
             <StateCard
               kind={exam ? "no-results" : "empty"}
@@ -478,8 +482,8 @@ export function AssessmentPanel() {
               }
             />
           )
-        )}
-        {pages > 1 && !listError && (
+          )}
+          {pages > 1 && !listError && (
           <nav className="actions" aria-label="Halaman antrean">
             <Button
               variant="outline"
@@ -499,15 +503,15 @@ export function AssessmentPanel() {
               Berikutnya
             </Button>
           </nav>
-        )}
-      </section>
-      {detail && (
-        <section
+          )}
+          </section>
+          {detail && (
+          <section
           ref={workspace}
           tabIndex={-1}
           className="panel stack"
           aria-label="Ruang koreksi anonim"
-        >
+          >
           <div className="actions">
             <h2>{detail.attempt.code}</h2>
             <span>
@@ -667,21 +671,25 @@ export function AssessmentPanel() {
           ) : (
             <p>Hasil ini tidak memuat soal esai.</p>
           )}
-        </section>
-      )}
-      <section className="panel stack">
-        <h2>Moderasi nilai</h2>
-        <p>
+          </section>
+          )}
+          </div>
+        ) },
+        { id: "moderation", label: "Moderasi dan publikasi", content: (
+          <div className="stack">
+          <section className="panel stack">
+          <h2>Moderasi nilai</h2>
+          <p>
           Usulan harus diputuskan penilai lain dalam cakupan. Jika revisi
           dasarnya berubah, tolak usulan lama dan ajukan kembali.
-        </p>
-        {loading ? (
+          </p>
+          {loading ? (
           <FeedbackMessage tone="loading">Memuat moderasi…</FeedbackMessage>
-        ) : sectionErrors.moderation ? (
+          ) : sectionErrors.moderation ? (
           <FeedbackMessage tone="error" role="alert">
             Moderasi gagal dimuat. Gunakan Muat ulang penilaian.
           </FeedbackMessage>
-        ) : mods.length ? (
+          ) : mods.length ? (
           <ul className="moderation-list">
             {mods.map((m) => (
               <li key={m.id}>
@@ -730,12 +738,12 @@ export function AssessmentPanel() {
               </li>
             ))}
           </ul>
-        ) : (
+          ) : (
           <p>Belum ada usulan moderasi.</p>
-        )}
-      </section>
-      {admin && (
-        <section className="panel stack">
+          )}
+          </section>
+          {admin && (
+          <section className="panel stack">
           <h2>Publikasi nilai terjadwal</h2>
           <HelpDisclosure>
             <p>
@@ -854,8 +862,11 @@ export function AssessmentPanel() {
               ))}
             </ul>
           )}
-        </section>
-      )}
+          </section>
+          )}
+          </div>
+        ) }
+      ]} />
       <Dialog
         className="assessment-decision"
         open={!!decision || !!cancelTarget}

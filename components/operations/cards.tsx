@@ -1,4 +1,5 @@
 "use client";
+import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage } from "../feedback/state";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -215,10 +216,10 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
       if (input.action === "create") retry.current = null;
       setMessage(
         receipt.state === "ready"
-          ? "Kartu sudah siap diunduh."
+          ? "Kartu sudah siap di tab Proses dan unduhan."
           : receipt.state === "running"
-            ? "Proses kartu masih berjalan. Pantau progres di bawah."
-            : "Proses kartu dijadwalkan. Progres diperbarui otomatis.",
+            ? "Proses kartu masih berjalan. Buka tab Proses dan unduhan."
+            : "Proses kartu dijadwalkan. Buka tab Proses dan unduhan.",
       );
     } catch (e) {
       if (live.current) {
@@ -258,9 +259,15 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
           </Button>
         </div>
       )}
-      <fieldset disabled={busy} className="stack cards-controls">
-        <legend>Siapkan kartu</legend>
-        <div className="cards-filter-grid">
+      <FeedbackMessage tone="info" role="status" aria-live="polite">
+          {busy ? "Menjadwalkan proses kartu…" : message}
+          </FeedbackMessage>
+      <TaskTabs label="Kartu peserta" items={[
+        { id: "create", label: "Buat kartu", content: (
+          <div className="stack">
+          <fieldset disabled={busy} className="stack cards-controls">
+          <legend>Siapkan kartu</legend>
+          <div className="cards-filter-grid">
           <label>
             Ujian
             <select
@@ -307,8 +314,8 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
             maxLength={150}
             onChange={changeSearch}
           />
-        </div>
-        <div className="actions">
+          </div>
+          <div className="actions">
           <Button
             disabled={
               !exam ||
@@ -354,39 +361,39 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
               Kosongkan pilihan
             </Button>
           </MoreActions>
-        </div>
-        <FeedbackMessage tone="info" role="status">
+          </div>
+          <FeedbackMessage tone="info" role="status">
           {selected.length} dipilih dari {shown.length} hasil
           {shown.length > limit
             ? `; pilih hasil mengambil ${limit} peserta pertama`
             : ""}
           . Pencarian atau pergantian ujian mengosongkan pilihan.
-        </FeedbackMessage>
-        {over && (
+          </FeedbackMessage>
+          {over && (
           <FeedbackMessage tone="error" role="alert">
             Pilihan melebihi batas {limit}. Kurangi pilihan atau gunakan PDF
             gabungan.
           </FeedbackMessage>
-        )}
-        {listError && (
+          )}
+          {listError && (
           <FeedbackMessage tone="error" role="alert">
             {listError}
           </FeedbackMessage>
-        )}
-        {loading && rows.length === 0 ? (
+          )}
+          {loading && rows.length === 0 ? (
           <FeedbackMessage tone="loading" role="status">
             Memuat peserta…
           </FeedbackMessage>
-        ) : !exam ? (
+          ) : !exam ? (
           <p>Pilih ujian untuk melihat peserta.</p>
-        ) : !shown.length && !listError ? (
+          ) : !shown.length && !listError ? (
           <p>
             {search
               ? "Tidak ada peserta yang cocok."
               : "Belum ada peserta pada ujian ini."}
           </p>
-        ) : null}
-        <fieldset className="ops-choice-list cards-participants">
+          ) : null}
+          <fieldset className="ops-choice-list cards-participants">
           <legend>
             Peserta · halaman {currentPage} dari {pages}
           </legend>
@@ -415,8 +422,8 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
               </span>
             </label>
           ))}
-        </fieldset>
-        {pages > 1 && (
+          </fieldset>
+          {pages > 1 && (
           <nav className="actions" aria-label="Halaman peserta">
             <Button
               variant="outline"
@@ -436,37 +443,39 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
               Berikutnya
             </Button>
           </nav>
-        )}
-      </fieldset>
-      <FeedbackMessage tone="info" role="status" aria-live="polite">
-        {busy ? "Menjadwalkan proses kartu…" : message}
-      </FeedbackMessage>
-      <div className="actions">
-        <h2>Proses kartu</h2>
-        <Button
+          )}
+          </fieldset>
+
+          </div>
+        ) },
+        { id: "jobs", label: "Proses dan unduhan", content: (
+          <div className="stack">
+          <div className="actions">
+          <h2>Proses kartu</h2>
+          <Button
           variant="outline"
           disabled={busy || jobsLoading}
           onClick={() => void load()}
-        >
+          >
           {jobsLoading ? "Memperbarui…" : "Perbarui status"}
-        </Button>
-      </div>
-      {uncertain && (
-        <FeedbackMessage tone="error" role="alert">
+          </Button>
+          </div>
+          {uncertain && (
+          <FeedbackMessage tone="error" role="alert">
           Hasil belum pasti. Periksa status sebelum mencoba kembali dengan isian
           yang sama.
-        </FeedbackMessage>
-      )}
-      {jobsError && (
-        <FeedbackMessage tone="error" role="alert">
+          </FeedbackMessage>
+          )}
+          {jobsError && (
+          <FeedbackMessage tone="error" role="alert">
           {jobsError} Daftar terakhir yang berhasil dimuat dipertahankan.
-        </FeedbackMessage>
-      )}
-      {!jobsLoading && !jobsError && !jobs.length && (
-        <p>Belum ada proses kartu. Pilih peserta lalu buat kartu.</p>
-      )}
-      <div className="cards-jobs">
-        {jobs.map((j) => (
+          </FeedbackMessage>
+          )}
+          {!jobsLoading && !jobsError && !jobs.length && (
+          <p>Belum ada proses kartu. Pilih peserta lalu buat kartu.</p>
+          )}
+          <div className="cards-jobs">
+          {jobs.map((j) => (
           <article className="panel stack cards-job" key={j.id}>
             <h3>
               {j.format.toUpperCase()} · {statusLabel[j.status]}
@@ -496,8 +505,11 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
               </Button>
             )}
           </article>
-        ))}
-      </div>
+          ))}
+          </div>
+          </div>
+        ) }
+      ]} />
     </section>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { TaskTabs } from "../ui/task-tabs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Download, RefreshCw } from "lucide-react";
@@ -114,15 +115,18 @@ export function AcceptancePanel() {
 
   return (
     <div className="acceptance-workspace stack">
-      <section className="panel stack" aria-labelledby="acceptance-status">
-        <div className="summary-heading">
+      <TaskTabs label="Penerimaan operasional" items={[
+        { id: "status", label: "Pemeriksaan teknis", content: (
+          <div className="stack">
+          <section className="panel stack" aria-labelledby="acceptance-status">
+          <div className="summary-heading">
           <h2 id="acceptance-status">Status penerimaan</h2>
           <span className="role-badge">Menunggu bukti</span>
-        </div>
-        <p>
+          </div>
+          <p>
           Penerimaan operasional belum disahkan. Lengkapi bukti pengujian dan periksa artefak asli.
-        </p>
-        <div className="actions">
+          </p>
+          <div className="actions">
           <Button disabled={loading} onClick={() => void load()}>
             <RefreshCw size={16} aria-hidden="true" /> Muat ulang pemeriksaan
           </Button>
@@ -133,28 +137,28 @@ export function AcceptancePanel() {
           >
             <Download size={16} aria-hidden="true" /> Unduh ringkasan
           </Button>
-        </div>
-        {exportError && (
+          </div>
+          {exportError && (
           <FeedbackMessage tone="error">{exportError}</FeedbackMessage>
-        )}
-      </section>
+          )}
+          </section>
 
-      {loading ? (
-        <StateCard
+          {loading ? (
+          <StateCard
           kind="loading"
           role="status"
           title="Memuat kondisi operasional"
           description="Sedang memeriksa kondisi layanan madrasah."
-        />
-      ) : error ? (
-        <StateCard
+          />
+          ) : error ? (
+          <StateCard
           kind="error"
           role="alert"
           title="Pemeriksaan belum tersedia"
           description={error}
-        />
-      ) : (
-        data && (
+          />
+          ) : (
+          data && (
           <section
             className="stack"
             aria-labelledby="acceptance-technical"
@@ -203,18 +207,21 @@ export function AcceptancePanel() {
               ))}
             </ul>
           </section>
-        )
-      )}
-
-      <section className="panel stack">
-        <h2>Bukti penerimaan yang wajib dilengkapi</h2>
-        <HelpDisclosure>
+          )
+          )}
+          </div>
+        ) },
+        { id: "evidence", label: "Bukti pengujian", content: (
+          <div className="stack">
+          <section className="panel stack">
+          <h2>Bukti penerimaan yang wajib dilengkapi</h2>
+          <HelpDisclosure>
           <p>
             Catat SHA kandidat rilis, lingkungan, waktu, penguji, hasil aktual,
             dan lokasi artefak untuk setiap bukti.
           </p>
-        </HelpDisclosure>
-        <ol className="acceptance-evidence stack">
+          </HelpDisclosure>
+          <ol className="acceptance-evidence stack">
           {humanChecks.map((check) => (
             <li key={check.id}>
               <strong>{check.title}</strong>
@@ -222,20 +229,23 @@ export function AcceptancePanel() {
               <p>{check.detail}</p>
             </li>
           ))}
-        </ol>
-      </section>
-
-      <section className="panel stack">
-        <h2>Jika terjadi gangguan</h2>
-        <HelpDisclosure>
+          </ol>
+          </section>
+          </div>
+        ) },
+        { id: "incidents", label: "Panduan gangguan", content: (
+          <div className="stack">
+          <section className="panel stack">
+          <h2>Jika terjadi gangguan</h2>
+          <HelpDisclosure>
           <p>
             Hentikan publikasi hasil yang meragukan, amankan jawaban dan
             inventaris terbaru, lalu catat waktu serta dampak sebelum
             menghubungi penanggung jawab. Saat rollback, pertahankan database
             dan jawaban terbaru.
           </p>
-        </HelpDisclosure>
-        <div className="actions">
+          </HelpDisclosure>
+          <div className="actions">
           <Button asChild variant="outline">
             <Link href="/dashboard/monitor">Monitoring peserta</Link>
           </Button>
@@ -245,8 +255,11 @@ export function AcceptancePanel() {
           <Button asChild variant="outline">
             <Link href="/dashboard/audit">Audit aktivitas</Link>
           </Button>
-        </div>
-      </section>
+          </div>
+          </section>
+          </div>
+        ) }
+      ]} />
     </div>
   );
 }

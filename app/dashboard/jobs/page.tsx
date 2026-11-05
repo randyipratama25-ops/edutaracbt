@@ -1,3 +1,4 @@
+import { TaskTabs } from "../../../components/ui/task-tabs";
 import { AccessDenied } from "../../../components/feedback/access-denied";
 import { PageHeading } from "../../../components/layout/page-heading";
 import { redirect } from "next/navigation";
@@ -15,8 +16,10 @@ export default async function Page() {
         title="Otomasi dan backup"
         description="Periksa layanan, tindak lanjuti pekerjaan, dan kelola cadangan."
       />
-      <OperationalHealth />
-      <JobsPanel />
+      <TaskTabs label="Otomasi dan cadangan" items={[
+        { id: "health", label: "Kondisi layanan", content: <OperationalHealth /> },
+        { id: "jobs", label: "Pekerjaan dan backup", content: <JobsPanel /> },
+      ]} />
     </>
   );
 }
