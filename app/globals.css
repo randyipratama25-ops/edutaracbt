@@ -663,3 +663,6 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .assessment-workspace .button,.assessment-decision .button{min-height:44px;white-space:normal}
 .assessment-workspace :focus-visible,.assessment-decision :focus-visible{outline:2px solid var(--primary);outline-offset:3px}
 @media(max-width:600px){.assessment-workspace .panel{padding:1rem}.assessment-workspace .assessment-table{min-width:36rem}}
+.assessment-workspace .actions>span{min-width:0;overflow-wrap:anywhere}
+.assessment-workspace .grading-grid>*{min-width:0}
+@media(max-width:900px){.assessment-workspace .grading-grid{grid-template-columns:minmax(0,1fr)}}
