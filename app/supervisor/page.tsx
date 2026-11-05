@@ -5,6 +5,7 @@ import { SupervisorCards } from "../../components/operations/supervisor-cards";
 import { OperationsPanel } from "../../components/operations/panel";
 import { redirect } from "next/navigation";
 import { actor } from "../../lib/auth/actor";
+import { MoreActions } from "../../components/ui/more-actions";
 import { LogoutButton } from "../../components/auth/logout-button";
 export const metadata = { title: "Ruang pengawasan | EDUTARA CBT" };
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default async function Supervisor() {
         </div>
         <div className="actions">
           <ContextHelp audience="supervisor" page="/supervisor" />
-          <LogoutButton />
+          <MoreActions label="Akun"><LogoutButton /></MoreActions>
         </div>
       </header>
       <StartHere page="/supervisor" />

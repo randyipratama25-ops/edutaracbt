@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import { QuestionEditor } from "../authoring/question-editor";
 import { QuestionMedia } from "../authoring/question-media";
 import { uploadQuestionMedia } from "../../lib/authoring/upload";
@@ -577,37 +578,39 @@ export function BankPanel() {
           >
             Tambah soal bank
           </Button>
-          <Button
-            variant="outline"
-            disabled={busy || mastersLoading || !!mastersError}
-            onClick={() => {
-              setMeta(emptyMeta());
-              setReason("");
-              setPreview([]);
-              setReport([]);
-              setImportText("");
-              setDialog("import");
-            }}
-          >
-            Impor / ambil dari ujian
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy || mastersLoading || !!mastersError}
-            onClick={() => {
-              setAvailable([]);
-              setDialog("pack");
-            }}
-          >
-            Susun paket dari kisi-kisi
-          </Button>
-          <Button
-            variant="outline"
-            disabled={loading}
-            onClick={() => void load()}
-          >
-            Muat ulang
-          </Button>
+          <MoreActions>
+            <Button
+              variant="outline"
+              disabled={busy || mastersLoading || !!mastersError}
+              onClick={() => {
+                setMeta(emptyMeta());
+                setReason("");
+                setPreview([]);
+                setReport([]);
+                setImportText("");
+                setDialog("import");
+              }}
+            >
+              Impor / ambil dari ujian
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy || mastersLoading || !!mastersError}
+              onClick={() => {
+                setAvailable([]);
+                setDialog("pack");
+              }}
+            >
+              Susun paket dari kisi-kisi
+            </Button>
+            <Button
+              variant="outline"
+              disabled={loading}
+              onClick={() => void load()}
+            >
+              Muat ulang
+            </Button>
+          </MoreActions>
         </div>
         <FeedbackMessage
           tone={tone}

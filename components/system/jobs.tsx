@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
+import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { HelpDisclosure } from "../ui/help-disclosure";
@@ -284,9 +285,6 @@ export function JobsPanel() {
       <div className="summary-heading">
         <div>
           <h2>Pekerjaan terbaru</h2>
-          <p className="muted">
-            Pantau status, periksa kendala, lalu pilih tindakan yang tersedia.
-          </p>
         </div>
         <div className="actions">
           <Button
@@ -484,7 +482,7 @@ export function JobsPanel() {
                           {j.error && <p className="jobs-error">{j.error}</p>}
                           <div className="actions">
                             {a.download && (
-                              <>
+                              <MoreActions label="Unduh backup">
                                 <a
                                   href={"/api/backups/download?id=" + j.id}
                                   className="button button-outline"
@@ -504,7 +502,7 @@ export function JobsPanel() {
                                 >
                                   Lihat bagian
                                 </Button>
-                              </>
+                              </MoreActions>
                             )}
                             {a.retry && (
                               <Button

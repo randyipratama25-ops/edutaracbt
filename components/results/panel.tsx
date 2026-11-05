@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import {FeedbackMessage} from "../feedback/state";
 import {ValidatedForm} from "../feedback/validated-form";
 import {ListFilters, SearchField} from "../ui/list-filters";
@@ -343,9 +344,6 @@ export function ResultsPanel({
           </label>
         </ListFilters>
         <div className="actions">
-          <Button variant="outline" onClick={() => void load()}>
-            Muat ulang
-          </Button>
           <Button
             variant="outline"
             disabled={selectionBlocked||!rows.length||ids.length>=500}
@@ -358,9 +356,14 @@ export function ResultsPanel({
           >
             Pilih halaman ini
           </Button>
-          <Button variant="outline" onClick={() => setSelected({})}>
-            Bersihkan pilihan ({ids.length})
-          </Button>
+          <MoreActions label="Opsi daftar">
+            <Button variant="outline" onClick={() => void load()}>
+              Muat ulang
+            </Button>
+            <Button variant="outline" onClick={() => setSelected({})}>
+              Bersihkan pilihan ({ids.length})
+            </Button>
+          </MoreActions>
         </div>
         {loading && <p>Memuat hasil…</p>}
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel hasil ujian; geser untuk melihat kolom lain">
@@ -477,36 +480,38 @@ export function ResultsPanel({
           >
             Koreksi per soal lintas peserta
           </Button>
-          <Button
-            variant="outline"
-            disabled={selectionBlocked || !ids.length}
-            onClick={() => {setReason("");setMessage("");setRecalcOpen(true);}}
-          >
-            Rekalkulasi berizin
-          </Button>
           {!analyticsFirst&&analysisAction}
-          {canPublish && (
-            <>
-              <Button
-                variant="outline"
-                disabled={selectionBlocked || !ids.length}
-                onClick={() =>
-                  void run(()=>publishResults(true))
-                }
-              >
-                Terbitkan nilai ujian terpilih
-              </Button>
-              <Button
-                variant="outline"
-                disabled={selectionBlocked || !ids.length}
-                onClick={() =>
-                  void run(()=>publishResults(false))
-                }
-              >
-                Tutup publikasi
-              </Button>
-            </>
-          )}
+          <MoreActions label="Opsi nilai">
+            <Button
+              variant="outline"
+              disabled={selectionBlocked || !ids.length}
+              onClick={() => {setReason("");setMessage("");setRecalcOpen(true);}}
+            >
+              Rekalkulasi berizin
+            </Button>
+            {canPublish && (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={selectionBlocked || !ids.length}
+                  onClick={() =>
+                    void run(()=>publishResults(true))
+                  }
+                >
+                  Terbitkan nilai ujian terpilih
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={selectionBlocked || !ids.length}
+                  onClick={() =>
+                    void run(()=>publishResults(false))
+                  }
+                >
+                  Tutup publikasi
+                </Button>
+              </>
+            )}
+          </MoreActions>
         </div>
         <div className="toolbar">
           <label>

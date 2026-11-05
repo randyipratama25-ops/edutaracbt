@@ -120,8 +120,7 @@ export function AcceptancePanel() {
           <span className="role-badge">Menunggu bukti</span>
         </div>
         <p>
-          Penerimaan operasional belum disahkan. Lengkapi bukti UAT dan periksa
-          artefak asli sebelum pengesahan.
+          Penerimaan operasional belum disahkan. Lengkapi bukti pengujian dan periksa artefak asli.
         </p>
         <div className="actions">
           <Button disabled={loading} onClick={() => void load()}>

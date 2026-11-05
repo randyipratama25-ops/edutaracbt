@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import {feedbackFetch} from "../../lib/client/feedback-transport";
 
 import {FeedbackMessage, StateCard} from "../feedback/state";
@@ -300,20 +301,22 @@ export function MediaPanel({ admin = false }: { admin?: boolean }) {
       <Button variant="outline" onClick={() => void copy(m.id)}>
         Salin ID
       </Button>
-      <Button variant="outline" onClick={() => void copyURL(m)}>
-        Salin URL 60 detik
-      </Button>
-      <Button
-        variant="outline"
-        disabled={m.referenced || uncertain}
-        onClick={() => {
-          if (lock.current) return;
-          setMessage("");
-          setTarget(m);
-        }}
-      >
-        Hapus
-      </Button>
+      <MoreActions label="Opsi media">
+        <Button variant="outline" onClick={() => void copyURL(m)}>
+          Salin URL 60 detik
+        </Button>
+        <Button
+          variant="outline"
+          disabled={m.referenced || uncertain}
+          onClick={() => {
+            if (lock.current) return;
+            setMessage("");
+            setTarget(m);
+          }}
+        >
+          Hapus
+        </Button>
+      </MoreActions>
     </div>
   );
   return (

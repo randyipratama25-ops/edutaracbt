@@ -21,7 +21,7 @@ try{
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${mode} ${width}`);
    if(mode==='bank'){
     await click('Tambah soal bank');await page.waitForSelector('[role=dialog]');assert(await page.$('textarea'));await page.screenshot({path:`/tmp/edutara-stage4-shots/bank-dialog-${width}.png`,fullPage:true});await page.keyboard.press('Escape');await page.waitForSelector('[role=dialog]',{hidden:true});
-    await click('Susun paket dari kisi-kisi');await page.waitForSelector('[role=dialog]');await page.keyboard.press('Escape');await page.waitForSelector('[role=dialog]',{hidden:true});
+    await page.click('.more-actions > summary');await click('Susun paket dari kisi-kisi');await page.waitForSelector('[role=dialog]');await page.keyboard.press('Escape');await page.waitForSelector('[role=dialog]',{hidden:true});
    }else{assert(await page.evaluate(()=>document.body.textContent.includes('Belum ada hasil untuk dinilai')));assert(await page.evaluate(()=>document.body.textContent.includes('Publikasi nilai terjadwal')));}
    await page.screenshot({path:`/tmp/edutara-stage4-shots/${mode}-${width}.png`,fullPage:true});
   }

@@ -297,7 +297,10 @@ try {
       await page.waitForFunction(
         () => getComputedStyle(document.body).pointerEvents !== "none",
       );
-    await h.evaluate((e) => e.scrollIntoView({ block: "center" }));
+    await h.evaluate((e) => {
+      e.closest("details.more-actions:not([open])")?.querySelector("summary")?.click();
+      e.scrollIntoView({ block: "center" });
+    });
     await h.click();
     await h.dispose();
   };

@@ -705,3 +705,13 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .dashboard-menu-search{position:sticky;top:0;z-index:1;background:#fff}
 .dashboard-menu-search .search-input{min-width:0}
 .dashboard-menu-search input{width:100%;min-width:0}
+
+.more-actions{min-width:0;max-width:100%}
+.more-actions>summary{display:inline-flex;cursor:pointer;list-style:none;min-height:44px;max-width:100%;white-space:normal}
+.more-actions>summary::-webkit-details-marker{display:none}
+.more-actions>summary svg{flex:none}
+.more-actions[open]>summary svg{transform:rotate(180deg)}
+.more-actions[open]{flex-basis:100%}
+.more-actions-content{margin-top:.5rem;padding:.65rem;border:1px solid var(--border);border-radius:.65rem;background:var(--surface-subtle,#f7faf9)}
+.more-actions-content>.button{max-width:100%;min-height:44px;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:480px){.more-actions-content>.button{flex:1 1 100%}}

@@ -6,6 +6,7 @@ import { FeedbackMessage } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { providers, providerId } from "../../lib/ai/schema";
+import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
 import { HelpDisclosure } from "../ui/help-disclosure";
 const configList = z.array(
@@ -181,7 +182,6 @@ export function AISettings() {
           Muat ulang
         </Button>
       </div>
-      <p>Pilih penyedia → simpan konfigurasi → uji koneksi → aktifkan.</p>
       <FeedbackMessage tone={tone}>{message}</FeedbackMessage>
       {loading ? (
         <FeedbackMessage tone="loading" role="status">
@@ -292,40 +292,24 @@ export function AISettings() {
                 </p>
               </HelpDisclosure>
               <div className="actions">
-                <Button disabled={busy || !dirty}>
-                  {busy ? "Memproses…" : "Simpan konfigurasi"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    busy || dirty || !selected?.configured || selected?.enabled
-                  }
-                  onClick={() => void act("test")}
-                >
-                  Uji koneksi tersimpan
-                </Button>
-                <Button
-                  type="button"
-                  disabled={
-                    busy ||
-                    dirty ||
-                    !selected?.tested ||
-                    !selected?.consent ||
-                    selected?.enabled
-                  }
-                  onClick={() => void act("activate")}
-                >
-                  Aktifkan
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy || dirty || !selected?.enabled}
-                  onClick={() => void act("disable")}
-                >
-                  Nonaktifkan
-                </Button>
+                {dirty || !selected?.configured ? (
+                  <Button disabled={busy || !dirty}>
+                    {busy ? "Memproses…" : "Simpan konfigurasi"}
+                  </Button>
+                ) : selected.enabled ? (
+                  <Button type="button" variant="outline" disabled={busy} onClick={() => void act("disable")}>
+                    Nonaktifkan
+                  </Button>
+                ) : selected.tested && selected.consent ? (
+                  <>
+                    <Button type="button" disabled={busy} onClick={() => void act("activate")}>Aktifkan</Button>
+                    <MoreActions>
+                      <Button type="button" variant="outline" disabled={busy} onClick={() => void act("test")}>Uji koneksi tersimpan</Button>
+                    </MoreActions>
+                  </>
+                ) : (
+                  <Button type="button" disabled={busy} onClick={() => void act("test")}>Uji koneksi tersimpan</Button>
+                )}
               </div>
             </fieldset>
           </ValidatedForm>

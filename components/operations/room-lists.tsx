@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Button } from "../ui/button";
@@ -118,25 +119,27 @@ export function RoomLists({
         >
           Tambah ruang
         </Button>
-        <Button
-          type="button"
-          disabled={disabled}
-          onClick={() => onOpen("session_save")}
-        >
-          Tambah sesi
-        </Button>
-        <Button
-          type="button"
-          disabled={
-            disabled ||
-            !value.rooms.length ||
-            !value.sessions.length ||
-            !staff.length
-          }
-          onClick={() => onOpen("assign")}
-        >
-          Tugaskan pengawas
-        </Button>
+        <MoreActions label="Atur sesi dan pengawas">
+          <Button
+            type="button"
+            disabled={disabled}
+            onClick={() => onOpen("session_save")}
+          >
+            Tambah sesi
+          </Button>
+          <Button
+            type="button"
+            disabled={
+              disabled ||
+              !value.rooms.length ||
+              !value.sessions.length ||
+              !staff.length
+            }
+            onClick={() => onOpen("assign")}
+          >
+            Tugaskan pengawas
+          </Button>
+        </MoreActions>
       </div>
       {!staff.length && (
         <p>Belum ada Guru/Pengawas aktif yang dapat ditugaskan.</p>

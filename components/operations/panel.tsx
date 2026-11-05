@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
 import { ListFilters, SearchField } from "../ui/list-filters";
@@ -686,76 +687,78 @@ export function OperationsPanel({
             )}
             <div className="actions">
               <Button
-                variant="outline"
-                disabled={
-                  busy ||
-                  listLoading ||
-                  !!listError ||
-                  uncertain ||
-                  !canReview(actionRows, "unlock")
-                }
-                onClick={() => open("unlock")}
-              >
-                Buka kunci
-              </Button>
-              <Button
-                variant="outline"
-                disabled={
-                  busy ||
-                  listLoading ||
-                  !!listError ||
-                  uncertain ||
-                  !canReview(actionRows, "reset")
-                }
-                onClick={() => open("reset")}
-              >
-                Reset percobaan
-              </Button>
-              <Button
-                variant="outline"
-                disabled={
-                  busy ||
-                  listLoading ||
-                  !!listError ||
-                  uncertain ||
-                  !canReview(actionRows, "disqualify")
-                }
-                onClick={() => open("disqualify")}
-              >
-                Diskualifikasi
-              </Button>
-              <Button
                 disabled={listLoading || !!listError || uncertain}
                 onClick={() => open("broadcast")}
               >
                 Kirim notifikasi
               </Button>
-              <Button
-                variant="outline"
-                disabled={listLoading || !!listError || !visible.length}
-                onClick={() => {
-                  if (listLoading || listError) return;
-                  const data = JSON.stringify(visible, null, 2);
-                  const url = URL.createObjectURL(
-                    new Blob([data], { type: "application/json" }),
-                  );
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "monitor.json";
-                  document.body.append(a);
-                  a.click();
-                  a.remove();
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                }}
-              >
-                Ekspor monitor
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => void readHistory("sent")}
-              >
-                Riwayat pesan
-              </Button>
+              <MoreActions>
+                <Button
+                  variant="outline"
+                  disabled={
+                    busy ||
+                    listLoading ||
+                    !!listError ||
+                    uncertain ||
+                    !canReview(actionRows, "unlock")
+                  }
+                  onClick={() => open("unlock")}
+                >
+                  Buka kunci
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={
+                    busy ||
+                    listLoading ||
+                    !!listError ||
+                    uncertain ||
+                    !canReview(actionRows, "reset")
+                  }
+                  onClick={() => open("reset")}
+                >
+                  Reset percobaan
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={
+                    busy ||
+                    listLoading ||
+                    !!listError ||
+                    uncertain ||
+                    !canReview(actionRows, "disqualify")
+                  }
+                  onClick={() => open("disqualify")}
+                >
+                  Diskualifikasi
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={listLoading || !!listError || !visible.length}
+                  onClick={() => {
+                    if (listLoading || listError) return;
+                    const data = JSON.stringify(visible, null, 2);
+                    const url = URL.createObjectURL(
+                      new Blob([data], { type: "application/json" }),
+                    );
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "monitor.json";
+                    document.body.append(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  }}
+                >
+                  Ekspor monitor
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void readHistory("sent")}
+                >
+                  Riwayat pesan
+                </Button>
+              </MoreActions>
             </div>
             <div
               className="table-wrap"

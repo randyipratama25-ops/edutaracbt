@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import { feedbackFetch } from "../../lib/client/feedback-transport";
 
 import { FeedbackMessage, StateCard } from "../feedback/state";
@@ -283,9 +284,6 @@ export function StudentPortal({ studentId }: { studentId: string }) {
       <header className="student-portal-heading">
         <div>
           <h1>Ujian saya</h1>
-          <p className="muted">
-            Periksa jadwal, siapkan perangkat, lalu masukkan PIN dari pengawas.
-          </p>
         </div>
         <div className="actions">
           <Button
@@ -296,7 +294,9 @@ export function StudentPortal({ studentId }: { studentId: string }) {
             Perbarui daftar
           </Button>
           <ContextHelp audience="student" page="/student" />
-          <LogoutButton />
+          <MoreActions label="Akun">
+            <LogoutButton />
+          </MoreActions>
         </div>
       </header>
       <StartHere page="/student" />

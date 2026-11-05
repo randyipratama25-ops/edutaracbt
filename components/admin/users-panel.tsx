@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { ListFilters, SearchField } from "../ui/list-filters";
 import { HelpDisclosure } from "../ui/help-disclosure";
+import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
 import { parseUserImport, userSchema } from "../../lib/domain/validation";
@@ -740,7 +741,7 @@ export function UsersPanel() {
                         Ubah nama
                       </Button>
                       {canManage && (
-                        <>
+                        <MoreActions label="Opsi akun">
                           <Button
                             type="button"
                             variant="outline"
@@ -778,7 +779,7 @@ export function UsersPanel() {
                           >
                             Arsipkan
                           </Button>
-                        </>
+                        </MoreActions>
                       )}
                     </div>
                   </td>
