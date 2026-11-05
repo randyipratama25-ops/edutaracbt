@@ -1,6 +1,18 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 4 November 2026 (WIB). Versi dokumen: 1.38 — Audit Persiapan ujian.
+Tanggal pemeriksaan: 5 November 2026 (WIB). Versi dokumen: 1.39 — Audit Bank soal.
+
+## Audit Bank soal — 5 November 2026
+
+Inventaris tetap **23 halaman**. `/dashboard/bank` tetap hanya Admin/Guru konteks staf, dengan kategori, pemilik/reviewer, lampiran dan ujian sasaran diperiksa RPC menurut organisasi/penugasan. Editor lima tipe, versi immutable, review terpisah, impor/ambil dari ujian, kualitas dan kisi-kisi/perakitan maksimal tiga paket dipertahankan. Tidak ada migrasi, dependency, role/grants/RLS atau perubahan jawaban, snapshot, deadline dan formula penilaian.
+
+Read daftar/metadata/detail/sumber/kualitas dan receipt mutation divalidasi runtime. Pagination/filter divalidasi sebelum RPC; daftar/versi duplikat atau tidak lengkap menjadi error, bukan kosong/sukses palsu. Pagination menyusut dikoreksi. Pembacaan memakai timeout/abort/generation/single-flight, termasuk metadata pada Strict Mode. Detail membuka loading seketika, memiliki retry dan mengabaikan respons setelah ditutup. SQL/transport error dipetakan tanpa membocorkan rincian internal; badan impor dibatasi berdasarkan byte.
+
+Fieldset, lock sinkron dan dialog melindungi penyimpanan/review/impor/perakitan dari perubahan isian atau submit ganda. Hasil belum pasti menahan payload/request_id untuk retry eksplisit, termasuk tutup/buka dialog sementara; tidak ada retry tulis otomatis. State ini hanya bertahan selama halaman/komponen terbuka. Review tidak dapat dikirim saat versi lama sedang ditampilkan; item diarsipkan hanya menawarkan pembukaan sebagai draf kepada pemilik/Admin. Backend tetap memeriksa izin dan expected_version.
+
+Receipt impor wajib lengkap dan unik; nomor hasil dipetakan ke blok sumber asli meskipun blok invalid tidak dikirim. Kandidat harus mencakup semua target/kelompok sebelum perakitan tersedia; perubahan aturan/target mengosongkan kandidat. Receipt perakitan harus sesuai jumlah soal dan seluruh ujian sasaran. Penghitungan kualitas mengosongkan statistik lama sebelum baca, dan proyeksinya tetap tidak menambah nama/jawaban individu. Pengecekan SQL tetap membatalkan seluruh paket bila kandidat tumpang tindih/tidak cukup.
+
+Tabel bergulir lokal, header sticky, filter/teks panjang/modal/form/rubrik reflow dan tombol sentuh diperbaiki. Pilihan kelas dibatasi area gulir; kelas nonaktif pada kategori lama tetap terlihat agar dapat diperbaiki, sementara kategori baru hanya menawarkan kelas aktif. Total tetap **34 penggunaan Dialog pada 20 komponen**. Validasi: 495 tes lulus/3 dilewati, lint/typecheck/build, database terisolasi dan browser produksi 320–1440px/orientasi/teks 200%/axe. Bukti, kode dan batas pengujian: `docs/bank-page-audit.md`; API tulis browser disimulasikan tanpa mengubah bank atau ujian produksi.
 
 ## Audit Persiapan ujian — 4 November 2026
 
