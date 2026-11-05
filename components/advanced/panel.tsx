@@ -1,6 +1,6 @@
 "use client";
-import {FeedbackMessage} from "../feedback/state";
-import {ValidatedForm} from "../feedback/validated-form";
+import { FeedbackMessage, StateCard } from "../feedback/state";
+import { ValidatedForm } from "../feedback/validated-form";
 import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
@@ -12,8 +12,14 @@ import {
 } from "react";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { api } from "../operations/shared";
-import { checkLabels, type Overview } from "../../lib/advanced/schema";
+import { clientRequest, ClientRequestError } from "../../lib/client/request";
+import {
+  checkLabels,
+  evaluationList,
+  evaluationReceipt,
+  evaluationSchema,
+  type Overview,
+} from "../../lib/advanced/schema";
 const keys = Object.keys(checkLabels) as (keyof typeof checkLabels)[];
 const emptyChecks = () =>
   Object.fromEntries(keys.map((k) => [k, ""])) as Record<
@@ -25,7 +31,11 @@ export function AdvancedPanel() {
     [page, setPage] = useState(1),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
+    [message, setMessage] = useState<{
+      tone: "success" | "error";
+      text: string;
+    } | null>(null),
+    [loadError, setLoadError] = useState("");
   const [candidate, setCandidate] = useState(""),
     [platform, setPlatform] = useState("Windows"),
     [device, setDevice] = useState(""),
@@ -34,34 +44,49 @@ export function AdvancedPanel() {
     [notes, setNotes] = useState(""),
     [evidence, setEvidence] = useState(""),
     [local, setLocal] = useState<string | null>(null);
-  const sequence = useRef(0),
-    lock = useRef(false),
-    retry = useRef<{ signature: string; id: string } | null>(null);
+  const read = useRef<AbortController | null>(null);
+  const lock = useRef(false);
+  const retry = useRef(new Map<string, string>());
   const load = useCallback(async () => {
-    const id = ++sequence.current;
+    read.current?.abort();
+    const controller = new AbortController();
+    read.current = controller;
     setLoading(true);
+    setLoadError("");
     try {
-      const d = await api<Overview & { candidate_sha?: string }>(
+      const result = await clientRequest(
         `/api/advanced?page=${page}`,
+        undefined,
+        evaluationList,
+        controller,
       );
-      if (sequence.current === id) {
-        setData(d);
-        setCandidate((c) => c || d.candidate_sha || "");
+      if (read.current !== controller) return;
+      const last = Math.max(1, Math.min(10000, Math.ceil(result.total / 50)));
+      if (page > last) {
+        setPage(last);
+        return;
       }
-    } catch (e) {
-      if (sequence.current === id) {
-        setData(null);
-        setMessage(e instanceof Error ? e.message : "Gagal memuat evaluasi.");
-      }
+      setData(result);
+      setCandidate((value) => value || result.candidate_sha || "");
+    } catch (error) {
+      if (read.current !== controller) return;
+      setData(null);
+      setLoadError(
+        error instanceof Error ? error.message : "Gagal memuat evaluasi.",
+      );
     } finally {
-      if (sequence.current === id) setLoading(false);
+      if (read.current === controller) {
+        read.current = null;
+        setLoading(false);
+      }
     }
   }, [page]);
   useEffect(() => {
-    const tracker = sequence;
     void load();
     return () => {
-      tracker.current++;
+      const controller = read.current;
+      read.current = null;
+      controller?.abort();
     };
   }, [load]);
   async function save(event: FormEvent) {
@@ -69,7 +94,7 @@ export function AdvancedPanel() {
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
-    setMessage("");
+    setMessage(null);
     try {
       if (keys.some((k) => !checks[k]))
         throw Error("Isi hasil aktual untuk seluruh skenario.");
@@ -81,22 +106,48 @@ export function AdvancedPanel() {
         seb_version: version,
         checks: Object.fromEntries(keys.map((k) => [k, checks[k] === "pass"])),
         notes,
-        evidence_ref: evidence,
+        evidence_ref: evidence.trim(),
       };
       const signature = JSON.stringify(input);
-      if (retry.current?.signature !== signature)
-        retry.current = { signature, id: crypto.randomUUID() };
-      await api("/api/advanced", { ...input, request_id: retry.current.id });
-      retry.current = null;
+      const id = retry.current.get(signature) ?? crypto.randomUUID();
+      const parsed = evaluationSchema.safeParse({ ...input, request_id: id });
+      if (!parsed.success)
+        throw Error(
+          "Periksa commit, perangkat, versi SEB, catatan, dan referensi artefak.",
+        );
+      retry.current.set(signature, id);
+      try {
+        await clientRequest(
+          "/api/advanced",
+          parsed.data,
+          evaluationReceipt,
+          new AbortController(),
+          {
+            mutation: true,
+            uncertainMessage:
+              "Pencatatan belum dapat dipastikan. Kirim ulang isian yang sama untuk melanjutkan permintaan sebelumnya.",
+          },
+        );
+      } catch (error) {
+        if (error instanceof ClientRequestError && !error.uncertain)
+          retry.current.delete(signature);
+        throw error;
+      }
+      retry.current.delete(signature);
       setChecks(emptyChecks());
       setNotes("");
       setEvidence("");
-      await load();
-      setMessage(
-        "Hasil pengamatan tercatat. Riwayat dipertahankan; catatan ini tidak mewajibkan SEB atau mengesahkan penerimaan operasional.",
-      );
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Pencatatan gagal.");
+      setMessage({
+        tone: "success",
+        text: "Hasil pengamatan tercatat. Catatan tersedia di riwayat evaluasi.",
+      });
+      if (page === 1) await load();
+      else setPage(1);
+    } catch (error) {
+      setMessage({
+        tone: "error",
+        text: error instanceof Error ? error.message : "Pencatatan gagal.",
+      });
     } finally {
       lock.current = false;
       setBusy(false);
@@ -115,9 +166,13 @@ export function AdvancedPanel() {
     } catch {
       result.push("penyimpanan lokal: dibatasi");
     }
-    result.push(
-      `canvas: ${document.createElement("canvas").getContext("2d") ? "tersedia" : "tidak tersedia"}`,
-    );
+    let canvas = false;
+    try {
+      canvas = Boolean(document.createElement("canvas").getContext("2d"));
+    } catch {
+      // Device policy may block access to canvas.
+    }
+    result.push(`canvas: ${canvas ? "tersedia" : "tidak tersedia"}`);
     const seb = (
       window as unknown as { SafeExamBrowser?: { version?: unknown } }
     ).SafeExamBrowser;
@@ -128,9 +183,6 @@ export function AdvancedPanel() {
   }
   return (
     <div className="stack">
-      <FeedbackMessage tone="info" role="status" aria-live="polite">
-        {message}
-      </FeedbackMessage>
       <section className="panel stack">
         <h2>Uji kompatibilitas Safe Exam Browser</h2>
         <p>
@@ -146,30 +198,37 @@ export function AdvancedPanel() {
             Periksa browser ini
           </Button>
         </div>
-        <HelpDisclosure><p>
-          Berkas uji tidak dienkripsi dan tidak memvalidasi Browser Exam
-          Key/Config Key. Petunjuk browser dapat dipalsukan; hasil deteksi bukan
-          bukti keamanan SEB.
-        </p></HelpDisclosure>
-        {local && <FeedbackMessage tone="info" role="status">{local}</FeedbackMessage>}
-        <HelpDisclosure><p>
-          Uji login, soal/rumus, media, canvas, pemulihan koneksi dan submit
-          pada setiap kombinasi perangkat serta versi SEB. Catat hanya hasil
-          yang benar-benar diamati.
-        </p></HelpDisclosure>
+        <HelpDisclosure>
+          <p>
+            Berkas uji tidak dienkripsi dan tidak memvalidasi Browser Exam
+            Key/Config Key. Petunjuk browser dapat dipalsukan; hasil deteksi
+            bukan bukti keamanan SEB.
+          </p>
+        </HelpDisclosure>
+        {local && (
+          <FeedbackMessage tone="info" role="status">
+            {local}
+          </FeedbackMessage>
+        )}
+        <HelpDisclosure>
+          <p>
+            Uji login, soal/rumus, media, canvas, pemulihan koneksi dan submit
+            pada setiap kombinasi perangkat serta versi SEB. Catat hanya hasil
+            yang benar-benar diamati.
+          </p>
+        </HelpDisclosure>
       </section>
       <section className="panel stack">
         <h2>Pertukaran nilai XLSX dan PDF</h2>
         <p>
           Di Hasil atau Analitik, pilih peserta berizin, jenis laporan{" "}
-          <strong>Pertukaran nilai</strong>, lalu XLSX atau PDF. ID
-          peserta, ujian, pengerjaan, dan revisi nilai membantu pencocokan. Nilai
-          yang belum final dibiarkan kosong, sedangkan nilai nol final tetap
-          nol.
+          <strong>Pertukaran nilai</strong>, lalu XLSX atau PDF. ID peserta,
+          ujian, pengerjaan, dan revisi nilai membantu pencocokan. Nilai yang
+          belum final dibiarkan kosong, sedangkan nilai nol final tetap nol.
         </p>
         <p className="muted">
-          Ekspor mengikuti hak akses dan revisi nilai yang sama; tidak
-          mengirim data ke LMS atau layanan lain.
+          Ekspor mengikuti hak akses dan revisi nilai yang sama; tidak mengirim
+          data ke LMS atau layanan lain.
         </p>
         <div className="actions">
           <Link href="/dashboard/results">Hasil dan ekspor nilai</Link>
@@ -178,7 +237,11 @@ export function AdvancedPanel() {
       </section>
       <section className="panel stack">
         <h2>Catat hasil evaluasi perangkat</h2>
-        <ValidatedForm className="stack" onSubmit={(e) => void save(e)} aria-busy={busy}>
+        <ValidatedForm
+          className="stack"
+          onSubmit={(e) => void save(e)}
+          aria-busy={busy}
+        >
           <fieldset className="stack" disabled={busy}>
             <legend>Pengamatan petugas</legend>
             <div className="form-grid">
@@ -256,7 +319,7 @@ export function AdvancedPanel() {
                 required
                 minLength={5}
                 maxLength={200}
-                pattern="[a-zA-Z0-9_./ \-]+"
+                pattern={String.raw`[a-zA-Z0-9_.\/ \-]+`}
                 placeholder="Contoh: uat/lab-01/laporan.pdf"
                 value={evidence}
                 onChange={(e) => setEvidence(e.target.value)}
@@ -267,7 +330,14 @@ export function AdvancedPanel() {
               atau identitas peserta. Catatan tidak dapat diedit atau dihapus;
               buat catatan baru untuk pengujian ulang.
             </p>
-            <Button disabled={busy}>Simpan hasil evaluasi</Button>
+            <Button disabled={busy}>
+              {busy ? "Menyimpan hasil…" : "Simpan hasil evaluasi"}
+            </Button>
+            {message && (
+              <FeedbackMessage tone={message.tone}>
+                {message.text}
+              </FeedbackMessage>
+            )}
           </fieldset>
         </ValidatedForm>
       </section>
@@ -276,69 +346,83 @@ export function AdvancedPanel() {
           <h2>Riwayat evaluasi</h2>
           <Button
             variant="outline"
-            disabled={loading}
-            onClick={() => {
-              setMessage("");
-              void load();
-            }}
+            disabled={loading || busy}
+            onClick={() => void load()}
           >
             Muat ulang evaluasi
           </Button>
         </div>
         {loading ? (
-          <FeedbackMessage tone="loading" role="status">Memuat evaluasi…</FeedbackMessage>
+          <FeedbackMessage tone="loading" role="status">
+            Memuat evaluasi…
+          </FeedbackMessage>
         ) : data ? (
           <>
             {!data.rows.length && (
-              <p>Belum ada pengamatan perangkat yang dicatat.</p>
+              <StateCard
+                kind="empty"
+                heading="h3"
+                title="Belum ada pengamatan perangkat"
+                description="Isi formulir evaluasi untuk menambahkan catatan pertama."
+              />
             )}
-            <ul className="moderation-list">
-              {data.rows.map((r) => (
-                <li key={r.id}>
-                  <div>
-                    <strong>
-                      {r.device_label} · {r.platform} · SEB {r.seb_version}
-                    </strong>
-                    <p>
-                      {Object.values(r.checks).every(Boolean)
-                        ? "Seluruh skenario dilaporkan lulus"
-                        : "Ada skenario yang perlu tindak lanjut"}
-                    </p>
-                    <p>{r.notes}</p>
-                    <small>
-                      {r.candidate_sha} ·{" "}
-                      {new Date(r.recorded_at).toLocaleString("id-ID", {
-                        timeZone: "Asia/Jakarta",
-                      })}{" "}
-                      WIB
-                    </small>
-                    <p>Artefak: {r.evidence_ref}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="actions">
-              <Button
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Sebelumnya
-              </Button>
-              <span>
-                Halaman {page} / {Math.max(1, Math.ceil(data.total / 50))}
-              </span>
-              <Button
-                variant="outline"
-                disabled={page * 50 >= data.total}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Berikutnya
-              </Button>
-            </div>
+            {data.rows.length > 0 && (
+              <ul className="moderation-list">
+                {data.rows.map((r) => (
+                  <li key={r.id}>
+                    <div>
+                      <strong>
+                        {r.device_label} · {r.platform} · SEB {r.seb_version}
+                      </strong>
+                      <p>
+                        {Object.values(r.checks).every(Boolean)
+                          ? "Seluruh skenario dilaporkan lulus"
+                          : "Ada skenario yang perlu tindak lanjut"}
+                      </p>
+                      <p>{r.notes}</p>
+                      <small>
+                        {r.candidate_sha} ·{" "}
+                        {new Date(r.recorded_at).toLocaleString("id-ID", {
+                          timeZone: "Asia/Jakarta",
+                        })}{" "}
+                        WIB
+                      </small>
+                      <p>Artefak: {r.evidence_ref}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {data.total > 50 && (
+              <nav className="actions" aria-label="Halaman riwayat evaluasi">
+                <Button
+                  variant="outline"
+                  disabled={busy || page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Sebelumnya
+                </Button>
+                <span>
+                  Halaman {page} / {Math.min(10000, Math.ceil(data.total / 50))}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={busy || page >= 10000 || page * 50 >= data.total}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Berikutnya
+                </Button>
+              </nav>
+            )}
           </>
         ) : (
-          <p>Evaluasi belum tersedia. Coba muat ulang.</p>
+          <StateCard
+            kind="error"
+            heading="h3"
+            role="alert"
+            title="Evaluasi belum tersedia"
+            description={loadError}
+          />
         )}
       </section>
     </div>

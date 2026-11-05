@@ -33,14 +33,21 @@ export const evaluationSchema = z
       .regex(/^[a-zA-Z0-9_./ -]+$/),
   })
   .strict();
-export type Evaluation = z.infer<typeof evaluationSchema> & {
-  id: string;
-  recorded_at: string;
-  actor_id: string;
-};
-export type Overview = {
-  ai_enabled: false;
-  seb_enforced: false;
-  rows: Evaluation[];
-  total: number;
-};
+const candidateSha = evaluationSchema.shape.candidate_sha;
+const evaluationRow = evaluationSchema
+  .omit({ action: true, request_id: true })
+  .strip()
+  .extend({
+    id: z.uuid(),
+    recorded_at: z.iso.datetime({ offset: true }),
+    actor_id: z.uuid(),
+  });
+export const evaluationList = z.object({
+  ai_enabled: z.literal(false),
+  seb_enforced: z.literal(false),
+  rows: z.array(evaluationRow),
+  total: z.number().int().nonnegative(),
+  candidate_sha: candidateSha.nullable().optional(),
+});
+export const evaluationReceipt = z.object({ id: z.uuid() });
+export type Overview = z.infer<typeof evaluationList>;
