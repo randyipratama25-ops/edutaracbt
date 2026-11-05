@@ -339,6 +339,7 @@ try {
         const b = [...root.querySelectorAll("button")].find(
           (b) => b.textContent.trim() === text && !b.matches(":disabled"),
         );
+        b.closest("details.more-actions:not([open])")?.querySelector("summary")?.click();
         b.focus();
         b.click();
       },

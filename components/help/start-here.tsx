@@ -7,7 +7,7 @@ export function StartHere({ page }: { page: string }) {
 
   return (
     <details className="start-here">
-      <summary><Lightbulb size={18} aria-hidden="true" /><span>Baru di halaman ini? <strong>Mulai dari sini</strong></span></summary>
+      <summary><Lightbulb size={18} aria-hidden="true" /><strong>Mulai dari sini</strong></summary>
       <ol>
         <li>{guide.first}</li>
         <li>{guide.next}</li>

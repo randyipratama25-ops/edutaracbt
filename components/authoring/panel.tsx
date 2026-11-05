@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import { QuestionEditor } from "./question-editor";
 import { QuestionMedia } from "./question-media";
 import { uploadQuestionMedia } from "../../lib/authoring/upload";
@@ -362,13 +363,15 @@ export function AuthoringPanel() {
       <fieldset className="authoring-controls stack" disabled={blocked}>
       <section className="panel stack">
         <div className="actions">
-          <Button asChild variant="outline"><a href="/dashboard/preparation">Persiapan & checklist</a></Button>
           {data.canManage && (
             <Button onClick={() => editExam(null)}>Tambah ujian</Button>
           )}
-          <Button variant="outline" disabled={busy} onClick={() => void load()}>
-            Muat ulang
-          </Button>
+          <MoreActions>
+            <Button asChild variant="outline"><a href="/dashboard/preparation">Persiapan & checklist</a></Button>
+            <Button variant="outline" disabled={busy} onClick={() => void load()}>
+              Muat ulang
+            </Button>
+          </MoreActions>
         </div>
         <ListFilters label="ujian" active={[examSearch&&"Pencarian"].filter(Boolean) as string[]} onReset={()=>{setExamSearch("");}} total={data.exams.filter(e=>matchesSearch(e.title,examSearch)).length} loading={loading}><SearchField label="Cari ujian" value={examSearch} maxLength={150} onChange={value=>{setExamSearch(value);}} /></ListFilters>
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabel ujian dan soal; geser untuk melihat kolom lain">

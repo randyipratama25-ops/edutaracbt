@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
 import { HelpDisclosure } from "../ui/help-disclosure";
@@ -466,9 +467,11 @@ export function PreparationPanel() {
         >
           Periksa ulang kesiapan
         </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/exams">Bank soal & pengaturan lanjutan</Link>
-        </Button>
+        <MoreActions label="Pengaturan ujian">
+          <Button asChild variant="outline">
+            <Link href="/dashboard/exams">Bank soal & pengaturan lanjutan</Link>
+          </Button>
+        </MoreActions>
       </div>
       {readError && (
         <StateCard

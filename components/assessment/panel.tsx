@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
 import { ListFilters } from "../ui/list-filters";
@@ -364,12 +365,14 @@ export function AssessmentPanel() {
         >
           Muat ulang penilaian
         </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/results">Hasil, riwayat & laporan</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/bank">Bank soal & rubrik</Link>
-        </Button>
+        <MoreActions label="Halaman terkait">
+          <Button asChild variant="outline">
+            <Link href="/dashboard/results">Hasil, riwayat & laporan</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/bank">Bank soal & rubrik</Link>
+          </Button>
+        </MoreActions>
       </div>
       {!decision && !cancelTarget && notice && (
         <FeedbackMessage
@@ -379,11 +382,6 @@ export function AssessmentPanel() {
           {notice.text}
         </FeedbackMessage>
       )}
-      <p className="muted">
-        Mode anonim menyembunyikan identitas pada alur ini; hak melihat
-        identitas di modul Hasil tetap mengikuti kewenangan akun. Keputusan
-        nilai tetap pada penilai.
-      </p>
       <section className="panel stack">
         <h2>Antrean koreksi</h2>
         <ListFilters

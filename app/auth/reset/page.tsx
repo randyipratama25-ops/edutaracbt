@@ -18,9 +18,6 @@ export default function Reset() {
           <p className="eyebrow">EDUTARA CBT</p>
         </div>
         <h1 id="reset-title">Atur password</h1>
-        <p className="muted">
-          Buat password baru, lalu gunakan untuk masuk kembali.
-        </p>
       <StartHere page="/auth/reset" />
         <PasswordForm />
         <footer className="reset-footer">

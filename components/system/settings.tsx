@@ -253,7 +253,6 @@ export function SettingsPanel() {
       <div className="actions settings-heading">
         <div>
           <h2>Konfigurasi madrasah</h2>
-          <p className="muted">Identitas aplikasi, kebijakan dan layanan.</p>
         </div>
         <Button
           type="button"

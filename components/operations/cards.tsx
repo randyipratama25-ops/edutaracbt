@@ -1,4 +1,5 @@
 "use client";
+import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage } from "../feedback/state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -309,28 +310,6 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
         </div>
         <div className="actions">
           <Button
-            variant="outline"
-            disabled={loading || !!listError || !shown.length}
-            onClick={() =>
-              setSelected(
-                selectCards(
-                  [],
-                  shown.map((r) => r.student_id),
-                  limit,
-                ),
-              )
-            }
-          >
-            Pilih hasil · maks. {limit}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={!selected.length}
-            onClick={() => setSelected([])}
-          >
-            Kosongkan pilihan
-          </Button>
-          <Button
             disabled={
               !exam ||
               !selected.length ||
@@ -351,6 +330,30 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
           >
             Buat {selected.length} kartu
           </Button>
+          <MoreActions label="Atur pilihan">
+            <Button
+              variant="outline"
+              disabled={loading || !!listError || !shown.length}
+              onClick={() =>
+                setSelected(
+                  selectCards(
+                    [],
+                    shown.map((r) => r.student_id),
+                    limit,
+                  ),
+                )
+              }
+            >
+              Pilih hasil · maks. {limit}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!selected.length}
+              onClick={() => setSelected([])}
+            >
+              Kosongkan pilihan
+            </Button>
+          </MoreActions>
         </div>
         <FeedbackMessage tone="info" role="status">
           {selected.length} dipilih dari {shown.length} hasil
