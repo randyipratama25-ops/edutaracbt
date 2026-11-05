@@ -682,3 +682,8 @@ input[aria-invalid=true],textarea[aria-invalid=true],select[aria-invalid=true] {
 .advanced-workspace .button{min-height:44px;white-space:normal}
 .advanced-workspace .moderation-list p{white-space:pre-wrap}
 @media(max-width:600px){.advanced-workspace .form-grid{grid-template-columns:minmax(0,1fr)}.advanced-workspace .actions>.button{flex:1 1 140px}}
+
+.question-editor,.question-editor>*{min-width:0;max-width:100%}
+.question-editor summary{cursor:pointer;min-height:44px;align-content:center}
+.question-math mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
+.question-math mjx-container[display="true"]{display:block;text-align:center;margin-block:.7em}

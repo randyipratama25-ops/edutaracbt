@@ -1,5 +1,7 @@
 "use client";
-import {feedbackFetch} from "../../lib/client/feedback-transport";
+import { QuestionEditor } from "./question-editor";
+import { QuestionMedia } from "./question-media";
+import { uploadQuestionMedia } from "../../lib/authoring/upload";
 
 import {FeedbackMessage} from "../feedback/state";
 import {ValidatedForm} from "../feedback/validated-form";
@@ -1071,37 +1073,8 @@ export function AuthoringPanel() {
               <option value="rtl">Arab / kanan ke kiri</option>
             </select>
           </label>
-          <label>
-            Isi soal (HTML terbatas dan LaTeX $...$)
-            <textarea
-              rows={6}
-              dir={draft.direction}
-              required
-              value={draft.stem}
-              onChange={(e) => setDraft({ ...draft, stem: e.target.value })}
-            />
-          </label>
-          <div className="actions">
-            {[
-              "<b>tebal</b>",
-              "<i>miring</i>",
-              "<sup>2</sup>",
-              "$\\frac{a}{b}$",
-              "أ ب ت ث",
-              "≤ ≥ ≠ × ÷ √ π",
-            ].map((s) => (
-              <Button
-                type="button"
-                variant="outline"
-                key={s}
-                onClick={() =>
-                  setDraft({ ...draft, stem: draft.stem + " " + s })
-                }
-              >
-                {s}
-              </Button>
-            ))}
-          </div>
+          <QuestionEditor value={draft.stem} direction={draft.direction} disabled={busy}
+            onChange={(stem) => setDraft((current) => ({ ...current, stem }))} />
           <label>
             Poin
             <input
@@ -1209,37 +1182,20 @@ export function AuthoringPanel() {
               }
             />
           </label>
-          <label>
-            Unggah gambar / audio (maksimal 5 MB)
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,audio/mpeg,audio/ogg,audio/wav"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f)
-                  void run(async () => {
-                    if(draft.attachments.length>=10)throw Error("Maksimal 10 lampiran.");
-                    if (f.size > 5242880) throw Error("Maksimal 5 MB.");
-                    const form = new FormData();
-                    form.set("file", f);
-                    const c=new AbortController();controllers.current.add(c);
-                    let media:{id:string};
-                    try{
-                      const r=await feedbackFetch('/api/authoring/media',{method:'POST',body:form,signal:AbortSignal.any([c.signal,AbortSignal.timeout(35000)])});
-                      const j=await r.json();
-                      if(!r.ok||!j.success)throw Error('Lampiran belum dapat diunggah.');
-                      media=z.object({id:z.uuid()}).parse(j.data);
-                    }finally{controllers.current.delete(c);}
-                    if(!mounted.current)return;
-                    setDraft((d) => ({
-                      ...d,
-                      attachments: [...d.attachments, media.id],
-                    }));
-                  });
-                e.target.value = "";
-              }}
-            />
-          </label>
+          <QuestionMedia disabled={busy} onUpload={(file) => void run(async () => {
+            if (draft.attachments.length >= 10) throw Error("Maksimal 10 lampiran.");
+            const controller = new AbortController();
+            controllers.current.add(controller);
+            try {
+              const { id } = await uploadQuestionMedia(file, controller.signal);
+              if (mounted.current) {
+                setDraft((current) => ({ ...current, attachments: [...current.attachments, id] }));
+                setMessage("Lampiran ditambahkan ke draf soal.");
+              }
+            } finally {
+              controllers.current.delete(controller);
+            }
+          })} />
           <div className="actions">
             <Button
               type="button"

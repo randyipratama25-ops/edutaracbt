@@ -1,4 +1,7 @@
 "use client";
+import { QuestionEditor } from "../authoring/question-editor";
+import { QuestionMedia } from "../authoring/question-media";
+import { uploadQuestionMedia } from "../../lib/authoring/upload";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
 import { ListFilters, SearchField } from "../ui/list-filters";
@@ -870,19 +873,8 @@ export function BankPanel() {
                   ))}
                 </select>
               </label>
-              <label>
-                Isi soal
-                <textarea
-                  required
-                  rows={5}
-                  value={draft.stem}
-                  maxLength={50000}
-                  onChange={(e) => setDraft({ ...draft, stem: e.target.value })}
-                />
-              </label>
-              <p className="muted">
-                Mendukung Arab, HTML sederhana, dan rumus $LaTeX$.
-              </p>
+              <QuestionEditor value={draft.stem} direction={draft.direction} disabled={busy}
+                onChange={(stem) => setDraft((current) => ({ ...current, stem }))} />
               <div className="form-grid">
                 <label>
                   Poin
@@ -1083,9 +1075,30 @@ export function BankPanel() {
                 ID lampiran, pisahkan koma
                 <input
                   value={attachmentText}
+                  disabled={busy}
                   onChange={(e) => setAttachmentText(e.target.value)}
                 />
               </label>
+              <QuestionMedia disabled={busy} onUpload={(file) => void run(async () => {
+                if (attachmentText.split(/[,\s]+/).filter(Boolean).length >= 10)
+                  throw Error("Maksimal 10 lampiran.");
+                const controller = new AbortController();
+                controllers.current.add(controller);
+                try {
+                  const { id } = await uploadQuestionMedia(file, controller.signal);
+                  if (mounted.current) {
+                    setAttachmentText((current) => [current.trim(), id].filter(Boolean).join(", "));
+                    setMessage("Lampiran ditambahkan ke draf soal.");
+                  }
+                } finally {
+                  controllers.current.delete(controller);
+                }
+              })} />
+              <details>
+                <summary>Pratinjau isi soal dan media</summary>
+                <Preview question={{ ...draft, attachments: attachmentText.split(/[,\s]+/).filter((id) => z.uuid().safeParse(id).success) }}
+                  showKey={false} showOptions={false} showMeta={false} />
+              </details>
               <Link
                 href="/dashboard/media"
                 target="_blank"
