@@ -22,7 +22,7 @@ export function Button({
 }: ComponentProps<"button"> &
   VariantProps<typeof variants> & { asChild?: boolean; loading?: boolean }) {
   const styles = cn(variants({ variant }), className);
-  if (asChild) return <Slot className={styles} disabled={disabled} {...props} />;
+  if (asChild) return <Slot className={styles} {...{ ...props, disabled }} />;
   return (
     <button
       className={styles}
