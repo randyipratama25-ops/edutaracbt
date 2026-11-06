@@ -303,7 +303,7 @@ export function LoginForm({
             Lupa password
           </Button>
         </div>
-        <Button disabled={blocked}>{busy ? "Memproses…" : "Masuk"}</Button>
+        <Button loading={busy} disabled={blocked}>{busy ? "Memproses…" : "Masuk"}</Button>
         {feedback ? (
           <FeedbackMessage tone={feedback?.kind === "success" ? "success" : "error"}
             id="login-feedback"
@@ -372,7 +372,7 @@ export function LoginForm({
               aria-describedby="recovery-feedback"
             />
           </label>
-          <Button disabled={recovering}>
+          <Button loading={recovering} disabled={recovering}>
             {recovering ? "Mengirim permintaan…" : "Kirim petunjuk pemulihan"}
           </Button>
           {recovering && (

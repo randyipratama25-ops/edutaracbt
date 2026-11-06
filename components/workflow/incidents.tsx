@@ -545,7 +545,7 @@ export function IncidentPanel({
                 />
               </label>
             )}
-            <Button disabled={busy || uncertain}>
+            <Button loading={busy} disabled={busy || uncertain}>
               {busy
                 ? "Menyimpan…"
                 : ticket

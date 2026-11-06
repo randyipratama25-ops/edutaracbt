@@ -940,7 +940,7 @@ export function AssessmentPanel() {
             />
           </label>
           <div className="actions">
-            <Button disabled={busy}>
+            <Button loading={busy} disabled={busy}>
               {busy
                 ? "Menyimpan…"
                 : cancelTarget

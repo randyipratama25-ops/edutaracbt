@@ -921,7 +921,7 @@ export function MasterPanel() {
             >
               Tutup
             </Button>
-            <Button disabled={busy || formBlocked || !canWrite}>
+            <Button loading={busy} disabled={busy || formBlocked || !canWrite}>
               {busy ? "Menyimpan…" : "Simpan"}
             </Button>
           </div>
@@ -1017,6 +1017,7 @@ export function MasterPanel() {
               Batal
             </Button>
             <Button
+              loading={busy}
               type="button"
               disabled={busy || toggleBlocked || !canWrite}
               onClick={() => void toggleRelation()}

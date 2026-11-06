@@ -218,6 +218,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
           Kembali
         </Button>
         <Button
+          loading={busy}
           disabled={busy || !client}
           onClick={() =>
             void open(
@@ -1706,6 +1707,7 @@ export function ExamPlayer({
         description="Simpan jawaban, lalu masuk di perangkat tujuan dan pilih Lanjutkan serta ambil alih sesi. Deadline tetap berjalan. Draf yang masih offline tidak tersedia di perangkat lain."
       >
         <Button
+          loading={transferring}
           disabled={
             transferring ||
             submitting ||
@@ -1805,6 +1807,7 @@ export function ExamPlayer({
           </Button>
         )}
         <Button
+          loading={submitting}
           disabled={
             submitting ||
             transferring ||

@@ -310,7 +310,7 @@ export function PasswordForm() {
         </span>
       </label>
       {phase !== "complete" && (
-        <Button disabled={disabled}>
+        <Button loading={phase === "saving"} disabled={disabled}>
           {phase === "saving" ? "Menyimpan…" : "Simpan password"}
         </Button>
       )}

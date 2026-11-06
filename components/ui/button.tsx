@@ -16,9 +16,20 @@ export function Button({
   className,
   variant,
   asChild = false,
+  loading = false,
+  disabled,
   ...props
 }: ComponentProps<"button"> &
-  VariantProps<typeof variants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(variants({ variant }), className)} {...props} />;
+  VariantProps<typeof variants> & { asChild?: boolean; loading?: boolean }) {
+  const styles = cn(variants({ variant }), className);
+  if (asChild) return <Slot className={styles} {...{ ...props, disabled }} />;
+  return (
+    <button
+      className={styles}
+      {...props}
+      disabled={disabled || loading}
+      aria-busy={loading || props["aria-busy"]}
+      data-loading={loading || undefined}
+    />
+  );
 }

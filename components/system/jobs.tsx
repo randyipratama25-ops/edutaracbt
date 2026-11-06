@@ -725,6 +725,7 @@ export function JobsPanel() {
                 Kembali
               </Button>
               <Button
+                loading={busy}
                 disabled={disabled}
                 variant={
                   decision?.action === "cancel_backup"

@@ -45,7 +45,7 @@ export function AISettings() {
     [limit, setLimit] = useState(100),
     [message, setMessage] = useState(""),
     [tone, setTone] = useState<"info" | "success" | "error">("info"),
-    [busy, setBusy] = useState(false),
+    [pendingAction, setPendingAction] = useState<"save" | "test" | "activate" | "disable" | null>(null),
     [loading, setLoading] = useState(true),
     [failed, setFailed] = useState(false);
   const lock = useRef(false),
@@ -103,10 +103,11 @@ export function AISettings() {
       controller?.abort();
     };
   }, [load]);
+  const busy = pendingAction !== null;
   async function act(action: "save" | "test" | "activate" | "disable") {
     if (lock.current) return;
     lock.current = true;
-    setBusy(true);
+    setPendingAction(action);
     setMessage("");
     const current = provider;
     try {
@@ -156,7 +157,7 @@ export function AISettings() {
       }
     } finally {
       lock.current = false;
-      if (live.current) setBusy(false);
+      if (live.current) setPendingAction(null);
     }
   }
   function switchProvider(p: string) {
@@ -293,22 +294,22 @@ export function AISettings() {
               </HelpDisclosure>
               <div className="actions">
                 {dirty || !selected?.configured ? (
-                  <Button disabled={busy || !dirty}>
+                  <Button loading={pendingAction === "save"} disabled={busy || !dirty}>
                     {busy ? "Memproses…" : "Simpan konfigurasi"}
                   </Button>
                 ) : selected.enabled ? (
-                  <Button type="button" variant="outline" disabled={busy} onClick={() => void act("disable")}>
+                  <Button type="button" variant="outline" loading={pendingAction === "disable"} disabled={busy} onClick={() => void act("disable")}>
                     Nonaktifkan
                   </Button>
                 ) : selected.tested && selected.consent ? (
                   <>
-                    <Button type="button" disabled={busy} onClick={() => void act("activate")}>Aktifkan</Button>
+                    <Button type="button" loading={pendingAction === "activate"} disabled={busy} onClick={() => void act("activate")}>Aktifkan</Button>
                     <MoreActions>
-                      <Button type="button" variant="outline" disabled={busy} onClick={() => void act("test")}>Uji koneksi tersimpan</Button>
+                      <Button type="button" variant="outline" loading={pendingAction === "test"} disabled={busy} onClick={() => void act("test")}>Uji koneksi tersimpan</Button>
                     </MoreActions>
                   </>
                 ) : (
-                  <Button type="button" disabled={busy} onClick={() => void act("test")}>Uji koneksi tersimpan</Button>
+                  <Button type="button" loading={pendingAction === "test"} disabled={busy} onClick={() => void act("test")}>Uji koneksi tersimpan</Button>
                 )}
               </div>
             </fieldset>

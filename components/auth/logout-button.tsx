@@ -38,7 +38,7 @@ export function LogoutButton() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Batal
           </Button>
-          <Button disabled={busy} onClick={logout}>
+          <Button loading={busy} disabled={busy} onClick={logout}>
             {busy ? "Memproses…" : "Ya, keluar"}
           </Button>
         </div>
