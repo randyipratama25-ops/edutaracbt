@@ -41,7 +41,7 @@ export function DevicePreflight({ onReadyChange }: { onReadyChange: (ready: bool
     }
   }
   return <section className="panel stack device-preflight" aria-labelledby="device-check-title">
-    <div className="actions"><h2 id="device-check-title">Pemeriksaan perangkat</h2><Button type="button" variant="outline" disabled={busy} onClick={() => void run()}>{busy ? 'Memeriksa…' : report ? 'Periksa ulang perangkat' : 'Periksa perangkat'}</Button></div>
+    <div className="actions"><h2 id="device-check-title">Pemeriksaan perangkat</h2><Button loading={busy} type="button" variant="outline" disabled={busy} onClick={() => void run()}>{busy ? 'Memeriksa…' : report ? 'Periksa ulang perangkat' : 'Periksa perangkat'}</Button></div>
     <FeedbackMessage tone="info" role="status" aria-live="polite">{ready ? 'Siap memulai · hasil berlaku 5 menit sejak pemeriksaan.' : message}</FeedbackMessage>
     <p className="muted">Periksa sebelum ujian baru. Waktu ujian belum dimulai. Melanjutkan ujian yang sudah berjalan tetap tersedia.</p>
     {report && <>

@@ -7,6 +7,7 @@ export function RefreshSummary() {
   const [pending, startTransition] = useTransition();
   return (
     <Button
+      loading={pending}
       type="button"
       variant="outline"
       disabled={pending}

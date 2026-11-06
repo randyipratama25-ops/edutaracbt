@@ -1103,6 +1103,7 @@ export function UsersPanel() {
               Tutup
             </Button>
             <Button
+              loading={busy}
               disabled={
                 busy ||
                 formUncertain ||
@@ -1156,6 +1157,7 @@ export function UsersPanel() {
               Batal
             </Button>
             <Button
+              loading={busy}
               type="button"
               variant={
                 confirmation?.archive || confirmation?.row.active
@@ -1217,6 +1219,7 @@ export function UsersPanel() {
               Periksa status lagi
             </Button>
             <Button
+              loading={busy}
               type="button"
               disabled={
                 busy ||

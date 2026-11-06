@@ -547,7 +547,7 @@ export function SettingsPanel() {
                 </details>
                 </fieldset>
                 <div className="actions">
-                <Button disabled={!dirty}>
+                <Button loading={busy} disabled={!dirty}>
                   {busy ? "Menyimpan…" : "Simpan pengaturan"}
                 </Button>
                 <span className="muted">

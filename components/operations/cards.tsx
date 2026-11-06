@@ -453,6 +453,7 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
           <div className="actions">
           <h2>Proses kartu</h2>
           <Button
+            loading={jobsLoading}
           variant="outline"
           disabled={busy || jobsLoading}
           onClick={() => void load()}

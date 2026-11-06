@@ -197,7 +197,7 @@ export function StudentHelp({ attemptId }: { attemptId: string }) {
               disabled={busy || pending || !loaded || !!error}
             />
           </label>
-          <Button disabled={busy || pending || !loaded || !!error}>
+          <Button loading={busy} disabled={busy || pending || !loaded || !!error}>
             {busy ? "Mengirim…" : "Kirim permintaan"}
           </Button>
           <FeedbackMessage tone="info" role="status">

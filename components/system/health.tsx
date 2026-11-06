@@ -356,7 +356,7 @@ export function OperationalHealth() {
               >
                 Tutup formulir
               </Button>
-              <Button>{busy ? "Menyimpan…" : "Simpan catatan latihan"}</Button>
+              <Button loading={busy}>{busy ? "Menyimpan…" : "Simpan catatan latihan"}</Button>
             </div>
           </fieldset>
           {uncertain && (

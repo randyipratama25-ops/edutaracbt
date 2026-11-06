@@ -330,7 +330,7 @@ export function AdvancedPanel() {
               atau identitas peserta. Catatan tidak dapat diedit atau dihapus;
               buat catatan baru untuk pengujian ulang.
             </p>
-            <Button disabled={busy}>
+            <Button loading={busy} disabled={busy}>
               {busy ? "Menyimpan hasil…" : "Simpan hasil evaluasi"}
             </Button>
             {message && (

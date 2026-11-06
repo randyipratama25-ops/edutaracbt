@@ -172,6 +172,7 @@ export function AuditPanel() {
             Muat ulang
           </Button>
           <Button
+            loading={exporting}
             type="button"
             disabled={loading || exporting || !!error || !!invalid || !total}
             onClick={() => void download()}

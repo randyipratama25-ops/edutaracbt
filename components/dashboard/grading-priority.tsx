@@ -16,6 +16,7 @@ export function GradingPriority() {
       <div className="summary-heading">
         <h2 id="grading-summary-title">Koreksi dalam cakupan Anda</h2>
         <Button
+          loading={loading}
           type="button"
           variant="outline"
           disabled={loading}

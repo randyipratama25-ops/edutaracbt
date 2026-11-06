@@ -627,7 +627,7 @@ export function MediaPanel({ admin = false }: { admin?: boolean }) {
         <p className="muted">
           Berkas yang gagal dibersihkan tetap tercatat untuk dicoba kembali.
         </p>
-        <Button disabled={busy || uncertain} onClick={() => void remove()}>
+        <Button loading={busy} disabled={busy || uncertain} onClick={() => void remove()}>
           {busy ? "Menghapus…" : "Hapus permanen"}
         </Button>
         <FeedbackMessage tone="info" role="status">{message}</FeedbackMessage>

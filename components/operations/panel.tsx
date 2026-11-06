@@ -1197,6 +1197,7 @@ export function OperationsPanel({
                 {message}
               </FeedbackMessage>
               <Button
+                loading={busy}
                 disabled={
                   busy ||
                   uncertain ||

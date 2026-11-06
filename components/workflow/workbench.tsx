@@ -27,6 +27,7 @@ export function Workbench({ role = "admin" }: { role?: "admin" | "teacher" }) {
             : "Agenda penyusunan soal"}
         </h2>
         <Button
+          loading={loading}
           type="button"
           variant="outline"
           disabled={loading}

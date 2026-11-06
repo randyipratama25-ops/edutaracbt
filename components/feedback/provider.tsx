@@ -179,6 +179,7 @@ export function ConnectionNotice({ compact = false }: { compact?: boolean }) {
             <>
               {kind === "session" && (
                 <Button
+                  loading={c.checking}
                   type="button"
                   variant="outline"
                   disabled={c.checking || c.online === false}
