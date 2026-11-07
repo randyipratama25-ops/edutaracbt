@@ -2,6 +2,8 @@
 import {ValidatedForm} from "../feedback/validated-form";
 import {FeedbackMessage} from "../feedback/state";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { requiresLandscape } from "../../lib/device/orientation";
+import { useLandscapeRequired } from "../../lib/device/use-landscape";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -64,10 +66,25 @@ export function LoginForm({
       requests.clear();
     };
   }, []);
+  const portrait = useLandscapeRequired();
+  const orientationBlocked = context === "student" && portrait;
+  const [destination, setDestination] = useState<string | null>(null);
+  useEffect(() => {
+    if (!destination || (destination === "/student" && requiresLandscape())) return;
+    try {
+      window.location.assign(destination);
+    } catch (error) {
+      lock.current = false;
+      setBusy(false);
+      setDestination(null);
+      setFeedback({ kind: "error", text: error instanceof Error ? error.message : "Halaman belum dapat dibuka. Coba lagi." });
+    }
+  }, [destination, portrait]);
   const blocked = busy || recovering;
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (lock.current) return;
+    if (context === "student" && requiresLandscape()) return;
     const fields = new FormData(e.currentTarget),
       parsed = username.safeParse(fields.get("username"));
     if (!parsed.success) {
@@ -113,10 +130,12 @@ export function LoginForm({
       }
       setFeedback({
         kind: "success",
-        text: "Berhasil masuk. Membuka halaman Anda…",
+        text: input.context === "student" && requiresLandscape()
+          ? "Login berhasil. Putar perangkat ke landscape untuk membuka halaman siswa."
+          : "Berhasil masuk. Membuka halaman Anda…",
       });
       navigating = true;
-      window.location.assign(next);
+      setDestination(next);
     } catch (error) {
       navigating = false;
       if (seq === generation.current)
@@ -303,7 +322,14 @@ export function LoginForm({
             Lupa password
           </Button>
         </div>
-        <Button loading={busy} disabled={blocked}>{busy ? "Memproses…" : "Masuk"}</Button>
+        {orientationBlocked && (
+          <FeedbackMessage tone="info" role="status" id="login-orientation">
+            Putar perangkat ke landscape (mendatar) untuk masuk sebagai siswa.
+            Jika layar belum berputar, nonaktifkan kunci orientasi perangkat.
+          </FeedbackMessage>
+        )}
+        <Button loading={busy} disabled={blocked || orientationBlocked}
+          aria-describedby={orientationBlocked ? "login-orientation" : undefined}>{busy ? "Memproses…" : "Masuk"}</Button>
         {feedback ? (
           <FeedbackMessage tone={feedback?.kind === "success" ? "success" : "error"}
             id="login-feedback"

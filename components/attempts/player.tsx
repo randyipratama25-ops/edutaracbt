@@ -26,6 +26,7 @@ import {
 } from "../../lib/attempts/presentation";
 import { QuestionNavigation } from "./question-navigation";
 import { Button } from "../ui/button";
+import { useLandscapeRequired } from "../../lib/device/use-landscape";
 import { Dialog } from "../ui/dialog";
 import { LogoutButton } from "../auth/logout-button";
 import {
@@ -519,6 +520,7 @@ export function ExamPlayer({
     () => ({ attempt_id: a.id, client_id: clientId, epoch: a.epoch }),
     [a.id, clientId, a.epoch],
   );
+  const portrait = useLandscapeRequired();
   const active = a.status === "in_progress" && !a.finalized_at;
   const queue = useAnswerQueue(
     writer,
@@ -1843,6 +1845,21 @@ export function ExamPlayer({
         >
           Simpan dan muat status server
         </Button>
+      </Dialog>
+      <Dialog
+        open={portrait}
+        onOpenChange={() => {}}
+        dismissible={false}
+        className="landscape-required-dialog"
+        title="Putar perangkat ke landscape"
+        description="Ujian hanya dapat dilanjutkan saat perangkat mendatar. Putar perangkat Anda untuk kembali ke soal."
+      >
+        <div className="landscape-required-instructions">
+          <span aria-hidden="true" className="landscape-device-icon">↻</span>
+          <p>Jika layar belum berputar, nonaktifkan kunci orientasi atau aktifkan rotasi otomatis pada perangkat.</p>
+          <p><strong>Waktu ujian tetap berjalan.</strong> Jawaban yang sudah diisi tetap tersimpan dalam sesi ini; penyimpanan otomatis tetap berjalan sesuai koneksi Anda.</p>
+          <p role="status">Menunggu orientasi landscape…</p>
+        </div>
       </Dialog>
     </main>
   );
