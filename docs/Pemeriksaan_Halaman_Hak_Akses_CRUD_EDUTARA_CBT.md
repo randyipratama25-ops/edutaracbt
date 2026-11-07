@@ -1,6 +1,14 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 5 November 2026 (WIB). Versi dokumen: 1.39 — Audit Bank soal.
+Tanggal pemeriksaan: 7 November 2026 (WIB). Versi dokumen: 1.40 — Orientasi landscape siswa.
+
+## Orientasi landscape siswa — 7 November 2026
+
+Inventaris tetap **23 halaman**. Pada `/login`, konteks Siswa di ponsel/tablet Android, iPhone, dan iPad memerlukan landscape sebelum permintaan autentikasi dikirim. Tombol Masuk dinonaktifkan selama portrait dan pemeriksaan diulang dalam submit handler, termasuk submit lewat keyboard. Input tidak direset saat rotasi. Jika perangkat menjadi portrait saat respons login masih ditunggu, pembukaan portal menunggu landscape tanpa autentikasi ulang. Login Admin/Guru dan Pengawas tetap tersedia pada kedua orientasi.
+
+Pada player ujian aktif `/student`, portrait menampilkan dialog layar penuh yang tidak dapat ditutup melalui Escape, tombol tutup, atau klik di luar. Dialog berisi petunjuk rotasi dan pengingat waktu tetap berjalan; otomatis hilang saat landscape. Pemutar tetap terpasang sehingga timer, antrean jawaban, sinkronisasi, deadline, dan pengumpulan otomatis tetap memakai mekanisme yang ada. Hasil final tidak diblokir. Deteksi memakai orientasi layar dengan fallback Safari/media query, sehingga keyboard virtual tidak dianggap rotasi pada browser dengan API orientasi fisik.
+
+Perubahan merupakan pembatas interaksi di browser. Tidak ada halaman, endpoint, hak akses, dependency, atau skema database baru; migrasi tidak diperlukan. Pengujian regresi ditambahkan pada `tests/student-orientation.test.ts`, `scripts/ui/login-browser.mjs`, dan `scripts/ui/student-browser.mjs`. Validasi: 520 tes lulus/3 dilewati, lint, TypeScript, build produksi, serta browser Chromium dengan emulasi orientasi/perangkat mobile; modal, fokus/Escape, timer, retensi jawaban, dan rotasi selama login terverifikasi. API autentikasi dan ujian disimulasikan; pengujian ini tidak menggantikan UAT pada perangkat Android/iOS fisik.
 
 ## Audit Bank soal — 5 November 2026
 

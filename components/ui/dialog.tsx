@@ -11,7 +11,9 @@ export function Dialog({
   children,
   className = "",
   onCloseAutoFocus,
+  dismissible = true,
 }: {
+  dismissible?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -29,10 +31,12 @@ export function Dialog({
     opener.current = focused instanceof HTMLElement && focused !== document.body && !content.current?.contains(focused) ? focused : null;
   }, [open]);
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (next || dismissible) onOpenChange(next); }}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="dialog-overlay" />
         <DialogPrimitive.Content ref={content} className={`dialog-content ${className}`}
+          onEscapeKeyDown={event => { if (!dismissible) event.preventDefault(); }}
+          onInteractOutside={event => { if (!dismissible) event.preventDefault(); }}
           onOpenAutoFocus={event => {
             const focused = document.activeElement;
             if (!opener.current && focused instanceof HTMLElement && focused !== document.body && !(event.target instanceof HTMLElement && event.target.contains(focused))) opener.current = focused;
@@ -50,13 +54,13 @@ export function Dialog({
           </DialogPrimitive.Description>
           <ConnectionNotice compact/>
           {children}
-          <DialogPrimitive.Close
+          {dismissible && <DialogPrimitive.Close
             type="button"
             aria-label="Tutup dialog"
             className="dialog-close"
           >
             <X size={20} />
-          </DialogPrimitive.Close>
+          </DialogPrimitive.Close>}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
