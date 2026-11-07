@@ -42,6 +42,19 @@ try{
  await page.goto(origin,{waitUntil:'networkidle0'});await page.evaluate(()=>location.hash='access_token=only-partial-token');await page.waitForSelector('[role=alert]');assert.equal(await page.evaluate(()=>location.hash),'');
  await page.goto(origin,{waitUntil:'networkidle0'});await page.evaluate(()=>{history.pushState(history.state,'','/?code=');dispatchEvent(new PopStateEvent('popstate'));});await page.waitForSelector('[role=alert]');assert.equal(await page.evaluate(()=>location.search),'');
  await page.goto(origin,{waitUntil:'networkidle0'});await page.evaluate(()=>location.hash='access_token=test-access-token&refresh_token=test-refresh-token');await page.waitForFunction(()=>location.pathname==='/auth/reset'&&!location.hash);
+ await page.goto(origin,{waitUntil:'networkidle0'});
+ assert.equal(await page.$$('.home-role').then(nodes=>nodes.length),3);
+ for(const [route,mime] of [['/favicon.ico','image/'],['/icon.svg','image/svg+xml'],['/apple-icon.png','image/png']]){
+  const response=await fetch(origin+route);
+  assert.equal(response.status,200,route);
+  assert(response.headers.get('content-type').startsWith(mime),route+' MIME');
+  assert((await response.arrayBuffer()).byteLength>100,route+' content');
+ }
+ assert(await page.$('link[rel="icon"][href^="/icon.svg"]'));
+ assert(await page.$('link[rel="apple-touch-icon"]'));
+ await page.click('a[href="#peran"]');
+ assert.equal(await page.evaluate(()=>location.hash),'#peran');
+ await noOverflow('roles anchor');
  const nojs=await browser.newPage();await nojs.setJavaScriptEnabled(false);await nojs.goto(origin,{waitUntil:'domcontentloaded'});assert(await nojs.$('a[href="/login"]'));assert((await nojs.content()).includes('Aktifkan JavaScript'));await nojs.close();
  assert.deepEqual(errors,[]);console.log('PASS home actual route: 320/390/768/1440, short screens/orientation/200% text, touch, help empty/all/keyboard/focus, axe, login, fragment/code/email/error/history callbacks, no API on home and no-JS fallback (auth APIs simulated)');
 }catch(e){console.error(e);process.exitCode=1;}finally{
