@@ -3,11 +3,11 @@ import { InvitationError, assertInvitationAccess, invitationState, resendInvitat
 const actor = { id:'admin', organization_id:'school-a', role:'admin', active:true };
 const target = { id:'user', organization_id:'school-a', active:true, archived_at:null };
 const account = { id:'user', email:'invited@example.invalid', invited_at:'2026-10-29T00:00:00Z' };
-const setup = () => ({ actor, target, account, site:'https://edutara-cbt-ashen.vercel.app', now:Date.parse('2026-10-30T00:00:00Z'), budget:vi.fn(async()=>true), send:vi.fn(async()=>({error:null,userId:'user'})), audit:vi.fn(async()=>{}) });
+const setup = () => ({ actor, target, account, site:'https://edutara-cbt.vercel.app', now:Date.parse('2026-10-30T00:00:00Z'), budget:vi.fn(async()=>true), send:vi.fn(async()=>({error:null,userId:'user'})), audit:vi.fn(async()=>{}) });
 describe('Admin invitation resend',()=>{
  it('sends to the stored address with the canonical reset redirect and records an audit',async()=>{
   const x=setup();const r=await resendInvitation(x);
-  expect(x.send).toHaveBeenCalledWith(account.email,'https://edutara-cbt-ashen.vercel.app/auth/reset');
+  expect(x.send).toHaveBeenCalledWith(account.email,'https://edutara-cbt.vercel.app/auth/reset');
   expect(x.audit).toHaveBeenCalledOnce();expect(r.sent).toBe(true);
  });
  it('rejects teachers, students, supervisors and inactive admins before any send',async()=>{
