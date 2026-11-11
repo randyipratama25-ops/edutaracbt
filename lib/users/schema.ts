@@ -4,6 +4,7 @@ export const roleLabels: Record<string, string> = {
   admin: "Admin",
   teacher: "Guru",
   supervisor: "Pengawas",
+  committee: "Panitia Ujian",
   student: "Siswa",
 };
 export const userRowSchema = z.object({

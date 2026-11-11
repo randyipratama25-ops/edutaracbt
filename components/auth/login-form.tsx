@@ -227,6 +227,7 @@ export function LoginForm({
           >
             <option value="staff">Admin / Guru</option>
             <option value="supervisor">Pengawas</option>
+            <option value="committee">Panitia Ujian</option>
             <option value="student">Siswa</option>
           </select>
         </label>

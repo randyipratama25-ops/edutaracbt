@@ -1,6 +1,20 @@
 # Pemeriksaan Halaman, Hak Akses, dan CRUD EDUTARA CBT
 
-Tanggal pemeriksaan: 7 November 2026 (WIB). Versi dokumen: 1.40 — Orientasi landscape siswa.
+Tanggal pemeriksaan: 12 November 2026 (WIB). Versi dokumen: 1.41 — Panitia Ujian.
+
+## Panitia Ujian — 12 November 2026
+
+Inventaris menjadi **25 halaman**. Admin membuat akun berperan Panitia Ujian di Pengguna atau memberi tugas Panitia Ujian kepada akun Guru yang sudah ada. Login menyediakan konteks Panitia Ujian bagi kedua jenis akun. Admin menjadwalkan petugas, mengonfirmasi kehadiran pada hari tugas, dan menunjuk pengganti. Pengganti memiliki catatan kehadiran sendiri dan wajib dikonfirmasi Admin.
+
+Panitia yang sudah dikonfirmasi dapat membaca jadwal pengawas, mencatat kehadiran, dan menunjuk serta mengonfirmasi pengawas pengganti. RPC memeriksa sesi aktif, organisasi, tugas aktif, konfirmasi Admin, dan tanggal mulai sesi menurut zona waktu organisasi pada setiap permintaan. Jadwal lintas hari dikelompokkan menurut tanggal mulai sesi; penugasan lama tanpa sesi memakai tanggal mulai ujian. Kehadiran pengawas awal dan pengganti disimpan terpisah, dan perubahan tercatat dalam audit. Panitia yang diganti kehilangan akses dari tugas tersebut.
+
+| Tindakan | Admin | Panitia Ujian dan Guru dalam konteks panitia |
+|---|---|---|
+| Penugasan panitia | C/R tugas, U konfirmasi, C tugas pengganti | R status tugas sendiri pada hari berjalan |
+| Jadwal pengawas | Kelola melalui Ruang & pengawas | R jadwal hari tugas setelah kehadiran dikonfirmasi |
+| Kehadiran dan pengganti pengawas | Kelola penugasan melalui Ruang & pengawas | C konfirmasi kehadiran dan C penggantian pengawas pada hari tugas |
+
+Perubahan menggunakan migrasi `20261111172724_exam_committee.sql`, pembaruan Edge Function `identity-gateway`, dan deployment aplikasi Next.js.
 
 ## Orientasi landscape siswa — 7 November 2026
 
@@ -496,6 +510,8 @@ Akun harus aktif dan terautentikasi untuk menjadi actor. `/dashboard/*` memerluk
 | 21 | Koreksi dan moderasi | `/dashboard/grading` | Koreksi anonim, rubrik kriteria, moderasi dan jadwal publikasi. | Admin, Guru konteks staf | C/R/U penilaian dalam cakupan snapshot; keputusan moderasi oleh penilai lain; publikasi dan jadwal hanya Admin; tanpa D riwayat. |
 | 22 | Penerimaan operasional | `/dashboard/acceptance` | Snapshot teknis, tindak lanjut dan unduhan observasi; checklist bukti UAT. | Admin konteks staf | R organisasi sendiri; ekspor lokal. Tidak ada C/U/D bukti atau pengesahan otomatis. |
 | 23 | Fitur lanjutan | `/dashboard/advanced` | AI nonaktif, pilot SEB, evaluasi perangkat dan akses panduan pertukaran nilai. | Admin konteks staf | R status/riwayat/konfigurasi uji; C catatan evaluasi organisasi sendiri; tanpa U/D. Ekspor XLSX/PDF tetap tersedia bagi Admin/Guru melalui Hasil/Analitik. |
+| 24 | Penugasan Panitia Ujian | `/dashboard/committee` | Jadwalkan, konfirmasi kehadiran, dan tunjuk panitia pengganti. | Admin konteks staf | C tugas, R daftar organisasi, U konfirmasi dan penggantian; riwayat dipertahankan. |
+| 25 | Ruang Panitia Ujian | `/committee` | Jadwal pengawas dan kehadiran petugas pada hari tugas. | Panitia Ujian atau Guru dalam konteks panitia | R jadwal setelah konfirmasi Admin; C pengganti dan kehadiran pengawas dalam cakupan tanggal tugas; tanpa penghapusan. |
 
 `/auth/confirm` merupakan route handler konfirmasi email/token, bukan halaman `page.tsx`. File loading/error dashboard merupakan tampilan status, bukan halaman navigasi tersendiri. Modal soal, pratinjau, detail hasil, impor, kartu, inbox dan form pemulihan tidak memiliki route halaman tersendiri dalam inventaris ini.
 
@@ -615,7 +631,7 @@ Semua path relatif terhadap repositori pada commit di awal dokumen.
 
 | Bukti | Lokasi |
 |---|---|
-| Inventaris 23 halaman | `app/**/page.tsx` dan `app/page.tsx` |
+| Inventaris 25 halaman | `app/**/page.tsx` dan `app/page.tsx` |
 | Pagar dashboard dan menu Admin | `app/dashboard/layout.tsx`; halaman rooms/settings/audit/jobs |
 | Tahap 3 persiapan/pelaksanaan | `components/workflow`, `app/dashboard/preparation/page.tsx`, `app/api/workflow/route.ts`, `lib/workflow/schema.ts`, migrasi `20261030033230_preparation_execution_workflow.sql` |
 | Role/konteks dan akun aktif | `lib/domain/validation.ts`, `lib/auth/actor.ts` |

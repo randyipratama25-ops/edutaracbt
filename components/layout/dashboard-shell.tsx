@@ -25,6 +25,7 @@ const groups = [
   ] },
   { label: "Pelaksanaan ujian", items: [
     { href: "/dashboard/monitor", label: "Pantau ujian", icon: Activity },
+    { href: "/dashboard/committee", label: "Panitia Ujian", icon: DoorOpen, admin: true },
     { href: "/dashboard/rooms", label: "Ruang & pengawas", icon: DoorOpen, admin: true },
     { href: "/dashboard/cards", label: "Kartu peserta", icon: Printer },
   ] },

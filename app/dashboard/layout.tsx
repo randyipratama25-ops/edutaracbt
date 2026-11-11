@@ -1,3 +1,4 @@
+import { loginDestination } from "../../lib/auth/account-request";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { actor } from "../../lib/auth/actor";
@@ -11,6 +12,6 @@ export default async function DashboardLayout({
   const a = await actor();
   if (!a) redirect("/login");
   if (a.context !== "staff")
-    redirect(a.context === "supervisor" ? "/supervisor" : "/student");
+    redirect(loginDestination(a.context));
   return <DashboardShell name={a.full_name} role={a.role === "admin" ? "admin" : "teacher"}>{children}</DashboardShell>;
 }
