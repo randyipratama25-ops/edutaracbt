@@ -67,6 +67,8 @@ export function OperationsPanel({
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState(""),
+    [monitorRoom, setMonitorRoom] = useState(""),
+    [monitorSession, setMonitorSession] = useState(""),
     [listLoading, setListLoading] = useState(true),
     [listError, setListError] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
@@ -102,7 +104,7 @@ export function OperationsPanel({
     [historyError, setHistoryError] = useState(""),
     [historyLoading, setHistoryLoading] = useState(false),
     [uncertain, setUncertain] = useState(false),
-    [lastUpdated, setLastUpdated] = useState(""),
+    [lastUpdated, setLastUpdated] = useState(0),
     [refreshing, setRefreshing] = useState(false),
     [actionTargets, setActionTargets] = useState<Row[]>([]);
   const loadedExam = useRef(""),
@@ -187,7 +189,7 @@ export function OperationsPanel({
         if (generation === seq.current) {
           loadedExam.current = exam;
           setListError("");
-          setLastUpdated(new Date().toLocaleTimeString("id-ID"));
+          setLastUpdated(Date.now());
           setUncertain(false);
         }
       } catch (e) {
@@ -483,9 +485,16 @@ export function OperationsPanel({
   }
   const rosterIds = new Set(rooms.roster.map((r) => r.student_id));
   const actionRows = reviewTargets(rows, selected);
+  const monitorRooms = [...new Set(rows.flatMap((r) => r.room ? [r.room] : []))].sort();
+  const monitorSessions = [...new Set(rows.flatMap((r) => r.session ? [r.session] : []))].sort();
+  const timeOf = (value?: string | null) => value
+    ? new Date(value).toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta" }) + " WIB"
+    : "Belum tersedia";
   const visible = (listLoading || listError ? [] : rows).filter(
     (r) =>
-      (!filter || r.status === filter) &&
+      (!filter || (filter === "integrity" ? (r.open_integrity ?? 0) > 0 : r.status === filter)) &&
+      (!monitorRoom || r.room === monitorRoom) &&
+      (!monitorSession || r.session === monitorSession) &&
       matchesSearch(
         r.student + " " + r.username + " " + (r.room || ""),
         search,
@@ -524,8 +533,10 @@ export function OperationsPanel({
                 historyController.current?.abort();
                 setExam(e.target.value);
                 setRooms(empty);
+                setMonitorRoom("");
+                setMonitorSession("");
                 loadedExam.current = "";
-                setLastUpdated("");
+                setLastUpdated(0);
                 setRefreshing(false);
                 setListError("");
                 setMessage("");
@@ -575,7 +586,7 @@ export function OperationsPanel({
                 ? "Memperbarui ruang dan sesi…"
                 : "Memperbarui monitor…"
               : lastUpdated
-                ? "Pembaruan terakhir: " + lastUpdated
+                ? "Pembaruan terakhir: " + timeOf(new Date(lastUpdated).toISOString())
                 : "Menunggu pembaruan"}{" "}
             · Pembaruan otomatis dijeda saat dialog dibuka.
           </p>
@@ -627,13 +638,15 @@ export function OperationsPanel({
             <ListFilters
               label="peserta ujian"
               active={
-                [search && "Pencarian", filter && "Status"].filter(
+                [search && "Pencarian", filter && "Status", monitorRoom && "Ruang", monitorSession && "Sesi"].filter(
                   Boolean,
                 ) as string[]
               }
               onReset={() => {
                 setSearch("");
                 setFilter("");
+                setMonitorRoom("");
+                setMonitorSession("");
                 setSelected([]);
                 setPage(1);
               }}
@@ -662,11 +675,24 @@ export function OperationsPanel({
                   }}
                 >
                   <option value="">Semua</option>
+                  <option value="integrity">Perlu tinjauan integritas</option>
                   {Object.entries(status).map(([id, label]) => (
                     <option key={id} value={id}>
                       {label}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>Ruang
+                <select value={monitorRoom} onChange={(event) => { setMonitorRoom(event.target.value); setSelected([]); setPage(1); }}>
+                  <option value="">Semua ruang</option>
+                  {monitorRooms.map((name) => <option key={name}>{name}</option>)}
+                </select>
+              </label>
+              <label>Sesi
+                <select value={monitorSession} onChange={(event) => { setMonitorSession(event.target.value); setSelected([]); setPage(1); }}>
+                  <option value="">Semua sesi</option>
+                  {monitorSessions.map((name) => <option key={name}>{name}</option>)}
                 </select>
               </label>
             </ListFilters>
@@ -833,7 +859,7 @@ export function OperationsPanel({
                         {r.student}
                         <br />
                         <small>
-                          {r.username} · {r.room || "Belum ditempatkan"}
+                          {r.username} · {r.room || "Belum ditempatkan"}{r.session && ` · ${r.session}`}
                         </small>
                       </td>
                       <td>
@@ -845,9 +871,11 @@ export function OperationsPanel({
                             : "Belum login / sesi berakhir"}
                         </small>
                       </td>
-                      <td>{r.answers}</td>
+                      <td>{r.answers}<br /><small>Simpan terakhir · {timeOf(r.last_saved_at)}</small></td>
                       <td>
-                        {r.countable_events} ditinjau / {r.events} tercatat
+                        {r.open_integrity ?? 0} perlu ditinjau / {r.events} kejadian
+                        <br /><small>{r.last_seen_at && lastUpdated - Date.parse(r.last_seen_at) > 45000 && r.status === "in_progress"
+                          ? "Perlu cek koneksi" : "Kontak server"} · {timeOf(r.last_seen_at)}</small>
                       </td>
                       <td>
                         {r.deadline_at
@@ -946,7 +974,7 @@ export function OperationsPanel({
             ) : dialog === "sent" ? (
               <SentNotifications value={history} />
             ) : (
-              <MonitorHistory value={history} />
+              <MonitorHistory value={history} attempt={target} active={rows.some((r) => r.attempt_id === target && r.status === "in_progress")} />
             )}
           </div>
         ) : (

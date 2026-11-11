@@ -1,3 +1,4 @@
+import { integrityWarning } from "../operations/integrity";
 import { z } from "zod";
 import type { Question } from "../authoring/schema";
 import type { AnswerValue } from "./recovery";
@@ -65,6 +66,7 @@ const attemptBase = z.object({
   score: z.number().min(0).max(100).nullable(),
   result_visible: z.boolean(),
   review_reason: z.string().nullable(),
+  integrity_warnings: z.array(integrityWarning).max(20).optional(),
   policy: z
     .object({
       integrity_mode: z.string(),
@@ -146,6 +148,7 @@ export type Attempt = {
   score: number | null;
   result_visible: boolean;
   review_reason: string | null;
+  integrity_warnings?: z.infer<typeof integrityWarning>[];
   recovery?: {
     drafts: {
       question_id: string;

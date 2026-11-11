@@ -82,8 +82,8 @@ try {
   await page.setRequestInterception(true);
   const id=n=>`07000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
   let audience='admin',mode='ok',optionMode='ok',historyMode='ok',postMode='ok',held=null,heldPost=null,heldHistory=null,calls=[],listSize=51,examNow=id(80),activeReads=0,maxReads=0,reads=0;
-  const revisions=new Map(),states=new Map();
-  const row=n=>({student_id:id(n),student:'Peserta '+n+' '+(n===1?'Nama'.repeat(30):''),username:'siswa-'+n,attempt_id:n%3===0?null:id(100+n),version:n%3===0?null:revisions.get(n)||1,status:states.get(n)||(n%3===0?'not_started':n%3===1?'in_progress':'disqualified'),logged_in:n%3!==0,answers:n%3===0?0:2,events:3,countable_events:0,deadline_at:n%3===0?null:'2026-11-02T23:00:00Z',room:n===1?'Ruang '+ 'panjang'.repeat(30):'Ruang A',room_id:id(40),can_act:audience==='admin'||n%2===1,score:null,pending:n%3===0?null:0});
+  const revisions=new Map(),states=new Map(),followups=[];
+  const row=n=>({student_id:id(n),student:'Peserta '+n+' '+(n===1?'Nama'.repeat(30):''),username:'siswa-'+n,attempt_id:n%3===0?null:id(100+n),version:n%3===0?null:revisions.get(n)||1,status:states.get(n)||(n%3===0?'not_started':n%3===1?'in_progress':'disqualified'),logged_in:n%3!==0,answers:n%3===0?0:2,events:3,countable_events:0,open_integrity:n===1&&!followups.some(f=>f.action==='resolve')?1:0,session:n===1?'Sesi 1':null,last_seen_at:'2026-11-02T01:00:00Z',last_saved_at:'2026-11-02T00:59:00Z',deadline_at:n%3===0?null:'2026-11-02T23:00:00Z',room:n===1?'Ruang '+ 'panjang'.repeat(30):'Ruang A',room_id:id(40),can_act:audience==='admin'||n%2===1,score:null,pending:n%3===0?null:0});
   const monitor=()=>Array.from({length:listSize},(_,i)=>row(i+1));
   const help=()=>[{id:id(800),attempt_id:id(101),student:'Peserta 1',message:'Jaringan terputus '+ 'panjang '.repeat(30),created_at:'2026-11-02T01:00:00Z',resolved_at:states.get('help')?'2026-11-02T02:00:00Z':null,resolution:states.get('help')||null,can_resolve:true}];
   const sent=()=>[{id:id(700),title:'Periksa jadwal',priority:'important',message:'Pesan uji',created_at:'2026-11-02T01:00:00Z',receipts:[{student:'Peserta 1',read_at:null}]}];
@@ -92,6 +92,10 @@ try {
   const respond=async(r,status,data)=>{try{await r.respond({status,contentType:'application/json',body:JSON.stringify(status===200?{success:true,data}:{success:false,error:{message:status===409?'CONFLICT: Attempt berubah':'Layanan sementara gagal'}})});}catch{}};
   page.on('request',async r=>{
     const u=new URL(r.url());if(!u.pathname.startsWith('/api/'))return r.continue();
+    if(u.pathname==='/api/operations/integrity'){
+      if(r.method()==='GET')return respond(r,200,{open_groups:followups.some(f=>f.action==='resolve')?[]:[id(901)],events:[{event_id:id(902),group_id:id(901),kind:'visibility_hidden',countable:true,created_at:'2026-11-02T01:00:00Z',metadata:{duration_ms:22000,question_number:2}}],followups:[...followups].reverse()});
+      const input=JSON.parse(r.postData());followups.push({id:input.request_id,group_id:input.group_id,action:input.action,message:input.message,actor:'Pengawas Uji',created_at:'2026-11-02T01:01:00Z'});return respond(r,200,{saved:true});
+    }
     if(u.pathname==='/api/operations/live')return r.respond({status:204});
     if(u.pathname==='/api/operations'&&r.method()==='GET'){
       const action=u.searchParams.get('action');
@@ -120,10 +124,25 @@ try {
   const choose=async n=>page.$eval(`input[aria-label^="Pilih Peserta ${n} "]`,e=>e.click());
   for(const width of (process.env.EDUTARA_MONITOR_FOCUSED?[390]:[320,390,768,1024,1440])){await page.setViewport({width,height:800});await go();await overflow('monitor '+width);await click('Kirim notifikasi');await fits();await close();await click('Riwayat pesan');await page.waitForFunction(()=>document.querySelector('[role=dialog]')?.textContent.includes('Pesan uji'));await fits();await close();}
   await page.setViewport({width:390,height:844,isMobile:true,hasTouch:true});await go();await page.addScriptTag({content:axe.source});let scan=await page.evaluate(()=>window.axe.run(document.querySelector('.monitor-page'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(scan.violations.map(v=>v.id),[]);await page.screenshot({path:'/tmp/monitor-mobile.png',fullPage:true});
+  await page.select('select[aria-label="Status"], .list-filters label select', 'integrity');
+  await page.waitForFunction(()=>document.querySelectorAll('.monitor-page table tbody tr').length===1);
+  await click('Riwayat');
+  await page.waitForSelector('[role=dialog] details.panel summary');
+  await page.click('[role=dialog] details.panel summary');
+  assert(await page.$eval('[role=dialog]',e=>e.innerText.includes('Soal 2')&&e.innerText.includes('22 detik')));
+  for(const [action,message] of [['Kirim peringatan','Periksa halaman ujian'],['Catat klarifikasi','Klarifikasi siswa tercatat'],['Tutup insiden','Insiden telah ditinjau']]){
+    await click(action,'[role=dialog]');
+    await fill('[role=dialog] textarea',message);
+    await click('Simpan','[role=dialog]');
+    await page.waitForFunction(text=>document.querySelector('[role=dialog] .monitor-timeline')?.textContent.includes(text),{},message);
+  }
+  assert.equal(followups.length,3);
+  await close();
+  await page.select('select[aria-label="Status"], .list-filters label select','');
   // Status-specific actions, frozen CAS version, synchronous lock and protected dialog.
   await choose(2);assert(await page.$eval('button',()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Diskualifikasi').disabled));await click('Buka kunci');await fits();await fill('[role=dialog] textarea','Gangguan perangkat');await fill('[role=dialog] input','KONFIRMASI');postMode='hold';const before=calls.length;await click('Konfirmasi','[role=dialog]');await page.waitForFunction(()=>document.querySelector('[role=dialog] form')?.getAttribute('aria-busy')==='true');await page.click('[aria-label="Tutup dialog"]');assert(await page.$('[role=dialog]'));await page.evaluate(()=>document.querySelector('[role=dialog] form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));assert.equal(calls.length,before+1);assert.equal(calls.at(-1).attempts[0].version,1);postMode='ok';states.set(2,'in_progress');revisions.set(2,2);await respond(heldPost,200,[{saved:true}]);heldPost=null;await page.waitForSelector('[role=dialog]',{hidden:true});await ready();
   // A filter clears hidden selections; shrinking data clamps page.
-  await choose(1);await fill('input[type=search]','nomatch');assert(await page.evaluate(()=>document.body.textContent.includes('0 / 500 dipilih')));await click('Reset filter');await click('Berikutnya');await click('Berikutnya');listSize=2;await click('Muat ulang');await ready();assert(await page.evaluate(()=>document.body.textContent.includes('Halaman 1 / 1')));listSize=51;await click('Muat ulang');await ready();assert(await page.evaluate(()=>document.body.textContent.includes('Halaman 1 / 3')));
+  await choose(1);await fill('input[type=search][aria-label="Cari siswa/ruang"]','nomatch');await page.waitForFunction(()=>document.body.textContent.includes('0 / 500 dipilih'));await click('Reset filter');await click('Berikutnya');await click('Berikutnya');listSize=2;await click('Muat ulang');await ready();assert(await page.evaluate(()=>document.body.textContent.includes('Halaman 1 / 1')));listSize=51;await click('Muat ulang');await ready();assert(await page.evaluate(()=>document.body.textContent.includes('Halaman 1 / 3')));
   // History errors have retry; a closed old response cannot replace another dialog.
   historyMode='fail';await click('Riwayat pesan');await page.waitForSelector('[role=dialog] [role=alert]');historyMode='ok';await click('Coba muat riwayat','[role=dialog]');await page.waitForFunction(()=>document.querySelector('[role=dialog]')?.textContent.includes('Pesan uji'));await close();historyMode='hold';await click('Riwayat pesan');await sleep(40);const oldHistory=heldHistory;await close();historyMode='ok';await click('Kirim notifikasi');await respond(oldHistory,200,sent());assert(await page.$('[role=dialog] textarea'));await close();
   // Bounded reads: slow polling, SSE refresh and reload never pile up requests.

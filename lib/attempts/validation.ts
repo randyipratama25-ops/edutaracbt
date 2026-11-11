@@ -22,6 +22,31 @@ const writer = {
   client_id: z.uuid(),
   epoch: z.number().int().positive(),
 };
+export const integrityEvent = z.object({
+  action: z.literal("event"),
+  ...writer,
+  event_id: z.uuid(),
+  kind: z.enum([
+    "focus_loss",
+    "visibility_hidden",
+    "visibility_start",
+    "connection_lost",
+    "connection_restored",
+    "fullscreen_exit",
+    "pagehide",
+    "shortcut",
+    "copy",
+    "cut",
+    "paste",
+    "contextmenu",
+  ]),
+  group_id: z.uuid().optional(),
+  occurred_at: z.iso.datetime().optional(),
+  question_id: z.uuid().optional(),
+  duration_ms: z.number().int().min(0).max(86400000).default(0),
+  editing: z.boolean().default(false),
+  orientation_recent: z.boolean().default(false),
+});
 export const attemptCommand = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("start"),
@@ -60,23 +85,5 @@ export const attemptCommand = z.discriminatedUnion("action", [
     request_id: z.uuid(),
     mode: z.enum(["manual", "timeout"]),
   }),
-  z.object({
-    action: z.literal("event"),
-    ...writer,
-    event_id: z.uuid(),
-    kind: z.enum([
-      "focus_loss",
-      "visibility_hidden",
-      "fullscreen_exit",
-      "pagehide",
-      "shortcut",
-      "copy",
-      "cut",
-      "paste",
-      "contextmenu",
-    ]),
-    duration_ms: z.number().int().min(0).max(86400000).default(0),
-    editing: z.boolean().default(false),
-    orientation_recent: z.boolean().default(false),
-  }),
+  integrityEvent,
 ]);
