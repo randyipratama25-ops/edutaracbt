@@ -535,7 +535,6 @@ export function ExamPlayer({
       questionIds: a.questions.map((q) => q.id),
     },
   );
-  const warning = useIntegrity(writer, active);
   const [index, setIndex] = useState(0),
     [remaining, setRemaining] = useState(() =>
       Math.max(
@@ -594,6 +593,10 @@ export function ExamPlayer({
     conversionLock.current = false;
     setConverting(false);
   }, [index]);
+  const warning = useIntegrity(writer, active, a.questions[index]?.id);
+  const [staffWarnings, setStaffWarnings] = useState(a.integrity_warnings ?? []);
+  const [dismissedWarnings, setDismissedWarnings] = useState<string[]>([]);
+  const currentWarning = staffWarnings.find((notice) => !dismissedWarnings.includes(notice.id));
   const questionHeading = useRef<HTMLHeadingElement>(null),
     examHeader = useRef<HTMLElement>(null),
     previousIndex = useRef(0),
@@ -688,6 +691,7 @@ export function ExamPlayer({
           )
             onUpdate(data);
           else {
+            setStaffWarnings(data.integrity_warnings ?? []);
             deadline.current = data.deadline_at;
             started.current = {
               server: Date.parse(data.server_now),
@@ -1173,6 +1177,20 @@ export function ExamPlayer({
         } as import("react").CSSProperties
       }
     >
+      {active && currentWarning && (
+        <section
+          className="notice fixed bottom-4 right-4 z-30 w-[min(24rem,calc(100vw-2rem))] max-h-[45dvh] overflow-y-auto shadow-lg"
+          aria-label="Peringatan pengawas"
+        >
+          <div role="alert">
+            <strong>Peringatan pengawas</strong>
+            <p className="answer-text">{currentWarning.message}</p>
+          </div>
+          <Button type="button" variant="outline" onClick={() => setDismissedWarnings((ids) => [...ids, currentWarning.id])}>
+            Saya mengerti
+          </Button>
+        </section>
+      )}
       <header
         ref={examHeader}
         className="exam-top panel"

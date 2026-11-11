@@ -2,6 +2,19 @@
 
 Tanggal pemeriksaan: 12 November 2026 (WIB). Versi dokumen: 1.41 — Panitia Ujian.
 
+
+## Integritas ujian saat berlangsung
+
+| Halaman / endpoint | Hak dan fungsi |
+|---|---|
+| `/student`, `/api/attempts` | Siswa mencatat kejadian pada attempt miliknya dari perangkat penulis aktif. Antrean lokal berkapasitas 160 kejadian bertahan saat muat ulang dan dikirim ulang ketika koneksi pulih. ID kejadian mencegah duplikasi. Peringatan petugas tampil saat pemutar menerima pemeriksaan sesi berikutnya. |
+| `/dashboard/monitor`, `/supervisor` | Admin dan pengawas efektif meninjau insiden sesuai cakupan penugasan. Monitor menyediakan filter ruang, sesi dan peserta yang perlu ditinjau, serta waktu kontak server dan simpan terakhir. |
+| `/api/operations/integrity` | Admin organisasi dan pengawas efektif dapat membaca kronologi dan membuat catatan klarifikasi, peringatan individual, atau penutupan dengan alasan. Tindak lanjut tersimpan sebagai riwayat dengan identitas petugas. Peringatan hanya dapat dikirim selama attempt aktif. |
+
+Sinyal browser dan koneksi dipakai untuk peninjauan manusia. Satu rangkaian kehilangan fokus dan perubahan visibilitas dihitung sekali. Perangkat menyertakan waktu kejadian dan ID soal aktif, lalu server memvalidasi soal terhadap snapshot attempt sebelum menampilkan nomor soal. Sesi monitor diturunkan dari ruang dan waktu mulai attempt terhadap jadwal yang tersedia. Pengiriman ulang berlaku selama sesi penulis masih aktif. Tidak ada perubahan otomatis pada status ujian, jawaban, nilai atau tenggat.
+
+Migrasi `20261111181345_live_exam_integrity.sql` memperluas metadata kejadian, menambah tabel privat tindak lanjut, dan menegakkan akses RPC sesuai penugasan.
+
 ## Panitia Ujian — 12 November 2026
 
 Inventaris menjadi **25 halaman**. Admin membuat akun berperan Panitia Ujian di Pengguna atau memberi tugas Panitia Ujian kepada akun Guru yang sudah ada. Login menyediakan konteks Panitia Ujian bagi kedua jenis akun. Admin menjadwalkan petugas, mengonfirmasi kehadiran pada hari tugas, dan menunjuk pengganti. Pengganti memiliki catatan kehadiran sendiri dan wajib dikonfirmasi Admin.
