@@ -167,7 +167,7 @@ describe("real gateway handler with isolated SDK", () => {
     expect(await a.json()).toEqual(await b.json());
     expect(m.reset).toHaveBeenCalledTimes(1);
     expect(m.reset).toHaveBeenCalledWith("fixture@example.invalid", {
-      redirectTo: "https://edutara-cbt-ashen.vercel.app/auth/reset",
+      redirectTo: "https://edutara-cbt.vercel.app/auth/reset",
     });
   });
 });
