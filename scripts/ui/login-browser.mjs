@@ -20,15 +20,33 @@ const originals = Object.fromEntries(
   ]),
 );
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let server, browser;
+let server, browser, builder;
 try {
   const log = createWriteStream("/tmp/login-browser-dev.log");
+  // Verify the deployed rendering path, including no-JS fallback, rather than dev streaming.
+  builder = spawn(process.execPath, ["node_modules/next/dist/bin/next", "build"], {
+    detached: true,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_SUPABASE_URL: "",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+      EDUTARA_UI_TEST_DIST: dist,
+      NEXT_TELEMETRY_DISABLED: "1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  builder.stdout.pipe(log, { end: false });
+  builder.stderr.pipe(log, { end: false });
+  const buildCode = await new Promise((resolve, reject) => {
+    builder.once("exit", resolve);
+    builder.once("error", reject);
+  });
+  if (buildCode !== 0) throw Error("Login browser build failed; see /tmp/login-browser-dev.log");
   server = spawn(
     process.execPath,
     [
       "node_modules/next/dist/bin/next",
-      "dev",
-      "--webpack",
+      "start",
       "--hostname",
       "127.0.0.1",
       "--port",
@@ -74,7 +92,7 @@ try {
   let loginMode = "failure",
     recoverMode = "success",
     delay = 0;
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => { errors.push(e.message); console.error("Browser error:", e.message); });
   await page.setRequestInterception(true);
   page.on("request", async (r) => {
     const u = new URL(r.url());
@@ -407,6 +425,41 @@ try {
   );
   await page.keyboard.press("Escape");
   await page.evaluate(() => (window.setTimeout = window.__loginTimer));
+  // Mobile student login is gated before any authentication request is sent.
+  const desktopAgent = await browser.userAgent();
+  await page.setUserAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Mobile Safari/537.36");
+  await page.setViewport({ width: 390, height: 844, isLandscape: false });
+  await goto();
+  await fill("orientation_student");
+  await page.select("#login-context", "student");
+  await page.waitForSelector("#login-orientation");
+  const orientationPosts = posts.length;
+  assert(await page.$eval("button[aria-describedby=login-orientation]", e => e.disabled));
+  await page.$eval(".login-form", e => e.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  await sleep(100);
+  assert.equal(posts.length, orientationPosts);
+  for (const context of ["staff", "supervisor"]) {
+    await page.select("#login-context", context);
+    assert.equal(await page.$eval(".login-form > button", e => e.disabled), false);
+  }
+  await page.select("#login-context", "student");
+  await page.setViewport({ width: 844, height: 390, isLandscape: true });
+  await page.waitForFunction(() => !document.querySelector("#login-orientation"));
+  assert.equal(await page.$eval("#login-username", e => e.value), "orientation_student");
+  // A response arriving after rotation must wait for landscape without another POST.
+  loginMode = "success";
+  delay = 300;
+  const rotationLoginBefore = posts.length;
+  await click("Masuk");
+  await page.waitForFunction(() => document.querySelector(".login-form")?.getAttribute("aria-busy") === "true");
+  await page.setViewport({ width: 390, height: 844, isLandscape: false });
+  await page.waitForFunction(() => document.querySelector("#login-feedback")?.textContent.includes("Putar perangkat ke landscape"));
+  assert.equal(new URL(page.url()).pathname, "/login");
+  assert.equal(posts.length, rotationLoginBefore + 1);
+  await page.setViewport({ width: 844, height: 390, isLandscape: true });
+  await page.waitForFunction(() => location.pathname === "/student");
+  assert.equal(posts.length, rotationLoginBefore + 1);
+  await page.setUserAgent(desktopAgent);
   loginMode = "success";
   delay = 0;
   for (const context of ["staff", "student", "supervisor"]) {
@@ -480,7 +533,7 @@ try {
   await page.screenshot({ path: "/tmp/login-desktop.png", fullPage: true });
   const nojs = await browser.newPage();
   await nojs.setJavaScriptEnabled(false);
-  await nojs.goto(origin + "/login", { waitUntil: "domcontentloaded" });
+  await nojs.goto(origin + "/login", { waitUntil: "networkidle0" });
   assert.equal(await nojs.$eval("form", (e) => e.method), "post");
   assert(
     (await nojs.$eval("body", (e) => e.innerText)).includes(
@@ -490,7 +543,7 @@ try {
   await nojs.close();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS real /login 320/390/768/1440, short/orientation/text200/touch/axe, activation/storage/autofill, single-flight, response errors, recovery close/reopen/rate/timeout/unmount, all contexts/password bytes and POST/no-JS (auth APIs simulated)",
+    "PASS real /login 320/390/768/1440, short/orientation/text200/touch/axe, activation/storage/autofill, single-flight, response errors, recovery close/reopen/rate/timeout/unmount, mobile student portrait/landscape gate, staff/supervisor unaffected, all contexts/password bytes and POST/no-JS (auth APIs simulated)",
   );
 } catch (error) {
   console.error(error);

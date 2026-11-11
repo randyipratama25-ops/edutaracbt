@@ -469,6 +469,27 @@ try {
       .querySelector(".exam-status")
       .innerText.includes("Semua perubahan tersimpan"),
   );
+  // Rotation blocks interaction without replacing the player or saved answer.
+  const desktopAgent = await browser.userAgent();
+  await page.setUserAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Mobile Safari/537.36");
+  const rotationDeadline = attempt.deadline_at;
+  await page.setViewport({ width: 390, height: 844, isLandscape: false });
+  await page.waitForSelector(".landscape-required-dialog");
+  await fits();
+  const rotationClock = await page.$eval("[role=timer]", e => e.textContent);
+  await page.waitForFunction(previous => document.querySelector("[role=timer]")?.textContent !== previous, {}, rotationClock);
+  await page.screenshot({ path: "/tmp/student-landscape-required.png", fullPage: false });
+  assert.equal(await page.$(".landscape-required-dialog .dialog-close"), null);
+  await page.keyboard.press("Escape");
+  assert(await page.$(".landscape-required-dialog"));
+  await page.keyboard.press("Tab");
+  assert(await page.$eval(".landscape-required-dialog", e => e.contains(document.activeElement)));
+  await page.setViewport({ width: 844, height: 390, isLandscape: true });
+  await page.waitForFunction(() => !document.querySelector(".landscape-required-dialog"));
+  assert(await page.$eval(".question-reading input[type=radio]", e => e.checked));
+  assert.equal(attempt.deadline_at, rotationDeadline);
+  await page.setUserAgent(desktopAgent);
+  await page.setViewport({ width: 390, height: 844, isLandscape: false });
   // Reload failures remain visible without replacing the working player or its answer.
   await page.$eval(".exam-tools", (e) => (e.open = true));
   resumeMode = "error";
@@ -683,7 +704,7 @@ try {
   await overflow();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS Student: list empty/error/malformed/43 exams,70 questions,preflight/PIN, synchronous opening lock, visible reload/conflict/takeover, all five answer types, help retry/receipt/draft, map focus,320–1440/orientation/text200/axe/no overflow, submit uncertain identity and receipt/back, canvas fault recovery; all API writes simulated",
+    "PASS Student: list empty/error/malformed/43 exams,70 questions,preflight/PIN, synchronous opening lock, visible reload/conflict/takeover, all five answer types, help retry/receipt/draft, map focus, mobile portrait fullscreen gate/Escape/focus/timer/answer retention,320–1440/orientation/text200/axe/no overflow, submit uncertain identity and receipt/back, canvas fault recovery; all API writes simulated",
   );
 } catch (e) {
   console.error(e);
