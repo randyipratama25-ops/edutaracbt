@@ -1178,7 +1178,10 @@ export function ExamPlayer({
       }
     >
       {active && currentWarning && (
-        <section className="notice" aria-label="Peringatan pengawas">
+        <section
+          className="notice fixed bottom-4 right-4 z-30 w-[min(24rem,calc(100vw-2rem))] max-h-[45dvh] overflow-y-auto shadow-lg"
+          aria-label="Peringatan pengawas"
+        >
           <div role="alert">
             <strong>Peringatan pengawas</strong>
             <p className="answer-text">{currentWarning.message}</p>
