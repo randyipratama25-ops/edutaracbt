@@ -13,6 +13,11 @@ describe("authentication boundaries", () => {
     expect(canUseContext("teacher", "supervisor", false)).toBe(false);
     expect(canUseContext("teacher", "supervisor", true)).toBe(true);
     expect(canUseContext("supervisor", "supervisor", false)).toBe(false);
+    expect(canUseContext("committee", "committee", false)).toBe(true);
+    expect(canUseContext("teacher", "committee", false)).toBe(true);
+    expect(canUseContext("teacher", "staff", false)).toBe(true);
+    expect(canUseContext("committee", "staff", false)).toBe(false);
+    expect(canUseContext("student", "committee", false)).toBe(false);
   });
   it("normalizes username without accepting injected filters", () => {
     expect(

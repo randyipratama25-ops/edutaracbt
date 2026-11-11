@@ -648,7 +648,7 @@ export function UsersPanel() {
               </option>
               {(canManage === false
                 ? ["student"]
-                : ["admin", "teacher", "supervisor", "student"]
+                : ["admin", "teacher", "supervisor", "committee", "student"]
               ).map((r) => (
                 <option key={r} value={r}>
                   {roleLabels[r]}
@@ -832,7 +832,7 @@ export function UsersPanel() {
         <HelpDisclosure>
           <p>
             Kolom: username, full_name, email, role, class_id. Role memakai kode
-            student, teacher, supervisor, atau admin. Guru hanya dapat mengimpor
+            student, teacher, supervisor, committee, atau admin. Guru hanya dapat mengimpor
             siswa pada kelas penugasannya. Username dan email duplikat ditandai.
           </p>
         </HelpDisclosure>
@@ -1041,7 +1041,7 @@ export function UsersPanel() {
                     onChange={(e) => setChosenRole(e.target.value)}
                   >
                     {(canManage
-                      ? ["student", "teacher", "supervisor", "admin"]
+                      ? ["student", "teacher", "supervisor", "committee", "admin"]
                       : ["student"]
                     ).map((r) => (
                       <option key={r} value={r}>

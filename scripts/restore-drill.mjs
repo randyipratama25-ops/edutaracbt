@@ -22,7 +22,7 @@ export async function restoreRows(db, rows) {
       );
     const fks = (
       await db.query(
-        "select n1.nspname||'.'||c1.relname child,n2.nspname||'.'||c2.relname parent from pg_constraint co join pg_class c1 on c1.oid=co.conrelid join pg_namespace n1 on n1.oid=c1.relnamespace join pg_class c2 on c2.oid=co.confrelid join pg_namespace n2 on n2.oid=c2.relnamespace where co.contype='f'",
+        "select n1.nspname||'.'||c1.relname child,n2.nspname||'.'||c2.relname parent, co.condeferrable deferrable, n1.nspname constraint_schema, co.conname constraint_name from pg_constraint co join pg_class c1 on c1.oid=co.conrelid join pg_namespace n1 on n1.oid=c1.relnamespace join pg_class c2 on c2.oid=co.confrelid join pg_namespace n2 on n2.oid=c2.relnamespace where co.contype='f'",
       )
     ).rows;
     const pending = new Set(byTable.keys()),
@@ -47,6 +47,10 @@ export async function restoreRows(db, rows) {
             `insert into ${sqlName} overriding system value select (jsonb_populate_record(null::${sqlName},${payload})).*`,
             [typeof record === "string" ? record : JSON.stringify(record)],
           );
+        // Self-references can point to a row inserted later in the same table.
+        // Check them before ALTER TABLE, which rejects pending trigger events.
+        for (const fk of fks.filter((f) => f.child === table && f.parent === table && f.deferrable))
+          await db.exec(`set constraints ${ident(fk.constraint_schema)}.${ident(fk.constraint_name)} immediate`);
         await db.exec(`alter table ${sqlName} enable trigger user`);
         pending.delete(table);
         done.add(table);

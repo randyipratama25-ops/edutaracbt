@@ -4,6 +4,7 @@ export const recoveryAcceptedMessage =
 export const activationErrorMessage =
   "Tautan aktivasi atau pemulihan tidak valid atau sudah kedaluwarsa. Gunakan tautan terbaru, minta Admin mengirim ulang undangan, atau pilih Lupa password.";
 export function loginDestination(context: string) {
+  if (context === "committee") return "/committee";
   return context === "supervisor"
     ? "/supervisor"
     : context === "student"

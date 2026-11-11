@@ -1,6 +1,6 @@
 import { z } from "zod";
-export const roles = ["admin", "teacher", "supervisor", "student"] as const;
-export const contexts = ["staff", "supervisor", "student"] as const;
+export const roles = ["admin", "teacher", "supervisor", "committee", "student"] as const;
+export const contexts = ["staff", "supervisor", "committee", "student"] as const;
 export const username = z
   .string()
   .trim()
@@ -86,7 +86,9 @@ export function canUseContext(
     ? role === "admin" || role === "teacher"
     : context === "supervisor"
       ? (role === "supervisor" || role === "teacher") && assigned
-      : context === "student" && role === "student";
+      : context === "committee"
+        ? role === "committee" || role === "teacher"
+        : context === "student" && role === "student";
 }
 export function safeNext(value: string | null) {
   return value?.startsWith("/") &&

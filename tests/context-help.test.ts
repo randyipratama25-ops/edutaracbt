@@ -17,9 +17,9 @@ describe('contextual help coverage and isolation',()=>{
   }
  });
  it('filters role-specific articles even when searching all pages',()=>{
-  for(const role of ['teacher','supervisor','student','public'] as HelpAudience[]){
+  for(const role of ['teacher','supervisor','student','committee','public'] as HelpAudience[]){
    const topics=helpFor(role,'/', '',true);
-   for(const id of ['advanced','acceptance','settings','audit','jobs','rooms'])expect(topics.some(t=>t.id===id)).toBe(false);
+   for(const id of ['advanced','acceptance','settings','audit','jobs','rooms','committee-admin'])expect(topics.some(t=>t.id===id)).toBe(false);
   }
   expect(helpFor('admin','/dashboard/advanced').map(t=>t.id)).toContain('advanced');
   expect(helpFor('student','student-exam').map(t=>t.id)).toEqual(['exam','recovery','finish','support']);

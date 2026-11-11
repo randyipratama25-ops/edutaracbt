@@ -1,3 +1,4 @@
+import { roles } from "../../../../lib/domain/validation";
 import { userCommand } from "../../../../lib/users/schema";
 import { actor } from "../../../../lib/auth/actor";
 import { gateway } from "../../../../lib/auth/gateway";
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
         `username.ilike.%${literal}%,full_name.ilike.%${literal}%`,
       );
     const role = params.get("role");
-    if (role && ["admin", "teacher", "supervisor", "student"].includes(role))
+    if (role && roles.some((value) => value === role))
       query = query.eq("role", role);
     const active = params.get("active");
     if (active === "true" || active === "false")
