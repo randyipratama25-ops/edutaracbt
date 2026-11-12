@@ -182,6 +182,36 @@ try {
     ),
   );
 
+  const cardCommand = (action, fields = {}) =>
+    rpc({ action, job_id: cards.id, ...fields }, "card_command");
+  const cardState = async () =>
+    (await cardCommand("list")).find((item) => item.id === cards.id);
+  const pathFor = (lease) => `${uid(1)}/${cards.id}/${lease}/cards.pdf`;
+  const insertCardObject = (path) =>
+    db.query(`insert into storage.objects(bucket_id,name,metadata) values('exam-cards',$1,'{"size":128}')`, [path]);
+  const path = pathFor(job.lease);
+  await reject(() => insertCardObject(pathFor(randomUUID())));
+  await actor(5);
+  await reject(() => insertCardObject(path));
+  await actor(1);
+  await insertCardObject(path);
+  assert.deepEqual(await cardCommand("progress", { lease: job.lease, progress: 42 }), { saved: true });
+  assert.equal((await cardState()).progress, 42);
+  await cardCommand("fail", { lease: job.lease, message: "Simpan gagal" });
+  assert.equal((await cardState()).error, "Simpan gagal");
+
+  const retry = await cardCommand("claim");
+  assert.notEqual(retry.lease, job.lease);
+  await reject(() => cardCommand("finish", { lease: retry.lease, path }));
+  const retryPath = pathFor(retry.lease);
+  await insertCardObject(retryPath);
+  assert.deepEqual(await cardCommand("finish", { lease: retry.lease, path: retryPath }), { ready: true });
+  assert.deepEqual(await cardCommand("download"), { path: retryPath });
+  assert.equal((await cardState()).progress, 100);
+  await actor(5);
+  await reject(() => cardCommand("download"));
+  await actor(1);
+
   await owner();
   await db.exec(
     `insert into auth.users(id,email) select ('03000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'ops-fixture'||n||'@example.invalid' from generate_series(6,7)n;insert into public.profiles(id,organization_id,username,full_name,role) select ('03000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'6e143c55-7be5-4e6e-9f1a-8f8db429956a','ops_fixture_'||n,'Ops fixture '||n,'student' from generate_series(6,7)n;insert into public.student_enrollments(organization_id,student_id,class_id) select '6e143c55-7be5-4e6e-9f1a-8f8db429956a',('03000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'33000000-0000-4000-8000-000000000001' from generate_series(6,7)n;`,
