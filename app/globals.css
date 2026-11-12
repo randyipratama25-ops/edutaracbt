@@ -844,3 +844,19 @@ button[data-loading=true]::before{
 .committee-summary dt{font-size:.85rem;color:var(--muted)}
 .committee-summary dd{margin:.25rem 0 0;font-size:1.35rem;font-weight:700;font-variant-numeric:tabular-nums}
 @media(max-width:480px){.committee-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.committee-summary>div:first-child{grid-column:1/-1}}
+
+.supervision-page{display:grid;gap:1rem}
+.supervision-page #pelaksanaan,.supervision-page #bantuan-peserta,.supervision-page #kartu-peserta{scroll-margin-top:1rem}
+.supervision-page #pelaksanaan>h2{margin:0 0 .65rem}
+.supervision-page :is(.monitor-page,.monitor-controls,.list-filters,.table-wrap,.cards-page){min-width:0;max-width:100%}
+.supervision-page .monitor-page .table-wrap{max-height:min(65dvh,42rem);overflow:auto;overscroll-behavior-inline:contain}
+.supervision-page .monitor-page .table-wrap:focus-visible{outline-offset:2px}
+.supervision-table-hint{display:none}
+.supervision-dialog{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow:auto}
+.supervision-dialog :is(p,label,strong,.answer-text){overflow-wrap:anywhere}
+@media(max-width:640px){
+  .supervision-page .supervision-table-hint{display:block;margin:0}
+  .supervision-page .monitor-page .button,.supervision-dialog .button{min-height:44px;white-space:normal}
+  .supervision-page .monitor-page .agenda-list>li{flex-wrap:wrap}
+  .supervision-page .monitor-page .agenda-list>li>.actions{flex-basis:100%}
+}

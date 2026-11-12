@@ -57,8 +57,10 @@ const empty: Rooms = {
 };
 export function OperationsPanel({
   mode = "monitor",
+  supervisor = false,
 }: {
   mode?: "rooms" | "monitor";
+  supervisor?: boolean;
 }) {
   const [options, setOptions] = useState<Options | null>(null),
     [exam, setExam] = useState(""),
@@ -108,6 +110,8 @@ export function OperationsPanel({
     [lastUpdated, setLastUpdated] = useState(0),
     [refreshing, setRefreshing] = useState(false),
     [actionTargets, setActionTargets] = useState<Row[]>([]);
+  const examChoice = useRef<string | null>(null);
+  const optionFlight = useRef<AbortController | null>(null);
   const loadedExam = useRef(""),
     optionSeq = useRef(0);
   const historySeq = useRef(0),
@@ -214,33 +218,89 @@ export function OperationsPanel({
     flight.current = { seq: generation, promise };
     return promise;
   }, [exam, mode, request]);
-  const loadOptions = useCallback(async () => {
+  const selectExam = useCallback((value: string) => {
+    if (examChoice.current === value) return;
+    examChoice.current = value;
+    invalidateRequests();
+    historySeq.current++;
+    historyController.current?.abort();
+    dialogRef.current = "";
+    setDialog("");
+    setHistory(null);
+    setExam(value);
+    setRooms(empty);
+    setMonitorRoom("");
+    setMonitorSession("");
+    loadedExam.current = "";
+    setLastUpdated(0);
+    setRefreshing(false);
+    setListError("");
+    setMessage("");
+    setSearch("");
+    setFilter("");
+    setUncertain(false);
+    setListLoading(!!value);
+    setSelected([]);
+    setPage(1);
+    setRows([]);
+  }, [invalidateRequests]);
+  const loadOptions = useCallback(async (background = false) => {
+    if (optionFlight.current || (background && (lock.current || dialogRef.current || incidentOpen.current))) return;
     const generation = ++optionSeq.current;
-    setOptionError("");
+    const controller = new AbortController();
+    optionFlight.current = controller;
+    if (!background) setOptionError("");
     try {
-      const d = await request(
-        "/api/operations",
-        undefined,
-        operationOptionsSchema,
-      );
+      const d = await request("/api/operations", undefined, operationOptionsSchema, controller);
       if (generation !== optionSeq.current) return;
+      // The user may open a mutation while a background read is in flight.
+      if (background && (lock.current || dialogRef.current || incidentOpen.current)) return;
       setOptions(d);
-      setExam((prev) =>
-        d.exams.some((e) => e.id === prev) ? prev : d.exams[0]?.id || "",
-      );
+      setOptionError("");
+      const choice = examChoice.current;
+      if (choice === null || (choice && !d.exams.some((item) => item.id === choice))) {
+        selectExam(d.exams[0]?.id || "");
+        if (!d.exams.length) examChoice.current = null;
+      }
       if (!d.exams.length) setListLoading(false);
-    } catch (e) {
-      if (mounted.current && generation === optionSeq.current) {
-        setOptionError(
-          e instanceof Error ? e.message : "Akses belum dapat dimuat.",
-        );
+    } catch (error) {
+      if (!mounted.current || generation !== optionSeq.current) return;
+      const denied = error instanceof ClientRequestError && (error.status === 401 || error.status === 403);
+      if (supervisor && denied && !lock.current && !dialogRef.current && !incidentOpen.current) {
+        selectExam("");
+        examChoice.current = null;
+        setOptions(null);
+      }
+      if (!background || denied) {
+        setOptionError(error instanceof Error ? error.message : "Akses belum dapat dimuat.");
         setListLoading(false);
       }
+    } finally {
+      if (optionFlight.current === controller) optionFlight.current = null;
     }
-  }, [request]);
+  }, [request, selectExam, supervisor]);
   useEffect(() => {
     void loadOptions();
+    return () => {
+      const controller = optionFlight.current;
+      optionFlight.current = null;
+      controller?.abort();
+    };
   }, [loadOptions]);
+  useEffect(() => {
+    if (!supervisor) return;
+    const refreshAccess = () => {
+      if (!document.hidden) void loadOptions(true);
+    };
+    const timer = window.setInterval(refreshAccess, 20000);
+    document.addEventListener("visibilitychange", refreshAccess);
+    window.addEventListener("online", refreshAccess);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshAccess);
+      window.removeEventListener("online", refreshAccess);
+    };
+  }, [loadOptions, supervisor]);
   useEffect(() => {
     void load();
     return invalidateRequests;
@@ -528,27 +588,7 @@ export function OperationsPanel({
             Ujian
             <select
               value={exam}
-              onChange={(e) => {
-                invalidateRequests();
-                historySeq.current++;
-                historyController.current?.abort();
-                setExam(e.target.value);
-                setRooms(empty);
-                setMonitorRoom("");
-                setMonitorSession("");
-                loadedExam.current = "";
-                setLastUpdated(0);
-                setRefreshing(false);
-                setListError("");
-                setMessage("");
-                setSearch("");
-                setFilter("");
-                setUncertain(false);
-                setListLoading(!!e.target.value);
-                setSelected([]);
-                setPage(1);
-                setRows([]);
-              }}
+              onChange={(e) => selectExam(e.target.value)}
             >
               <option value="">Pilih ujian</option>
               {options?.exams.map((e) => (
@@ -560,8 +600,8 @@ export function OperationsPanel({
           </label>
           <Button
             variant="outline"
-            disabled={refreshing || !exam || !!dialog}
-            onClick={() => void load()}
+            disabled={refreshing || (!exam && !supervisor) || !!dialog}
+            onClick={() => { if (supervisor) void loadOptions(true); void load(); }}
           >
             Muat ulang
           </Button>
@@ -788,6 +828,7 @@ export function OperationsPanel({
                 </Button>
               </MoreActions>
             </div>
+            {supervisor && visible.length > 0 && <p className="muted supervision-table-hint">Geser tabel ke samping untuk melihat semua kolom.</p>}
             <div
               className="table-wrap"
               tabIndex={0}
@@ -909,7 +950,7 @@ export function OperationsPanel({
             </div>
             {!listLoading && !listError && !visible.length && (
               <p>
-                {search || filter
+                {search || filter || monitorRoom || monitorSession
                   ? "Tidak ada peserta yang cocok. Ubah pencarian atau reset filter."
                   : "Belum ada peserta dalam penugasan ujian ini. Hubungi Admin jika daftar belum sesuai."}
               </p>
@@ -958,7 +999,7 @@ export function OperationsPanel({
                       ? "Riwayat pengiriman"
                       : "Pengaturan operasional")
         }
-        className={mode === "rooms" ? "rooms-dialog" : "monitor-dialog"}
+        className={mode === "rooms" ? "rooms-dialog" : supervisor ? "monitor-dialog supervision-dialog" : "monitor-dialog"}
         description="Periksa sasaran dan rincian tindakan sebelum menyimpan."
       >
         {dialog === "sent" || dialog === "history" ? (
