@@ -35,7 +35,7 @@ function FeedbackText({ value }: { value: Feedback }) {
   ) : null;
 }
 type ImportRow = ReturnType<typeof parseUserImport>[number];
-type Report = { row: number; username: string; status: string };
+type Report = { row: number; username: string; status: string; password?: string };
 export function UsersPanel() {
   const [rows, setRows] = useState<UserRow[]>([]),
     [classes, setClasses] = useState<z.infer<typeof classesSchema>["classes"]>(
@@ -475,7 +475,7 @@ export function UsersPanel() {
         });
         return;
       }
-      const valid = parsed.filter((r) => r.valid && r.data);
+      const valid = parsed.filter((r) => r.valid && r.data && (canManage || r.data.role !== "student"));
       const checks = valid.length
         ? await read(
             "/api/workflow",
@@ -486,6 +486,8 @@ export function UsersPanel() {
       if (seq !== importSequence.current || lifetime !== life.current) return;
       const checked = parsed.map((r) => {
         if (!r.valid) return r;
+        if (!canManage && r.data?.role === "student")
+          return { ...r, valid: false, error: "Hanya Admin dapat membuat akun siswa." };
         const matches = checks.filter((c) => c.username === r.data?.username);
         const error =
           matches.length !== 1
@@ -532,9 +534,10 @@ export function UsersPanel() {
           text: `Mengimpor ${i + 1}/${valid.length}… Jangan tutup halaman.`,
         });
         try {
+          const password = row.data!.role === "student" ? generateStudentPassword() : undefined;
           await read(
             "/api/admin/users",
-            { operation: "create", ...row.data },
+            { operation: "create", ...row.data, ...(password ? { password } : {}) },
             createdSchema,
             true,
           );
@@ -543,6 +546,7 @@ export function UsersPanel() {
             row: row.row,
             username: row.data!.username,
             status: "Berhasil",
+            ...(password ? { password } : {}),
           });
         } catch (e) {
           if (lifetime !== life.current) break;
@@ -909,12 +913,13 @@ export function UsersPanel() {
         {!!report.length && (
           <div className="notice users-report">
             <p>Hasil impor terakhir</p>
+            <p className="muted">Laporan unduhan berisi password awal siswa yang baru dibuat. Simpan dan bagikan dengan aman; password tidak bisa ditampilkan kembali setelah halaman ditutup.</p>
             <a
               className="users-download"
               download="hasil-impor-pengguna.tsv"
               href={tsvLink([
-                ["baris", "username", "hasil"],
-                ...report.map((r) => [r.row, r.username, r.status]),
+                ["baris", "username", "hasil", "password_siswa"],
+                ...report.map((r) => [r.row, r.username, r.status, r.password || ""]),
               ])}
             >
               Unduh hasil impor
@@ -922,7 +927,7 @@ export function UsersPanel() {
             <ul>
               {report.map((r) => (
                 <li key={r.row}>
-                  Baris {r.row} ({r.username}): {r.status}
+                  Baris {r.row} ({r.username}): {r.status}{r.password ? " · Password tercantum dalam unduhan laporan." : ""}
                 </li>
               ))}
             </ul>
