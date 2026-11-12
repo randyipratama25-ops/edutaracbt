@@ -1,4 +1,7 @@
-import { isInternalStudentEmail } from "./student-email.ts";
+// This module is also used by the Node.js test runner; keep the guard local
+// rather than importing a Deno-only .ts module specifier.
+const isInternalStudentEmail = (email: string) =>
+  /^student-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@example\.com$/i.test(email);
 
 export class InvitationError extends Error {
   constructor(public status: number, message: string) { super(message); }
