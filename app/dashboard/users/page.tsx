@@ -6,7 +6,6 @@ export default function Users() {
     <>
       <PageHeading
         title="Pengguna"
-        description="Kelola identitas, status akun, dan impor peserta."
       />
       <UsersPanel />
     </>

@@ -321,11 +321,6 @@ export function IncidentPanel({
       </div>
       <details>
         <summary>Tentang indikator koneksi</summary>
-        <p className="muted">
-          Indikator koneksi memakai kontak server terakhir; lebih dari 45 detik
-          perlu diperiksa, bukan bukti pelanggaran. Sesi login tersedia belum
-          membuktikan siswa hadir di ruang.
-        </p>
       </details>
       <FeedbackMessage tone="info" role="status">
         {message}
@@ -344,17 +339,6 @@ export function IncidentPanel({
         </details>
       )}
       <div className="incident-actions">
-        <div>
-          <details>
-            <summary>Panduan penanganan peserta</summary>
-            <p>
-              Lanjut sesi: siswa masuk kembali. Buka kunci: batalkan penguncian
-              setelah peninjauan. Reset: mulai percobaan baru dengan riwayat dan
-              deadline lama tetap dipertahankan. Dispensasi: tambahan waktu
-              eksplisit oleh Admin.
-            </p>
-          </details>
-        </div>
         {admin && (
           <label>
             Dispensasi untuk peserta

@@ -10,7 +10,7 @@ export default async function Page() {
   if(a.role!=="admin"||a.context!=="staff")return <AccessDenied/>;
   return (
     <>
-      <PageHeading title="Pengaturan aplikasi" description="Atur identitas madrasah, kebijakan ujian, dan layanan email." />
+      <PageHeading title="Pengaturan aplikasi" />
       <SystemPanel mode="settings" />
     </>
   );

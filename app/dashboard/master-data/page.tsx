@@ -6,7 +6,6 @@ export default function Master() {
     <>
       <PageHeading
         title="Data master"
-        description="Kelola kelas, mata pelajaran, penugasan guru dan keanggotaan siswa."
       />
       <MasterPanel />
     </>

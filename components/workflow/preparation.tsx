@@ -2,7 +2,6 @@
 import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
-import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
   useCallback,
@@ -761,13 +760,6 @@ export function PreparationPanel() {
             )}
             {step === 3 && (
               <>
-                <HelpDisclosure>
-                  <p>
-                    Isi soal dari bank soal, lalu kembali ke wizard ini untuk
-                    memeriksa kesiapan. Tautan membuka tab baru agar langkah
-                    Anda tetap tersedia.
-                  </p>
-                </HelpDisclosure>
                 <Button asChild variant="outline">
                   <a
                     href={`/dashboard/exams?exam=${id}`}

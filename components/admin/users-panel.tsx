@@ -4,7 +4,6 @@ import {ValidatedForm} from "../feedback/validated-form";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { ListFilters, SearchField } from "../ui/list-filters";
-import { HelpDisclosure } from "../ui/help-disclosure";
 import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
@@ -825,17 +824,6 @@ export function UsersPanel() {
         aria-labelledby="users-import-title"
       >
         <h2 id="users-import-title">Impor pengguna</h2>
-        <p className="muted">
-          Tempel data TSV dari spreadsheet, maksimal 200 baris. Periksa
-          pratinjau sebelum mengirim undangan.
-        </p>
-        <HelpDisclosure>
-          <p>
-            Kolom: username, full_name, email, role, class_id. Role memakai kode
-            student, teacher, supervisor, committee, atau admin. Guru hanya dapat mengimpor
-            siswa pada kelas penugasannya. Username dan email duplikat ditandai.
-          </p>
-        </HelpDisclosure>
         <div className="actions">
           <a
             className="users-download"

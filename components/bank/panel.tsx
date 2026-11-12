@@ -6,7 +6,6 @@ import { uploadQuestionMedia } from "../../lib/authoring/upload";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
 import { ListFilters, SearchField } from "../ui/list-filters";
-import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
   useCallback,
@@ -1677,15 +1676,6 @@ export function BankPanel() {
                   </li>
                 ))}
               </ul>
-              <HelpDisclosure>
-                <p>
-                  Paket memiliki komposisi setara menurut kisi-kisi, bukan
-                  jaminan kesetaraan psikometrik. Kandidat antar kelompok dapat
-                  bertumpang tindih; server membatalkan seluruh paket jika
-                  komposisi tidak terpenuhi. Soal tidak berulang dalam satu
-                  paket.
-                </p>
-              </HelpDisclosure>
             </div>
           )}
         </fieldset>

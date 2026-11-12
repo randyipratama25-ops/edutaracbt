@@ -6,7 +6,6 @@ export default function BankPage() {
     <>
       <PageHeading
         title="Bank soal"
-        description="Kategori, versi dan review sebelum soal dipakai dalam paket ujian."
       />
       <BankPanel />
     </>

@@ -4,7 +4,6 @@ import { z } from "zod";
 import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
-import { HelpDisclosure } from "../ui/help-disclosure";
 import { ListFilters, SearchField } from "../ui/list-filters";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
@@ -311,18 +310,6 @@ export function JobsPanel() {
           yang sama akan memakai identitas sebelumnya.
         </FeedbackMessage>
       )}
-      <HelpDisclosure>
-        <p>
-          Backup berisi data aplikasi, pengaturan, dan media. Password akun,
-          sesi login, dan nilai kredensial rahasia tidak disertakan. Pemulihan
-          akun memerlukan aktivasi ulang; pemulihan cadangan dilakukan pada
-          lingkungan terpisah.
-        </p>
-        <p>
-          ZIP tersedia sampai 50 MiB. Untuk backup lebih besar, unduh manifest
-          dan setiap bagiannya.
-        </p>
-      </HelpDisclosure>
       <ListFilters
         label="pekerjaan"
         active={active}

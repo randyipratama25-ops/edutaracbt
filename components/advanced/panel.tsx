@@ -1,7 +1,6 @@
 "use client";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
-import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
   useCallback,
@@ -198,25 +197,11 @@ export function AdvancedPanel() {
             Periksa browser ini
           </Button>
         </div>
-        <HelpDisclosure>
-          <p>
-            Berkas uji tidak dienkripsi dan tidak memvalidasi Browser Exam
-            Key/Config Key. Petunjuk browser dapat dipalsukan; hasil deteksi
-            bukan bukti keamanan SEB.
-          </p>
-        </HelpDisclosure>
         {local && (
           <FeedbackMessage tone="info" role="status">
             {local}
           </FeedbackMessage>
         )}
-        <HelpDisclosure>
-          <p>
-            Uji login, soal/rumus, media, canvas, pemulihan koneksi dan submit
-            pada setiap kombinasi perangkat serta versi SEB. Catat hanya hasil
-            yang benar-benar diamati.
-          </p>
-        </HelpDisclosure>
       </section>
       <section className="panel stack">
         <h2>Pertukaran nilai XLSX dan PDF</h2>

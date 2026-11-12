@@ -687,3 +687,7 @@ Validasi lanjutan yang disarankan: uji URL langsung setiap role; coba API tanpa 
 ### Ruang Pengawasan — konfirmasi kehadiran dan status PIN
 
 Pengawas asli atau pengganti harus dikonfirmasi Admin atau panitia yang berwenang untuk penugasan efektifnya. Tindakan peserta, bantuan, tindak lanjut integritas, perpindahan perangkat, pengiriman pesan, serta pembuatan dan akses kartu pengawas mengikuti cakupan kehadiran. Pengganti memiliki konfirmasi tersendiri. RPC `supervisor_options` hanya mengembalikan ujian penugasan efektif pengguna, status kehadiran, dan status konfigurasi PIN. PIN disimpan sebagai hash dan badge menampilkan status konfigurasi.
+
+### Panduan terintegrasi di setiap halaman
+
+Satu tombol Bantuan membuka panduan halaman untuk publik, Admin, Guru, Panitia Ujian, Pengawas, dan Siswa. Modal memuat langkah awal, pencarian, cakupan sesuai peran, serta keterangan yang sebelumnya tersebar di panel. Validasi, status proses, dan batas isian yang diperlukan saat bekerja tetap tampil pada komponennya. Inventaris halaman dan hak CRUD tetap berlaku.

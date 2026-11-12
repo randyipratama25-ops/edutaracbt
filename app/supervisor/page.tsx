@@ -1,4 +1,3 @@
-import { StartHere } from "../../components/help/start-here";
 import { ContextHelp } from "../../components/help/context-help";
 import { RoleActions } from "../../components/dashboard/role-actions";
 import { SupervisorCards } from "../../components/operations/supervisor-cards";
@@ -33,7 +32,7 @@ export default async function Supervisor() {
           <MoreActions label="Akun"><LogoutButton dialogClassName="supervision-dialog" /></MoreActions>
         </div>
       </header>
-      <StartHere page="/supervisor" />
+
       <RoleActions role="supervisor" />
       <section id="pelaksanaan" aria-labelledby="supervision-heading">
         <h2 id="supervision-heading">Pelaksanaan ujian</h2>

@@ -4,7 +4,6 @@ import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
 import { ListFilters } from "../ui/list-filters";
-import { HelpDisclosure } from "../ui/help-disclosure";
 
 import {
   useCallback,
@@ -745,13 +744,6 @@ export function AssessmentPanel() {
           {admin && (
           <section className="panel stack">
           <h2>Publikasi nilai terjadwal</h2>
-          <HelpDisclosure>
-            <p>
-              Ujian harus selesai, seluruh koreksi final, dan moderasi
-              terselesaikan. Revisi nilai membatalkan kesiapan publikasi.
-              Otomasi memeriksa ulang setiap menit.
-            </p>
-          </HelpDisclosure>
           <ValidatedForm
             className="stack"
             onSubmit={(e) => {

@@ -191,9 +191,6 @@ export function OperationalHealth() {
       <div className="summary-heading">
         <div>
           <h2>Kondisi layanan</h2>
-          <p className="muted">
-            Periksa kesiapan otomasi, backup, dan latihan pemulihan.
-          </p>
         </div>
         <Button
           variant="outline"

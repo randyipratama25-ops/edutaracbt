@@ -10,7 +10,6 @@ import {FeedbackMessage} from "../feedback/state";
 import {ValidatedForm} from "../feedback/validated-form";
 import {ListFilters, SearchField} from "../ui/list-filters";
 import {matchesSearch} from "../../lib/lists/search";
-import { HelpDisclosure } from "../ui/help-disclosure";
 
 import { z } from "zod";
 import { clientRequest, ClientRequestError } from "../../lib/client/request";
@@ -741,11 +740,6 @@ export function AuthoringPanel() {
             <summary>Impor soal dan template</summary>
             <fieldset className="authoring-controls" disabled={!!locked}>
             <div className="stack">
-              <HelpDisclosure><p>
-                Maksimal 500 soal / 5 MB. Excel: kolom A berisi JSON soal, baris
-                pertama judul. Google Forms: unggah ekspor JSON Forms API atau
-                berkas Excel yang dinormalisasi.
-              </p></HelpDisclosure>
               <div className="actions">
                 {types.map((t) => (
                   <Button

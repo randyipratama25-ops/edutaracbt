@@ -10,7 +10,7 @@ export default async function Rooms() {
   if(a.role!=="admin"||a.context!=="staff")return <AccessDenied/>;
   return (
     <>
-      <PageHeading title="Ruang, sesi dan pengawas" description="Siapkan ruang dan sesi, tempatkan peserta, lalu tugaskan pengawas." />
+      <PageHeading title="Ruang, sesi dan pengawas" />
       <OperationsPanel mode="rooms" />
     </>
   );

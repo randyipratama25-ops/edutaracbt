@@ -13,7 +13,6 @@ export default async function Page() {
     <>
       <PageHeading
         title="Fitur lanjutan"
-        description="Kelola penyedia AI, pertukaran nilai, dan evaluasi perangkat."
       />
       <div className="advanced-workspace stack">
         <TaskTabs label="Fitur lanjutan" items={[

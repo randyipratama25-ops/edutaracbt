@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { StartHere } from "../../components/help/start-here";
 import { ContextHelp } from "../../components/help/context-help";
 import { LogoutButton } from "../../components/auth/logout-button";
 import { CommitteePanel } from "../../components/operations/committee-panel";
@@ -26,7 +25,7 @@ export default async function CommitteePortal() {
           <LogoutButton />
         </div>
       </header>
-      <StartHere page="/committee" />
+
       <CommitteePanel admin={false} />
     </main>
   );

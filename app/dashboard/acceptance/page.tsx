@@ -9,7 +9,7 @@ export default async function Page() {
   if(a.role!=="admin"||a.context!=="staff")return <AccessDenied/>;
   return (
     <>
-      <PageHeading title="Penerimaan operasional" description="Periksa kesiapan layanan dan lengkapi bukti pemeriksaan." />
+      <PageHeading title="Penerimaan operasional" />
       <AcceptancePanel />
     </>
   );

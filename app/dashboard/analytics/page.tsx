@@ -4,7 +4,7 @@ export const metadata={title:"Analitik dan laporan | EDUTARA CBT"};
 export default function Analytics() {
   return (
     <>
-      <PageHeading title="Analitik dan laporan" description="Pilih ujian dan peserta, tinjau analisis, lalu unduh laporan." />
+      <PageHeading title="Analitik dan laporan" />
       <ResultsPanel analyticsFirst />
     </>
   );
