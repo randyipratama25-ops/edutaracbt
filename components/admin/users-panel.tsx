@@ -305,7 +305,7 @@ export function UsersPanel() {
           (
             {
               full_name: "Nama lengkap wajib diisi, maksimal 150 karakter.",
-              email: "Masukkan alamat email yang valid.",
+              email: chosenRole === "student" ? "Alamat email tidak valid. Kosongkan jika siswa tidak memiliki email." : "Email wajib diisi dengan alamat yang valid.",
               class_id: "Pilih kelas aktif yang tersedia.",
               password: "Password siswa wajib sesuai ketentuan 12 karakter. Gunakan Generate password atau isi manual.",
             } as Record<string, string>
@@ -1022,17 +1022,22 @@ export function UsersPanel() {
                   hubung. Huruf disimpan sebagai huruf kecil.
                 </p>
                 <label>
-                  {chosenRole === "student" ? "Email akun siswa" : "Email aktivasi"}
+                  {chosenRole === "student" ? "Email siswa (opsional)" : "Email aktivasi"}
                   <input
                     name="email"
                     type="email"
-                    required
+                    required={chosenRole !== "student"}
                     maxLength={320}
                     aria-invalid={fieldError === "email" || undefined}
-                    aria-describedby="user-form-feedback"
+                    aria-describedby={chosenRole === "student" ? "user-form-feedback student-email-hint" : "user-form-feedback"}
                     onChange={() => setFieldError("")}
                   />
                 </label>
+                {chosenRole === "student" && (
+                  <p id="student-email-hint" className="muted">
+                    Boleh dikosongkan. Siswa tetap dapat login menggunakan username dan password dari Admin. Jika tanpa email, pemulihan melalui email tidak tersedia.
+                  </p>
+                )}
                 <label>
                   Peran
                   <select

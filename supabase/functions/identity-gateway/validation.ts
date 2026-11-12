@@ -23,12 +23,15 @@ export const loginSchema = z.object({
 export const userSchema = z.object({
   username,
   full_name: z.string().trim().min(1).max(150),
-  email: z.email(),
+  email: z.union([z.email(), z.literal("")]).default(""),
   role: z.enum(roles),
   class_id: z.uuid().optional(),
+}).superRefine((value, context) => {
+  if (value.role !== "student" && !value.email)
+    context.addIssue({ code: "custom", path: ["email"], message: "Email wajib diisi untuk akun selain siswa." });
 });
 export const studentPasswordSchema = z.string().refine(isStudentPassword, "Password harus 12 karakter: 11 huruf kapital/angka tanpa O,I,S,0,1,5 dan satu simbol !@#$*? di akhir.");
-export const userCreateSchema = userSchema.extend({ password: studentPasswordSchema.optional() }).superRefine((value, context) => {
+export const userCreateSchema = userSchema.safeExtend({ password: studentPasswordSchema.optional() }).superRefine((value, context) => {
   if (value.role === "student" && !value.password)
     context.addIssue({ code: "custom", path: ["password"], message: "Password siswa wajib diisi oleh Admin." });
   if (value.role !== "student" && value.password !== undefined)

@@ -1,3 +1,8 @@
+// This module is also used by the Node.js test runner; keep the guard local
+// rather than importing a Deno-only .ts module specifier.
+const isInternalStudentEmail = (email: string) =>
+  /^student-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@example\.com$/i.test(email);
+
 export class InvitationError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -10,6 +15,7 @@ export function assertInvitationAccess(actor: InvitationActor, target: Invitatio
 }
 export function invitationState(target: InvitationTarget, account: InvitationAccount) {
   if (!target.active || target.archived_at) return { eligible: false, reason: 'Akun nonaktif atau diarsipkan. Aktifkan akun terlebih dahulu.' };
+  if (isInternalStudentEmail(account.email || '')) return { eligible: false, reason: 'Akun siswa tanpa email. Undangan email tidak tersedia; hubungi Admin untuk bantuan akun.' };
   if (account.id !== target.id || !account.email) return { eligible: false, reason: 'Email akun tidak tersedia.' };
   if (account.email_confirmed_at) return { eligible: false, reason: 'Email sudah dikonfirmasi. Jika pengguna belum dapat masuk, gunakan Lupa password pada halaman login.' };
   if (!account.invited_at) return { eligible: false, reason: 'Akun ini tidak memiliki undangan. Gunakan alur pemulihan akun yang sesuai.' };

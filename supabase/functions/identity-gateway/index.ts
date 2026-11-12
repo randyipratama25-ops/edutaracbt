@@ -1,4 +1,5 @@
 import { InvitationError, assertInvitationAccess, invitationState, resendInvitation } from "./invitations.ts";
+import { createInternalStudentEmail, isInternalStudentEmail } from "./student-email.ts";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
@@ -56,7 +57,8 @@ Deno.serve(async (request) => {
         email = data.user?.email || "";
       }
       if (raw.action === "recover") {
-        if (email) {
+        // Internal Auth emails are not real mailboxes; never attempt delivery.
+        if (email && !isInternalStudentEmail(email)) {
           const auth = createClient(url, anon, {
             auth: { persistSession: false },
           });
@@ -180,7 +182,7 @@ Deno.serve(async (request) => {
       const { data: account, error: accountError } = await admin.auth.admin.getUserById(input.id);
       if (accountError || !account.user) return fail("Akun autentikasi pengguna tidak tersedia.", 404);
       if (input.operation === "invitation_info") {
-        return Response.json({ email: account.user.email || "", ...invitationState(target!, account.user) }, { headers: { "Cache-Control": "no-store" } });
+        return Response.json({ email: isInternalStudentEmail(account.user.email || "") ? "" : account.user.email || "", ...invitationState(target!, account.user) }, { headers: { "Cache-Control": "no-store" } });
       }
       const result = await resendInvitation({ actor, target, account: account.user, site,
         budget: () => budget(`resend-invite:${actor.organization_id}:${input.id}`),
@@ -198,6 +200,8 @@ Deno.serve(async (request) => {
     }
     const createOne = async (value: unknown) => {
       const input = userCreateSchema.parse(value);
+      if (input.email && isInternalStudentEmail(input.email)) throw new Error("RESERVED_EMAIL");
+      const authEmail = input.email || createInternalStudentEmail();
       if (actor.role !== "admin") throw new Error("FORBIDDEN");
       if (
         actor.role !== "admin" &&
@@ -230,7 +234,7 @@ Deno.serve(async (request) => {
         if (listError) throw new Error("PROFILE_FAILED");
         if (
           existingAuth.users.some(
-            (u) => u.email?.toLowerCase() === input.email.toLowerCase(),
+            (u) => u.email?.toLowerCase() === authEmail.toLowerCase(),
           )
         )
           throw new Error("USER_ALREADY_EXISTS");
@@ -247,12 +251,12 @@ Deno.serve(async (request) => {
       }
       const { data, error } = input.role === "student"
         ? await admin.auth.admin.createUser({
-            email: input.email,
+            email: authEmail,
             password: input.password!,
             email_confirm: true,
           })
         : await admin.auth.admin.inviteUserByEmail(
-            input.email,
+            authEmail,
             { redirectTo: `${site}/auth/reset` },
           );
       if (error || !data.user) throw new Error(input.role === "student" ? "STUDENT_CREATE_FAILED" : "INVITATION_FAILED");
@@ -378,6 +382,7 @@ Deno.serve(async (request) => {
         "PASSWORD_EXISTS",
         "PASSWORD_CHECK_FAILED",
         "STUDENT_CREATE_FAILED",
+        "RESERVED_EMAIL",
         "USER_ALREADY_EXISTS",
         "PROFILE_FAILED",
         "ENROLLMENT_FAILED",
@@ -392,6 +397,7 @@ Deno.serve(async (request) => {
             PASSWORD_EXISTS: "Password telah digunakan oleh akun lain. Generate password baru.",
             PASSWORD_CHECK_FAILED: "Keunikan password belum dapat diverifikasi. Coba lagi nanti.",
             STUDENT_CREATE_FAILED: "Akun autentikasi siswa gagal dibuat. Periksa status akun sebelum mencoba lagi.",
+            RESERVED_EMAIL: "Alamat email tersebut dicadangkan untuk sistem. Gunakan email lain.",
             INVITATION_FAILED:
               "Undangan akun gagal dikirim. Periksa email atau hubungi Admin.",
             USER_ALREADY_EXISTS: "Akun email sudah terdaftar.",
