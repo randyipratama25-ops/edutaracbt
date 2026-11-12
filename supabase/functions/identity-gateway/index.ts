@@ -206,6 +206,8 @@ Deno.serve(async (request) => {
           !(await sameClass(input.class_id)))
       )
         throw new Error("FORBIDDEN");
+      if (input.role === "student" && !input.class_id)
+        throw new Error("INVALID_CLASS");
       if (input.class_id) {
         const { data } = await admin
           .from("classes")
@@ -271,6 +273,10 @@ Deno.serve(async (request) => {
         active: true,
       });
       if (profileError) {
+        if (input.role === "student") {
+          const cleanup = await admin.auth.admin.deleteUser(id);
+          if (cleanup.error) console.error(JSON.stringify({ requestId, event: "student_auth_rollback_failed" }));
+        }
         throw new Error("PROFILE_FAILED");
       }
       if (input.role === "student" && input.class_id) {
@@ -280,14 +286,20 @@ Deno.serve(async (request) => {
           class_id: input.class_id,
         });
         if (e) {
-          await admin.from("profiles").delete().eq("id", id);
+          const profileRollback = await admin.from("profiles").delete().eq("id", id);
+          if (profileRollback.error) {
+            console.error(JSON.stringify({ requestId, event: "student_profile_rollback_failed" }));
+          } else {
+            const authRollback = await admin.auth.admin.deleteUser(id);
+            if (authRollback.error) console.error(JSON.stringify({ requestId, event: "student_auth_rollback_failed" }));
+          }
           throw new Error("ENROLLMENT_FAILED");
         }
       }
       await admin.from("audit_logs").insert({
         organization_id: actor.organization_id,
         actor_id: actor.id,
-        action: "INVITE_USER",
+        action: input.role === "student" ? "CREATE_STUDENT" : "INVITE_USER",
         target_type: "profiles",
         target_id: id,
         request_id: requestId,
