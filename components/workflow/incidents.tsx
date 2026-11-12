@@ -27,12 +27,16 @@ export function IncidentPanel({
   onChanged,
   paused = false,
   onDialogChange,
+  canOperate = true,
+  supervisor = false,
 }: {
   exam: string;
   rows: Participant[];
   admin: boolean;
   onChanged: () => Promise<void>;
   paused?: boolean;
+  canOperate?: boolean;
+  supervisor?: boolean;
   onDialogChange?: (open: boolean) => void;
 }) {
   const [signals, setSignals] = useState<Signal[]>([]),
@@ -178,7 +182,7 @@ export function IncidentPanel({
     ),
     pending = help.filter((h) => !h.resolved_at);
   async function save() {
-    if (lock.current || uncertain) return;
+    if (lock.current || uncertain || !canOperate) return;
     lock.current = true;
     setBusy(true);
     setMessage("");
@@ -433,7 +437,7 @@ export function IncidentPanel({
               {!h.resolved_at && h.can_resolve && (
                 <Button
                   variant="outline"
-                  disabled={busy || paused || !!readError}
+                  disabled={!canOperate || busy || paused || !!readError}
                   onClick={() => {
                     if (lock.current) return;
                     openDialog();
@@ -487,7 +491,7 @@ export function IncidentPanel({
         title={
           ticket ? "Tanggapi permintaan bantuan" : "Dispensasi waktu ujian"
         }
-        className="incident-dialog"
+        className={supervisor ? "incident-dialog supervision-dialog" : "incident-dialog"}
         description={
           ticket
             ? "Tanggapan tersimpan dalam riwayat dan ditampilkan kepada siswa."
@@ -504,7 +508,7 @@ export function IncidentPanel({
         >
           <fieldset
             className="monitor-controls stack"
-            disabled={busy || uncertain}
+            disabled={!canOperate || busy || uncertain}
           >
             <p>
               Peserta: <strong>{ticket?.student || target?.student}</strong>
@@ -545,7 +549,7 @@ export function IncidentPanel({
                 />
               </label>
             )}
-            <Button loading={busy} disabled={busy || uncertain}>
+            <Button loading={busy} disabled={!canOperate || busy || uncertain}>
               {busy
                 ? "Menyimpan…"
                 : ticket

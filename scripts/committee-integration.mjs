@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { restoreRows } from "./restore-drill.mjs";
 import { stagingDatabase } from "./stage4-local-db.mjs";
 
@@ -19,14 +20,20 @@ async function command(action, fields = {}) {
     ])
   ).rows[0].result;
 }
-async function reject(action, fields, reason) {
+async function rejectCall(run, reason) {
   await db.exec("savepoint denied");
   try {
-    await assert.rejects(command(action, fields), reason);
+    await assert.rejects(run, reason);
   } finally {
     await db.exec("rollback to denied; release denied");
   }
 }
+
+const reject = (action, fields, reason) => rejectCall(() => command(action, fields), reason);
+const options = async () => (await db.query("select public.supervisor_options() as result")).rows[0].result.exams;
+const operate = async (rpc, input) => (
+  await db.query(`select public.${rpc}($1::jsonb) as result`, [JSON.stringify(input)])
+).rows[0].result;
 
 try {
   await db.exec("begin");
@@ -73,6 +80,20 @@ try {
       [org, exam],
     )
   ).rows[0].id;
+  const classroom = (await db.query(
+    "insert into public.classes(organization_id,name) values($1,'Attendance fixture') returning id", [org],
+  )).rows[0].id;
+  await db.query("insert into public.exam_classes values($1,$2,$3)", [org, exam, classroom]);
+  await db.query("insert into public.student_enrollments(organization_id,student_id,class_id) values($1,$2,$3)", [org, uid(6), classroom]);
+  await db.query("insert into public.exam_room_students values($1,$2,$3,$4)", [org, exam, room, uid(6)]);
+  const broadcast = {
+    action: "broadcast", scope: "selected", exam_id: exam, student_ids: [uid(6)],
+    message: "Pemberitahuan penugasan", request_id: randomUUID(),
+  };
+  const cards = {
+    action: "create", exam_id: exam, student_ids: [uid(6)],
+    format: "pdf", template: "compact", request_id: randomUUID(),
+  };
   const schedule = [];
   for (const date of [today, tomorrow]) {
     const session = (
@@ -98,6 +119,15 @@ try {
   }
 
   const target = { id: schedule[0], substitution_id: null };
+  await actor(6);
+  assert.deepEqual(await options(), []);
+  await actor(4);
+  assert.deepEqual(await options(), [{
+    id: exam, title: "Committee fixture", pin_configured: true, attendance_confirmed: false,
+  }]);
+  assert.equal((await operate("ops_command", { action: "monitor", exam_id: exam }))[0].can_act, false);
+  await rejectCall(() => operate("ops_command", broadcast), /AUTH/);
+  await rejectCall(() => operate("card_command", cards), /AUTH/);
   await actor(6);
   await reject("list", {}, /AUTH/);
   await actor(2);
@@ -144,17 +174,38 @@ try {
   await command("confirm_supervisor", target);
   await command("confirm_supervisor", target);
   assert.ok((await command("list")).schedule[0].confirmed_at);
+  await actor(4);
+  assert.equal((await options())[0].attendance_confirmed, true);
+  assert.equal((await operate("ops_command", broadcast)).recipients, 1);
+  const originalCard = await operate("card_command", cards);
+  assert.ok(originalCard.id);
+  await actor(2);
   await command("replace_supervisor", { ...target, profile_id: uid(5) });
   const substitute = (await command("list")).schedule[0];
   assert.equal(substitute.supervisor_id, uid(5));
   assert.equal(substitute.confirmed_at, null);
   assert.ok(substitute.original_confirmed_at);
   await reject("confirm_supervisor", target, /Pengawas sudah berubah/);
+  await db.exec("reset role; commit; begin");
+  await actor(4);
+  assert.deepEqual(await options(), []);
+  await rejectCall(() => operate("ops_command", broadcast), /AUTH/);
+  assert.deepEqual(await operate("card_command", { action: "list" }), []);
+  await actor(5);
+  assert.equal((await options())[0].attendance_confirmed, false);
+  await rejectCall(() => operate("ops_command", broadcast), /AUTH/);
+  await rejectCall(() => operate("card_command", cards), /AUTH/);
+  await actor(2);
   await command("confirm_supervisor", {
     ...target,
     substitution_id: substitute.substitution_id,
   });
   assert.ok((await command("list")).schedule[0].confirmed_at);
+
+  await actor(5);
+  assert.equal((await options())[0].attendance_confirmed, true);
+  assert.equal((await operate("ops_command", broadcast)).recipients, 1);
+  assert.ok((await operate("card_command", cards)).id);
 
   await actor(1);
   await command("replace_committee", { id: duty.id, profile_id: uid(3) });
@@ -218,7 +269,7 @@ try {
     await restored.close();
   }
   console.log(
-    "PASS committee duties, attendance, replacement, date/role restrictions, and isolated restore",
+    "PASS committee duties, attendance, replacement, date/role restrictions, scoped PIN status, guarded broadcasts/cards, and isolated restore",
   );
 } finally {
   await db.close();

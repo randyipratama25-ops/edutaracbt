@@ -52,7 +52,7 @@ export function SupervisorCards() {
       }}
     >
       <summary>Kartu peserta</summary>
-      {loaded && <CardsPanel enabled={expanded} subscribe={false} />}
+      {loaded && <CardsPanel enabled={expanded} subscribe={false} supervisor />}
     </details>
   );
 }

@@ -84,7 +84,12 @@ export function useLive(
     };
   }, [inbox, enabled, subscribe]);
 }
-export type Option = { id: string; title: string };
+export type Option = {
+  id: string;
+  title: string;
+  pin_configured?: boolean;
+  attendance_confirmed?: boolean;
+};
 export type Options = {
   admin: boolean;
   organization_id: string;

@@ -83,7 +83,7 @@ try {
   const id=n=>`07000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
   let audience='admin',mode='ok',optionMode='ok',historyMode='ok',postMode='ok',held=null,heldPost=null,heldHistory=null,calls=[],listSize=51,examNow=id(80),activeReads=0,maxReads=0,reads=0;
   const revisions=new Map(),states=new Map(),followups=[];
-  let assignedOnly=false;
+  let assignedOnly=false, attendanceConfirmed=false;
   let transfers=[{id:id(910),student:'Peserta 1',room:'Ruang A',code:'C0DE1234',created_at:'2026-11-02T01:00:00Z'}];
   const row=n=>({student_id:id(n),student:'Peserta '+n+' '+(n===1?'Nama'.repeat(30):''),username:'siswa-'+n,attempt_id:n%3===0?null:id(100+n),version:n%3===0?null:revisions.get(n)||1,status:states.get(n)||(n%3===0?'not_started':n%3===1?'in_progress':'disqualified'),logged_in:n%3!==0,answers:n%3===0?0:2,events:3,countable_events:0,open_integrity:n===1&&!followups.some(f=>f.action==='resolve')?1:0,session:n===1?'Sesi 1':null,last_seen_at:'2026-11-02T01:00:00Z',last_saved_at:'2026-11-02T00:59:00Z',deadline_at:n%3===0?null:'2026-11-02T23:00:00Z',room:n===1?'Ruang '+ 'panjang'.repeat(30):'Ruang A',room_id:id(40),can_act:audience==='admin'||n%2===1,score:null,pending:n%3===0?null:0});
   const monitor=()=>Array.from({length:listSize},(_,i)=>row(i+1));
@@ -106,7 +106,7 @@ try {
     if(u.pathname==='/api/operations/live')return r.respond({status:204});
     if(u.pathname==='/api/operations'&&r.method()==='GET'){
       const action=u.searchParams.get('action');
-      if(!action)return respond(r,optionMode==='fail'?503:200,optionMode==='malformed'?null:{admin:audience==='admin',organization_id:id(90),exams:[{id:id(80),title:'Ujian IPS'},{id:id(81),title:'Ujian Informatika '+ 'Nama'.repeat(25)}].slice(assignedOnly?1:0),staff:[{id:id(91),name:'Guru',role:'teacher'}]});
+      if(!action)return respond(r,optionMode==='fail'?503:200,optionMode==='malformed'?null:{admin:audience==='admin',organization_id:id(90),exams:[{id:id(80),title:'Ujian IPS',pin_configured:true,attendance_confirmed:attendanceConfirmed},{id:id(81),title:'Ujian Informatika '+ 'Nama'.repeat(25),pin_configured:true,attendance_confirmed:attendanceConfirmed}].slice(assignedOnly?1:0),staff:[{id:id(91),name:'Guru',role:'teacher'}]});
       if(action==='monitor'){reads++;activeReads++;maxReads=Math.max(maxReads,activeReads);if(mode==='hold'){held=r;return;}await sleep(15);activeReads--;if(mode==='error')return respond(r,503,null);if(mode==='malformed')return respond(r,200,{rows:null});examNow=u.searchParams.get('exam');return respond(r,200,monitor());}
       if(action==='history'||action==='sent'){if(historyMode==='hold'){heldHistory=r;return;}return respond(r,historyMode==='fail'?503:200,action==='sent'?sent():history());}
       if(action==='rooms')return respond(r,200,rooms);
@@ -139,12 +139,19 @@ try {
   // The supervisor portal reconciles assignment changes without a page reload.
   transfers=[{id:id(911),student:'Peserta 2',room:'Ruang A',code:'C0DE1235',created_at:'2026-11-02T01:00:00Z'}];
   await go('teacher',false,true);
+  assert(await page.$eval('.supervision-exam-status',e=>e.textContent.includes('Menunggu konfirmasi')&&e.textContent.includes('PIN aktif')));
+  assert(await page.evaluate(()=>[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Kirim notifikasi').disabled));
+  attendanceConfirmed=true;
+  await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.waitForFunction(()=>document.querySelector('.supervision-exam-status')?.textContent.includes('Kehadiran dikonfirmasi'));
   const transferPanel='details[aria-label="Permintaan pindah perangkat"]';
   await click('Tolak',transferPanel);
+  await page.waitForSelector('[role=dialog] .supervision-dialog-summary');
+  await fits();
   const beforeExpiry=calls.length;
   transfers=[];
   await page.waitForFunction(scope=>document.querySelector(scope)?.textContent.includes('Belum ada permintaan menunggu.'),{},transferPanel);
-  assert.equal(await page.$(transferPanel+' .notice'),null);
+  await page.waitForSelector('[role=dialog]',{hidden:true});
   assert.equal(calls.length,beforeExpiry);
   assignedOnly=true;
   await page.evaluate(()=>window.dispatchEvent(new Event('online')));

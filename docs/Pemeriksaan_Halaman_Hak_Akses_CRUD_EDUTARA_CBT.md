@@ -683,3 +683,7 @@ Semua path relatif terhadap repositori pada commit di awal dokumen.
 Saat menambah atau mengubah halaman, perbarui baris URL, fungsi, role/konteks, C/R/U/D, cakupan baris data, dan bukti implementasi. Jika kebijakan baru berbeda dari kode sekarang, catat sebagai perubahan yang direncanakan sampai implementasi dan verifikasinya selesai.
 
 Validasi lanjutan yang disarankan: uji URL langsung setiap role; coba API tanpa tombol UI; coba ID milik organisasi/pengguna lain; uji Guru dengan sebagian kelas ujian; uji pengawas asli/pengganti di luar sesi; uji akun nonaktif; serta uji perubahan setelah ujian dimulai, setelah hasil final, dan setelah izin dicabut.
+
+### Ruang Pengawasan — konfirmasi kehadiran dan status PIN
+
+Pengawas asli atau pengganti harus dikonfirmasi Admin atau panitia yang berwenang untuk penugasan efektifnya. Tindakan peserta, bantuan, tindak lanjut integritas, perpindahan perangkat, pengiriman pesan, serta pembuatan dan akses kartu pengawas mengikuti cakupan kehadiran. Pengganti memiliki konfirmasi tersendiri. RPC `supervisor_options` hanya mengembalikan ujian penugasan efektif pengguna, status kehadiran, dan status konfigurasi PIN. PIN disimpan sebagai hash dan badge menampilkan status konfigurasi.

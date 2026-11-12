@@ -17,7 +17,7 @@ function HelpPanel({audience,page,duringExam=false}:{audience:HelpAudience;page:
   const title=helpPageTitle(audience,page);
   return <>
     <Button ref={trigger} type="button" variant="outline" aria-haspopup="dialog" onClick={()=>{setQuery('');setAllPages(false);setOpen(true);}}><CircleHelp size={17} aria-hidden="true" />Bantuan</Button>
-    <Dialog open={open} onOpenChange={setOpen} title="Pusat bantuan" description={`Panduan: ${title}.`} className="context-help-dialog" onCloseAutoFocus={e=>{if(trigger.current?.isConnected){e.preventDefault();trigger.current.focus();}}}>
+    <Dialog open={open} onOpenChange={setOpen} title="Pusat bantuan" description={`Panduan: ${title}.`} className={page==="/supervisor" ? "context-help-dialog supervision-dialog" : "context-help-dialog"} onCloseAutoFocus={e=>{if(trigger.current?.isConnected){e.preventDefault();trigger.current.focus();}}}>
       <div className="stack">
         {duringExam && <p className="notice">Waktu ujian tetap berjalan. Untuk menghubungi pengawas, tutup panduan lalu pilih Minta bantuan pada menu Alat atau layar kendala. Jika offline, hubungi pengawas langsung.</p>}
         <div className="form-grid"><label htmlFor={`${id}-query`}>Cari panduan<input id={`${id}-query`} type="search" maxLength={120} value={query} placeholder="Contoh: simpan, PIN, undangan" onChange={e=>setQuery(e.target.value)} /></label><label htmlFor={`${id}-scope`}>Cakupan<select id={`${id}-scope`} value={allPages?'all':'page'} onChange={e=>setAllPages(e.target.value==='all')}><option value="page">Halaman ini</option><option value="all">Semua panduan peran saya</option></select></label></div>
