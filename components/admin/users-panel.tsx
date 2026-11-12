@@ -1029,7 +1029,7 @@ export function UsersPanel() {
                     required={chosenRole !== "student"}
                     maxLength={320}
                     aria-invalid={fieldError === "email" || undefined}
-                    aria-describedby="user-form-feedback student-email-hint"
+                    aria-describedby={chosenRole === "student" ? "user-form-feedback student-email-hint" : "user-form-feedback"}
                     onChange={() => setFieldError("")}
                   />
                 </label>
