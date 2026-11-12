@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { isStudentPassword } from "../../../lib/users/student-password.ts";
+// Keep Edge Function deployable without relying on files outside its function folder.
+const isStudentPassword = (value: string) =>
+  /^[A-HJ-NP-RT-Z2346789]{11}[!@#$*?]$/.test(value) &&
+  /[A-HJ-NP-RT-Z]/.test(value.slice(0, 11)) &&
+  /[2346789]/.test(value.slice(0, 11));
 export const roles = ["admin", "teacher", "supervisor", "committee", "student"] as const;
 export const contexts = ["staff", "supervisor", "committee", "student"] as const;
 export const username = z
