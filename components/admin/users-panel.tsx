@@ -1022,7 +1022,7 @@ export function UsersPanel() {
                   hubung. Huruf disimpan sebagai huruf kecil.
                 </p>
                 <label>
-                  {chosenRole === "student" ? "Email siswa (opsional)" : "Email aktivasi"
+                  {chosenRole === "student" ? "Email siswa (opsional)" : "Email aktivasi"}
                   <input
                     name="email"
                     type="email"
