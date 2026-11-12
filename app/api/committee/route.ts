@@ -41,7 +41,21 @@ export async function GET(request: Request) {
     });
     const parsed = committeeData.safeParse(rpcData(result));
     if (!parsed.success) throw new HttpError(503, "Jadwal belum dapat dimuat.");
-    return json(parsed.data);
+    const data = parsed.data;
+    const server_now = new Date().toISOString();
+    if (a.context === "committee") {
+      if (data.date !== data.today)
+        throw new HttpError(503, "Jadwal hari ini belum dapat diverifikasi.");
+      return json({
+        ...data,
+        server_now,
+        duties: [],
+        candidates: [],
+        schedule: data.status === "confirmed" ? data.schedule : [],
+        supervisors: data.status === "confirmed" ? data.supervisors : [],
+      });
+    }
+    return json({ ...data, server_now });
   } catch (error) {
     return failure(error);
   }
