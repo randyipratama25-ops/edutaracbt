@@ -1,4 +1,5 @@
 "use client";
+import { DeviceTransfers } from "./device-transfers";
 import { MoreActions } from "../ui/more-actions";
 import { FeedbackMessage } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
@@ -496,7 +497,7 @@ export function OperationsPanel({
       (!monitorRoom || r.room === monitorRoom) &&
       (!monitorSession || r.session === monitorSession) &&
       matchesSearch(
-        r.student + " " + r.username + " " + (r.room || ""),
+        r.student + " " + r.username + " " + (r.room || "") + " " + (r.watermark_code || ""),
         search,
       ),
   );
@@ -619,6 +620,7 @@ export function OperationsPanel({
           )}
         {mode === "monitor" && exam && (
           <>
+            <DeviceTransfers key={`transfers:${exam}`} exam={exam} />
             <IncidentPanel
               key={exam}
               exam={exam}
@@ -655,7 +657,7 @@ export function OperationsPanel({
               error={listError}
             >
               <SearchField
-                label="Cari siswa/ruang"
+                label="Cari siswa, ruang, atau kode sesi"
                 value={search}
                 maxLength={150}
                 onChange={(value) => {
@@ -861,6 +863,7 @@ export function OperationsPanel({
                         <small>
                           {r.username} · {r.room || "Belum ditempatkan"}{r.session && ` · ${r.session}`}
                         </small>
+                        {r.watermark_code && <small className="block">Kode sesi {r.watermark_code}</small>}
                       </td>
                       <td>
                         {status[r.status] || r.status}

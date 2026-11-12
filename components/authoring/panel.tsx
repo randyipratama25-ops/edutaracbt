@@ -1,4 +1,5 @@
 "use client";
+import { IntegrityPolicy } from "./integrity-policy";
 import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import { QuestionEditor } from "./question-editor";
@@ -542,6 +543,7 @@ export function AuthoringPanel() {
       {exam && loadedExam===examId && (
         <section className="panel stack">
           <h2 tabIndex={-1} id="authoring-bank-title">Bank soal — {exam.title}</h2>
+          {data.canManage && <IntegrityPolicy key={exam.id} exam={exam.id} />}
           {locked&&<FeedbackMessage tone="info" className="notice" role="status">{locked} Pratinjau dan riwayat tetap tersedia.</FeedbackMessage>}
           <p>
             Waktu server: {new Date(data.serverNow).toLocaleString("id-ID")}.

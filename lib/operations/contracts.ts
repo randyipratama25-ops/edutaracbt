@@ -22,6 +22,7 @@ export const monitorRowSchema = z.object({
   events: count,
   countable_events: count,
   open_integrity: count.optional(),
+  watermark_code: z.string().nullish(),
   last_seen_at: date.nullish(),
   last_saved_at: date.nullish(),
   session: z.string().nullish(),

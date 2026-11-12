@@ -64,6 +64,7 @@ type Rule = {
   count: number;
   points: number;
   topic: string;
+  indicator: string;
   difficulty: string;
   cognitive: string;
 };
@@ -230,6 +231,7 @@ export function BankPanel() {
         count: 10,
         points: 1,
         topic: "",
+        indicator: "",
         difficulty: "",
         cognitive: "",
       },
@@ -553,6 +555,7 @@ export function BankPanel() {
     rules.map((r) => ({
       ...r,
       topic: r.topic || undefined,
+      indicator: r.indicator.trim() || undefined,
       difficulty: r.difficulty || undefined,
       cognitive: r.cognitive || undefined,
     }));
@@ -1550,6 +1553,11 @@ export function BankPanel() {
                       />
                     </label>
                     <label>
+                      Indikator (opsional)
+                      <input value={r.indicator} maxLength={500}
+                        onChange={(event) => changeRule(i, { indicator: event.target.value })} />
+                    </label>
+                    <label>
                       Kesulitan
                       <select
                         value={r.difficulty}
@@ -1603,6 +1611,7 @@ export function BankPanel() {
                       count: 1,
                       points: 5,
                       topic: "",
+                      indicator: "",
                       difficulty: "",
                       cognitive: "",
                     },
