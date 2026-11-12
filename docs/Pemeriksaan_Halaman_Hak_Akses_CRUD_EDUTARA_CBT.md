@@ -4,6 +4,13 @@ Tanggal pemeriksaan: 12 November 2026 (WIB). Versi dokumen: 1.41 — Panitia Uji
 
 
 
+
+## Audit Halaman Panitia Ujian
+
+`/dashboard/committee` menyediakan pemilihan tanggal, penugasan, konfirmasi dan pergantian panitia. `/committee` menampilkan status tugas dan jadwal pengawas pada hari yang berlaku, dengan konfirmasi dan penggantian pengawas. Daftar mendukung pencarian, filter kehadiran, serta 12 kartu per halaman. Portal menyegarkan status berkala, saat kembali ke tab, dan saat koneksi pulih.
+
+API `/api/committee` memvalidasi tanggal, waktu, zona waktu, dan tanda terima perubahan. Aksi Admin dan aksi Panitia dipisahkan di API, sementara pemeriksaan organisasi, penugasan dan hari tugas tetap dilakukan RPC Supabase. Struktur data dan operasi database tetap memakai migrasi Panitia Ujian yang sudah ada.
+
 ## Kebijakan integritas, pindah perangkat, dan paket setara
 
 | Halaman / endpoint | Hak dan fungsi |

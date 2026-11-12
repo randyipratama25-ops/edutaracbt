@@ -14,7 +14,7 @@ export default async function CommitteePortal() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="workspace supervisor-workspace"
+      className="workspace supervisor-workspace committee-workspace"
     >
       <header className="student-portal-heading">
         <div>

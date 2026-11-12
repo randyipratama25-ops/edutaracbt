@@ -1,12 +1,23 @@
 import { z } from "zod";
 
 const person = z.object({ id: z.uuid(), name: z.string() });
-const attendance = z.string().nullable();
+const instant = z.iso.datetime({ offset: true });
+const attendance = instant.nullable();
+export const committeeDate = z.iso.date();
+export const committeeReceipt = z.object({ saved: z.literal(true) });
+const timezone = z.string().refine((value) => {
+  try {
+    new Intl.DateTimeFormat("id-ID", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+});
 export const committeeData = z.object({
-  date: z.iso.date(),
+  date: committeeDate,
   today: z.iso.date(),
-  timezone: z.string(),
-  expires_at: z.string(),
+  timezone,
+  expires_at: instant,
   status: z.enum(["unassigned", "pending", "confirmed"]),
   candidates: z.array(person),
   supervisors: z.array(person),
@@ -19,22 +30,24 @@ export const committeeData = z.object({
     }),
   ),
   schedule: z.array(
-    z.object({
-      id: z.uuid(),
-      exam: z.string(),
-      room: z.string(),
-      session: z.string().nullable(),
-      starts_at: z.string(),
-      ends_at: z.string(),
-      original_id: z.uuid(),
-      original_name: z.string(),
-      supervisor_id: z.uuid(),
-      supervisor_name: z.string(),
-      substitution_id: z.uuid().nullable(),
-      confirmed_at: attendance,
-      original_confirmed_at: attendance,
-      can_replace: z.boolean(),
-    }),
+    z
+      .object({
+        id: z.uuid(),
+        exam: z.string(),
+        room: z.string(),
+        session: z.string().nullable(),
+        starts_at: instant,
+        ends_at: instant,
+        original_id: z.uuid(),
+        original_name: z.string(),
+        supervisor_id: z.uuid(),
+        supervisor_name: z.string(),
+        substitution_id: z.uuid().nullable(),
+        confirmed_at: attendance,
+        original_confirmed_at: attendance,
+        can_replace: z.boolean(),
+      })
+      .refine((item) => Date.parse(item.ends_at) > Date.parse(item.starts_at)),
   ),
 });
 

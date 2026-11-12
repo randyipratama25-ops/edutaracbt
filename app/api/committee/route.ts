@@ -1,7 +1,8 @@
-import { z } from "zod";
 import { actor } from "../../../lib/auth/actor";
 import {
   committeeData,
+  committeeDate,
+  committeeReceipt,
   committeeMutation,
 } from "../../../lib/committee/contracts";
 import {
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
       input: {
         action: "list",
         ...(a.role === "admin" && date
-          ? { date: z.iso.date().parse(date) }
+          ? { date: committeeDate.parse(date) }
           : {}),
       },
     });
@@ -51,15 +52,20 @@ export async function POST(request: Request) {
     requireOrigin(request);
     const a = await committeeActor();
     const input = committeeMutation.parse(await body(request));
+    const adminAction = [
+      "assign",
+      "confirm_committee",
+      "replace_committee",
+    ].includes(input.action);
+    if (adminAction !== (a.context === "staff"))
+      throw new HttpError(403, "Tindakan ini berada di luar kewenangan Anda.");
     const result = await a.client.rpc("committee_command", { input });
     if (result.error?.code === "23505")
       throw new HttpError(
         409,
         "Petugas sudah memiliki tugas pada tanggal ini. Muat ulang daftar.",
       );
-    const parsed = z
-      .object({ saved: z.literal(true) })
-      .safeParse(rpcData(result, true));
+    const parsed = committeeReceipt.safeParse(rpcData(result, true));
     if (!parsed.success)
       throw new HttpError(
         503,
