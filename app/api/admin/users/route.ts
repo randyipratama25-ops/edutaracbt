@@ -67,6 +67,8 @@ export async function POST(request: Request) {
     if (!a || a.context !== "staff" || !["admin", "teacher"].includes(a.role))
       throw new HttpError(403, "Akses ditolak.");
     const payload = userCommand.parse(await body(request));
+    if (a.role === "teacher" && payload.operation === "create")
+      throw new HttpError(403, "Hanya Admin yang dapat membuat akun siswa dengan password.");
     if (
       a.role === "teacher" &&
       ((payload.operation !== "create" && payload.operation !== "update") ||
