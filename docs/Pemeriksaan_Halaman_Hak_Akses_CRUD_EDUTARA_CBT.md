@@ -696,3 +696,8 @@ Satu tombol Bantuan membuka panduan halaman untuk publik, Admin, Guru, Panitia U
 ## Penambahan akun siswa secara langsung (12 November 2026)
 
 Halaman `/dashboard/users` menyediakan field password 12 karakter untuk siswa, serta generator Web Crypto, lihat/sembunyikan dan salin. Admin membuat siswa langsung aktif (`Auth Admin createUser`, `email_confirm: true`) dan menempatkannya ke kelas; akun staf memakai undangan seperti semula. Pembuatan siswa kini hanya Admin. Impor TSV siswa oleh Admin menghasilkan password acak per baris dan menyertakannya dalam laporan unduh lokal, bukan audit atau respons API. Migrasi `20261112090000_student_password_uniqueness.sql` menambah tabel privat sidik password dan RPC service-role khusus, memeriksa Auth hash lama serta reservasi atomik. Keunikan berlaku pada saat penerbitan; perubahan password di semua jalur lain perlu dicakup agar keunikan tetap global di masa depan. Dokumentasi lebih lanjut: `docs/student-password-provisioning.md`.
+
+
+## Email opsional siswa — 12 November 2026
+
+`/dashboard/users` (Admin): saat memilih role **Siswa**, field email tidak diwajibkan. Username, password siswa sesuai kebijakan, dan kelas tetap wajib. Jika email kosong, fungsi `identity-gateway` membuat identitas Auth internal unik dengan alamat non-deliverable pada domain contoh `example.com`. Identitas itu tidak ditampilkan sebagai email kontak, tidak menerima undangan, dan tidak menerima email pemulihan; siswa tetap login memakai username dan password. Bantuan pemulihan akun tanpa email membutuhkan Admin. Email untuk role Admin, Guru, Pengawas, dan Panitia tetap wajib. Alur impor TSV memperbolehkan beberapa siswa tanpa email. Validasi tetap memisahkan kewenangan Admin dan role lain. Rincian: `docs/optional-student-email.md`.
