@@ -4,7 +4,7 @@ export const metadata={title:"Hasil dan koreksi | EDUTARA CBT"};
 export default function Results() {
   return (
     <>
-      <PageHeading title="Hasil dan koreksi" description="Pilih hasil peserta, selesaikan koreksi, lalu siapkan laporan." />
+      <PageHeading title="Hasil dan koreksi" />
       <ResultsPanel />
     </>
   );

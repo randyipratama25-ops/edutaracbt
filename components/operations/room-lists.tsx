@@ -254,10 +254,6 @@ export function RoomLists({
           <div className="stack">
           <section className="stack" aria-label="Daftar sesi">
           <h2>Sesi</h2>
-          <p className="muted">
-          Jadwal ditampilkan dan diisi dalam WIB. Sesi harus berada dalam jadwal
-          ujian.
-          </p>
           <div className="rooms-sessions" tabIndex={0} role="region" aria-label="Kartu sesi; gulir untuk melihat jadwal lainnya">
           {sessions.slice((spage - 1) * 25, spage * 25).map((s) => {
             const pinned = value.assignments.some((a) => a.session_id === s.id);

@@ -6,7 +6,6 @@ export default function PreparationPage() {
     <>
       <PageHeading
         title="Persiapan ujian"
-        description="Susun draf, periksa kesiapan, lalu publikasikan jadwal kepada siswa."
       />
       <PreparationPanel />
     </>

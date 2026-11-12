@@ -709,10 +709,6 @@ export function MasterPanel() {
           <h2 id="master-bulk-title" tabIndex={-1}>
             Tambah {kindLabel(kind)} massal
           </h2>
-          <p className="muted">
-            Satu nama per baris, maksimal 100 nama. Periksa pratinjau sebelum
-            menyimpan.
-          </p>
           <label>
             Nama data
             <textarea
@@ -759,10 +755,6 @@ export function MasterPanel() {
           aria-labelledby="master-assignment-title"
           >
           <h2 id="master-assignment-title">Penugasan akademik</h2>
-          <p className="muted">
-            Pilih pengguna dan referensi aktif. Data yang sama diperbarui tanpa
-            membuat tautan ganda.
-          </p>
           <ValidatedForm onSubmit={assign} method="post" action="/api/admin/master">
             <fieldset
               className="form-grid master-fields"

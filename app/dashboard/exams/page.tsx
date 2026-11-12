@@ -4,7 +4,7 @@ export const metadata = {title:"Ujian dan bank soal | EDUTARA CBT"};
 export default function ExamsPage() {
   return (
     <>
-      <PageHeading title="Ujian dan bank soal" description="Atur jadwal, susun soal, dan pantau target penyusunan." />
+      <PageHeading title="Ujian dan bank soal" />
       <AuthoringPanel />
     </>
   );

@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Download, RefreshCw } from "lucide-react";
 import { FeedbackMessage, StateCard } from "../feedback/state";
-import { HelpDisclosure } from "../ui/help-disclosure";
 import { Button } from "../ui/button";
 import { clientRequest } from "../../lib/client/request";
 import {
@@ -215,12 +214,6 @@ export function AcceptancePanel() {
           <div className="stack">
           <section className="panel stack">
           <h2>Bukti penerimaan yang wajib dilengkapi</h2>
-          <HelpDisclosure>
-          <p>
-            Catat SHA kandidat rilis, lingkungan, waktu, penguji, hasil aktual,
-            dan lokasi artefak untuk setiap bukti.
-          </p>
-          </HelpDisclosure>
           <ol className="acceptance-evidence stack">
           {humanChecks.map((check) => (
             <li key={check.id}>
@@ -237,14 +230,6 @@ export function AcceptancePanel() {
           <div className="stack">
           <section className="panel stack">
           <h2>Jika terjadi gangguan</h2>
-          <HelpDisclosure>
-          <p>
-            Hentikan publikasi hasil yang meragukan, amankan jawaban dan
-            inventaris terbaru, lalu catat waktu serta dampak sebelum
-            menghubungi penanggung jawab. Saat rollback, pertahankan database
-            dan jawaban terbaru.
-          </p>
-          </HelpDisclosure>
           <div className="actions">
           <Button asChild variant="outline">
             <Link href="/dashboard/monitor">Monitoring peserta</Link>

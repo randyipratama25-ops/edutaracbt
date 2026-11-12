@@ -14,7 +14,6 @@ export default async function Page() {
     <>
       <PageHeading
         title="Otomasi dan backup"
-        description="Periksa layanan, tindak lanjuti pekerjaan, dan kelola cadangan."
       />
       <TaskTabs label="Otomasi dan cadangan" items={[
         { id: "health", label: "Kondisi layanan", content: <OperationalHealth /> },

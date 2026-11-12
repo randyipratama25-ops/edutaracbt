@@ -407,12 +407,6 @@ export function SettingsPanel() {
                     />
                   </label>
                 </div>
-                <p className="muted">
-                  Gunakan ID gambar dari{" "}
-                  <a href="/dashboard/media">Media soal</a>. Logo dan latar
-                  login dapat diakses publik. Perubahan terlihat saat halaman
-                  login dimuat ulang.
-                </p>
                 </fieldset>
                 <fieldset className="settings-section stack">
                 <legend>Kebijakan ujian dan otomasi</legend>
@@ -498,11 +492,6 @@ export function SettingsPanel() {
                     </label>
                   ))}
                 </div>
-                <p className="muted">
-                  Area gambar berlaku untuk pengerjaan baru. Hasil tetap memerlukan
-                  publikasi Admin. Backup mingguan/semester serta retensi
-                  mengikuti otomasi; dua backup terakhir tetap dipertahankan.
-                </p>
                 </fieldset>
                 <fieldset className="settings-section stack">
                 <legend>Email pengingat</legend>

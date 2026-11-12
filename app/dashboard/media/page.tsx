@@ -11,7 +11,7 @@ export default async function Media() {
     redirect("/dashboard");
   return (
     <>
-      <PageHeading title="Media soal" description="Unggah media, periksa pratinjau, lalu gunakan dalam soal." />
+      <PageHeading title="Media soal" />
       <MediaPanel admin={a.role === "admin"} />
     </>
   );

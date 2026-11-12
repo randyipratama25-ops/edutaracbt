@@ -4,7 +4,6 @@ import { feedbackFetch } from "../../lib/client/feedback-transport";
 
 import { FeedbackMessage, StateCard } from "../feedback/state";
 import { ValidatedForm } from "../feedback/validated-form";
-import { StartHere } from "../help/start-here";
 import { ContextHelp } from "../help/context-help";
 import { DevicePreflight } from "./device-preflight";
 import { StudentHelp } from "../workflow/help";
@@ -308,7 +307,7 @@ export function StudentPortal({ studentId }: { studentId: string }) {
           </MoreActions>
         </div>
       </header>
-      <StartHere page="/student" />
+
       <div ref={sessionNotice} tabIndex={-1}>
         {" "}
         <FeedbackMessage
@@ -1250,6 +1249,7 @@ export function ExamPlayer({
             <ListOrdered size={17} aria-hidden="true" />
             Daftar soal
           </Button>
+          <ContextHelp audience="student" page="student-exam" duringExam />
           <details className="exam-tools">
             <summary className="button button-outline" aria-label="Alat ujian">
               Alat
@@ -1277,7 +1277,6 @@ export function ExamPlayer({
                   ))}
                 </select>
               </label>
-              <ContextHelp audience="student" page="student-exam" duringExam />
               <StudentHelp attemptId={a.id} />
               <Button variant="outline" onClick={() => void fullscreen()}>
                 Fullscreen / landscape

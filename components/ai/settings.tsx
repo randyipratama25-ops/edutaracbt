@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { providers, providerId } from "../../lib/ai/schema";
 import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
-import { HelpDisclosure } from "../ui/help-disclosure";
 const configList = z.array(
   z.object({
     provider: providerId,
@@ -284,14 +283,6 @@ export function AISettings() {
                 />{" "}
                 Izinkan teks soal, rubrik dan jawaban dikirim ke penyedia ini.
               </label>
-              <HelpDisclosure title="Keamanan dan uji koneksi">
-                <p>
-                  API key tidak ditampilkan kembali. Penggantian model/key atau
-                  penyimpanan konfigurasi menonaktifkan penyedia sampai diuji
-                  dan diaktifkan kembali. Nonaktifkan penyedia sebelum menguji
-                  ulang. Uji memakai contoh soal dan dapat memakai kuota API.
-                </p>
-              </HelpDisclosure>
               <div className="actions">
                 {dirty || !selected?.configured ? (
                   <Button loading={pendingAction === "save"} disabled={busy || !dirty}>

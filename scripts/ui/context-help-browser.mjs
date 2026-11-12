@@ -28,6 +28,8 @@ try {
  for(const width of [320,390,768,1440]){
   await page.setViewport({width,height:900});await page.goto(origin+'/context-help-check',{waitUntil:'networkidle0'});await open();
   assert(await page.$eval('.context-help-dialog',e=>e.textContent.includes('Mengatur AI dan fitur lanjutan')));
+  assert(await page.$eval('.context-help-dialog',e=>e.textContent.includes('Mulai dari sini')));
+  assert.equal(await page.$$eval('main button',buttons=>buttons.filter(b=>b.textContent.trim()==='Bantuan').length),1);
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'page overflow '+width);
   assert(await page.$eval('.context-help-dialog',e=>e.scrollWidth<=e.clientWidth+1),'dialog overflow '+width);
   for(let n=0;n<7;n++)await page.keyboard.press('Tab');assert(await page.evaluate(()=>!!document.activeElement.closest('[role=dialog]')),'focus trap');
@@ -43,7 +45,7 @@ try {
  await page.select('#role','public');await changePage('/login');await open();assert(await page.$eval('.context-help-dialog',e=>e.textContent.includes('Masuk dan memulihkan akun')));await close();
  await page.goto(origin+'/context-help-check?mode=dashboard',{waitUntil:'networkidle0'});await page.waitForSelector('.workspace-header');assert(await page.$('.workspace-header button[aria-haspopup=dialog]'));
  await page.goto(origin+'/context-help-check?mode=student',{waitUntil:'networkidle0'});await page.waitForSelector('.student-portal-heading');await open();assert(await page.$eval('.context-help-dialog',e=>e.textContent.includes('Menyiapkan perangkat')));await close();
- await page.goto(origin+'/context-help-check?mode=player',{waitUntil:'networkidle0'});await page.waitForSelector('input[type=radio]');await page.click('input[type=radio]');await page.click('.exam-tools summary');await open();
+ await page.goto(origin+'/context-help-check?mode=player',{waitUntil:'networkidle0'});await page.waitForSelector('input[type=radio]');await page.click('input[type=radio]');await open();
  const timer=await page.$eval('[role=timer]',e=>e.textContent);await page.waitForFunction(()=>document.querySelector('.exam-status')?.textContent.includes('Semua perubahan tersimpan'));
  await page.waitForFunction(old=>document.querySelector('[role=timer]')?.textContent!==old,{},timer);assert(commands.some(c=>c.action==='save'),'autosave continues');
  assert(await page.$eval('.context-help-dialog',e=>e.textContent.includes('Waktu ujian tetap berjalan')));assert.equal(await page.$$('.context-help-dialog a').then(x=>x.length),0);

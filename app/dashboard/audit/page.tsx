@@ -10,7 +10,7 @@ export default async function Page() {
   if(a.role!=="admin"||a.context!=="staff")return <AccessDenied/>;
   return (
     <>
-      <PageHeading title="Audit aktivitas" description="Telusuri tindakan pengguna berdasarkan waktu dan jenis aktivitas." />
+      <PageHeading title="Audit aktivitas" />
       <SystemPanel mode="audit" />
     </>
   );

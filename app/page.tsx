@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import {
-  ArrowDown, BookOpen, Check, CheckCheck, ClipboardList,
+  ArrowDown, Check, CheckCheck, ClipboardList,
   GraduationCap, Monitor, ShieldCheck, UserRound, UsersRound,
 } from "lucide-react";
 import { ContextHelp } from "../components/help/context-help";
@@ -29,7 +29,6 @@ export default function Home() {
           </div>
           <nav className="home-nav" aria-label="Navigasi Beranda">
             <a href="#peran">Untuk siapa</a>
-            <a href="#cara-mulai">Cara mulai</a>
           </nav>
         </header>
 
@@ -45,7 +44,6 @@ export default function Home() {
               <SignInLink />
               <ContextHelp audience="public" page="/" />
             </div>
-            <p className="home-account"><Check size={16} aria-hidden="true" />Masuk dengan akun dari madrasah.</p>
           </div>
 
           <div className="home-visual" aria-hidden="true">
@@ -72,18 +70,8 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="cara-mulai" className="home-start" aria-labelledby="home-start-title">
-          <div className="home-start-intro"><BookOpen size={24} aria-hidden="true" /><h2 id="home-start-title">Mulai dengan tiga langkah.</h2><p>Akun dan penugasan disiapkan oleh madrasah.</p></div>
-          <ol>
-            <li><span aria-hidden="true">01</span><div><h3>Siapkan akun</h3><p>Gunakan nama pengguna dan password yang diberikan madrasah.</p></div></li>
-            <li><span aria-hidden="true">02</span><div><h3>Pilih peran saat masuk</h3><p>Pilih Siswa, Admin / Guru, atau Pengawas sesuai tugas Anda.</p></div></li>
-            <li><span aria-hidden="true">03</span><div><h3>Lanjutkan pekerjaan Anda</h3><p>Buka jadwal ujian atau tugas yang tersedia di ruang kerja.</p></div></li>
-          </ol>
-        </section>
-
         <footer className="home-footer">
           <span>EDUTARA CBT<span className="home-footer-dot" aria-hidden="true"> · </span>Ruang ujian madrasah</span>
-          <p>Belum punya akun? Hubungi Admin madrasah.</p>
         </footer>
       </div>
     </main>

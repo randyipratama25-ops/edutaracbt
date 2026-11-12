@@ -155,9 +155,6 @@ export function AuditPanel() {
       <div className="summary-heading">
         <div>
           <h2>Riwayat aktivitas</h2>
-          <p className="muted">
-            Waktu ditampilkan dalam WIB. Catatan hanya dapat dibaca.
-          </p>
         </div>
         <div className="actions">
           <Button

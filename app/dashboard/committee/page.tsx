@@ -14,7 +14,6 @@ export default async function CommitteeAdministration() {
     <>
       <PageHeading
         title="Panitia Ujian"
-        description="Atur tugas harian, konfirmasi kehadiran, dan tunjuk panitia pengganti."
       />
       <CommitteePanel admin />
     </>

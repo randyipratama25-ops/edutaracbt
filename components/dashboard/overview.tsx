@@ -15,14 +15,7 @@ export function DashboardOverview({
 }) {
   return (
     <div className="dashboard-overview stack">
-      <PageHeading
-        title="Ringkasan madrasah"
-        description={
-          role === "admin"
-            ? "Kesiapan ujian dan layanan madrasah."
-            : "Soal, koreksi dan hasil sesuai penugasan Anda."
-        }
-      />
+      <PageHeading title="Ringkasan madrasah" />
       <RoleActions role={role} />
       {role === "admin" ? (
         <section
