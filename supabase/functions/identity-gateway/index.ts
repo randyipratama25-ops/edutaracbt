@@ -4,7 +4,7 @@ import { z } from "zod";
 import {
   canUseContext,
   loginSchema,
-  userSchema,
+  userCreateSchema,
   username,
 } from "./validation.ts";
 const fail = (error: string, status = 400) =>
@@ -197,7 +197,8 @@ Deno.serve(async (request) => {
       return Response.json(result, { headers: { "Cache-Control": "no-store" } });
     }
     const createOne = async (value: unknown) => {
-      const input = userSchema.parse(value);
+      const input = userCreateSchema.parse(value);
+      if (actor.role !== "admin") throw new Error("FORBIDDEN");
       if (
         actor.role !== "admin" &&
         (input.role !== "student" ||
@@ -205,6 +206,8 @@ Deno.serve(async (request) => {
           !(await sameClass(input.class_id)))
       )
         throw new Error("FORBIDDEN");
+      if (input.role === "student" && !input.class_id)
+        throw new Error("INVALID_CLASS");
       if (input.class_id) {
         const { data } = await admin
           .from("classes")
@@ -233,11 +236,26 @@ Deno.serve(async (request) => {
           throw new Error("USER_ALREADY_EXISTS");
         if (existingAuth.users.length < 1000) break;
       }
-      const { data, error } = await admin.auth.admin.inviteUserByEmail(
-        input.email,
-        { redirectTo: `${site}/auth/reset` },
-      );
-      if (error || !data.user) throw new Error("INVITATION_FAILED");
+      if (input.role === "student") {
+        // A service-role-only, atomic reservation checks historical auth hashes
+        // and prevents concurrent issuance of identical credentials.
+        const reservation = await admin.rpc("reserve_student_password", {
+          candidate: input.password,
+        });
+        if (reservation.error) throw new Error("PASSWORD_CHECK_FAILED");
+        if (reservation.data !== true) throw new Error("PASSWORD_EXISTS");
+      }
+      const { data, error } = input.role === "student"
+        ? await admin.auth.admin.createUser({
+            email: input.email,
+            password: input.password!,
+            email_confirm: true,
+          })
+        : await admin.auth.admin.inviteUserByEmail(
+            input.email,
+            { redirectTo: `${site}/auth/reset` },
+          );
+      if (error || !data.user) throw new Error(input.role === "student" ? "STUDENT_CREATE_FAILED" : "INVITATION_FAILED");
       const id = data.user.id;
       // Never attach an existing account to another organization.
       const { data: attached } = await admin
@@ -252,8 +270,13 @@ Deno.serve(async (request) => {
         username: input.username,
         full_name: input.full_name,
         role: input.role,
+        active: true,
       });
       if (profileError) {
+        if (input.role === "student") {
+          const cleanup = await admin.auth.admin.deleteUser(id);
+          if (cleanup.error) console.error(JSON.stringify({ requestId, event: "student_auth_rollback_failed" }));
+        }
         throw new Error("PROFILE_FAILED");
       }
       if (input.role === "student" && input.class_id) {
@@ -263,14 +286,20 @@ Deno.serve(async (request) => {
           class_id: input.class_id,
         });
         if (e) {
-          await admin.from("profiles").delete().eq("id", id);
+          const profileRollback = await admin.from("profiles").delete().eq("id", id);
+          if (profileRollback.error) {
+            console.error(JSON.stringify({ requestId, event: "student_profile_rollback_failed" }));
+          } else {
+            const authRollback = await admin.auth.admin.deleteUser(id);
+            if (authRollback.error) console.error(JSON.stringify({ requestId, event: "student_auth_rollback_failed" }));
+          }
           throw new Error("ENROLLMENT_FAILED");
         }
       }
       await admin.from("audit_logs").insert({
         organization_id: actor.organization_id,
         actor_id: actor.id,
-        action: "INVITE_USER",
+        action: input.role === "student" ? "CREATE_STUDENT" : "INVITE_USER",
         target_type: "profiles",
         target_id: id,
         request_id: requestId,
@@ -346,6 +375,9 @@ Deno.serve(async (request) => {
         "INVALID_CLASS",
         "USERNAME_EXISTS",
         "INVITATION_FAILED",
+        "PASSWORD_EXISTS",
+        "PASSWORD_CHECK_FAILED",
+        "STUDENT_CREATE_FAILED",
         "USER_ALREADY_EXISTS",
         "PROFILE_FAILED",
         "ENROLLMENT_FAILED",
@@ -357,6 +389,9 @@ Deno.serve(async (request) => {
             FORBIDDEN: "Tindakan di luar cakupan akses.",
             INVALID_CLASS: "Kelas tidak valid atau tidak aktif.",
             USERNAME_EXISTS: "Username sudah digunakan.",
+            PASSWORD_EXISTS: "Password telah digunakan oleh akun lain. Generate password baru.",
+            PASSWORD_CHECK_FAILED: "Keunikan password belum dapat diverifikasi. Coba lagi nanti.",
+            STUDENT_CREATE_FAILED: "Akun autentikasi siswa gagal dibuat. Periksa status akun sebelum mencoba lagi.",
             INVITATION_FAILED:
               "Undangan akun gagal dikirim. Periksa email atau hubungi Admin.",
             USER_ALREADY_EXISTS: "Akun email sudah terdaftar.",

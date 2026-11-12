@@ -1,4 +1,9 @@
 import { z } from "zod";
+// Keep Edge Function deployable without relying on files outside its function folder.
+const isStudentPassword = (value: string) =>
+  /^[A-HJ-NP-RT-Z2346789]{11}[!@#$*?]$/.test(value) &&
+  /[A-HJ-NP-RT-Z]/.test(value.slice(0, 11)) &&
+  /[2346789]/.test(value.slice(0, 11));
 export const roles = ["admin", "teacher", "supervisor", "committee", "student"] as const;
 export const contexts = ["staff", "supervisor", "committee", "student"] as const;
 export const username = z
@@ -21,6 +26,13 @@ export const userSchema = z.object({
   email: z.email(),
   role: z.enum(roles),
   class_id: z.uuid().optional(),
+});
+export const studentPasswordSchema = z.string().refine(isStudentPassword, "Password harus 12 karakter: 11 huruf kapital/angka tanpa O,I,S,0,1,5 dan satu simbol !@#$*? di akhir.");
+export const userCreateSchema = userSchema.extend({ password: studentPasswordSchema.optional() }).superRefine((value, context) => {
+  if (value.role === "student" && !value.password)
+    context.addIssue({ code: "custom", path: ["password"], message: "Password siswa wajib diisi oleh Admin." });
+  if (value.role !== "student" && value.password !== undefined)
+    context.addIssue({ code: "custom", path: ["password"], message: "Password langsung hanya untuk siswa." });
 });
 export const masterSchema = z.object({
   kind: z.enum(["classes", "subjects"]),

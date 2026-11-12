@@ -154,7 +154,7 @@ describe("users API compatibility and guards", () => {
     expect((await post({ operation: "archive", id })).status).toBe(401);
     expect(gateway).not.toHaveBeenCalled();
   });
-  it("preserves normalized teacher student creation and class assignment payload", async () => {
+  it("disallows teacher student creation even when password is supplied", async () => {
     vi.mocked(actor).mockResolvedValue(asActor("teacher"));
     vi.mocked(gateway).mockResolvedValue({ id, username: "siswa-baru" });
     const r = await post({
@@ -164,19 +164,9 @@ describe("users API compatibility and guards", () => {
       email: "siswa@example.test",
       role: "student",
       class_id: id,
+      password: "ABCDEFG2346!",
     });
-    expect(r.status).toBe(200);
-    expect(gateway).toHaveBeenCalledWith(
-      {
-        operation: "create",
-        username: "siswa-baru",
-        full_name: "Siswa Baru",
-        email: "siswa@example.test",
-        role: "student",
-        class_id: id,
-        action: "manage_user",
-      },
-      "token",
-    );
+    expect(r.status).toBe(403);
+    expect(gateway).not.toHaveBeenCalled();
   });
 });

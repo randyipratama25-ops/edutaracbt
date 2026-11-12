@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { roles, userSchema } from "../domain/validation";
+import { roles, userCreateSchema } from "../domain/validation";
 export const roleLabels: Record<string, string> = {
   admin: "Admin",
   teacher: "Guru",
@@ -50,7 +50,7 @@ export const previewSchema = z.array(
   z.object({ username: z.string(), error: z.string().max(1000) }),
 );
 export const userCommand = z.discriminatedUnion("operation", [
-  userSchema.extend({ operation: z.literal("create") }),
+  userCreateSchema.safeExtend({ operation: z.literal("create") }),
   z
     .object({
       operation: z.literal("update"),
