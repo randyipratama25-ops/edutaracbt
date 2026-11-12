@@ -24,6 +24,12 @@ describe('Admin invitation resend',()=>{
   expect(invitationState({...target,archived_at:'2026-10-29'},account).eligible).toBe(false);
   for(const user of [{...account,email:undefined},{...account,id:'other'},{...account,invited_at:undefined}])expect(invitationState(target,user).eligible).toBe(false);
  });
+ it('rejects invitations to internally managed no-email student accounts',async()=>{
+  const x=setup();const internal={...account,email:'student-00000000-0000-4000-8000-000000000001@example.com'};
+  expect(invitationState(target,internal)).toMatchObject({eligible:false});
+  await expect(resendInvitation({...x,account:internal})).rejects.toMatchObject({status:409});
+  expect(x.send).not.toHaveBeenCalled();
+ });
  it('directs confirmed users to password recovery without sending another invite',async()=>{
   const x=setup();await expect(resendInvitation({...x,account:{...account,email_confirmed_at:'2026-10-29T00:00:00Z'}})).rejects.toMatchObject({status:409});expect(x.send).not.toHaveBeenCalled();
  });
