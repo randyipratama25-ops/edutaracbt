@@ -1,3 +1,4 @@
+import { studentPolicy, type StudentPolicy } from "../operations/exam-policy";
 import { integrityWarning } from "../operations/integrity";
 import { z } from "zod";
 import type { Question } from "../authoring/schema";
@@ -67,14 +68,8 @@ const attemptBase = z.object({
   result_visible: z.boolean(),
   review_reason: z.string().nullable(),
   integrity_warnings: z.array(integrityWarning).max(20).optional(),
-  policy: z
-    .object({
-      integrity_mode: z.string(),
-      unlock_time: z.string(),
-      tolerance_ms: z.number().nonnegative(),
-      incident_cooldown_ms: z.number().nonnegative(),
-    })
-    .optional(),
+  policy: studentPolicy.optional(),
+  watermark_code: z.string().nullish(),
   recovery: z
     .object({
       drafts: z.array(
@@ -108,6 +103,7 @@ export const examListSchema = z.object({
         starts_at: instant,
         ends_at: instant,
         duration_minutes: z.number().positive(),
+        integrity_policy: studentPolicy.optional(),
         status: z.enum(["scheduled", "active", "closed"]),
         attempt: z
           .object({
@@ -148,6 +144,8 @@ export type Attempt = {
   score: number | null;
   result_visible: boolean;
   review_reason: string | null;
+  policy?: StudentPolicy;
+  watermark_code?: string | null;
   integrity_warnings?: z.infer<typeof integrityWarning>[];
   recovery?: {
     drafts: {

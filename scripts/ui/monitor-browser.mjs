@@ -83,6 +83,7 @@ try {
   const id=n=>`07000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
   let audience='admin',mode='ok',optionMode='ok',historyMode='ok',postMode='ok',held=null,heldPost=null,heldHistory=null,calls=[],listSize=51,examNow=id(80),activeReads=0,maxReads=0,reads=0;
   const revisions=new Map(),states=new Map(),followups=[];
+  let transfers=[{id:id(910),student:'Peserta 1',room:'Ruang A',code:'C0DE1234',created_at:'2026-11-02T01:00:00Z'}];
   const row=n=>({student_id:id(n),student:'Peserta '+n+' '+(n===1?'Nama'.repeat(30):''),username:'siswa-'+n,attempt_id:n%3===0?null:id(100+n),version:n%3===0?null:revisions.get(n)||1,status:states.get(n)||(n%3===0?'not_started':n%3===1?'in_progress':'disqualified'),logged_in:n%3!==0,answers:n%3===0?0:2,events:3,countable_events:0,open_integrity:n===1&&!followups.some(f=>f.action==='resolve')?1:0,session:n===1?'Sesi 1':null,last_seen_at:'2026-11-02T01:00:00Z',last_saved_at:'2026-11-02T00:59:00Z',deadline_at:n%3===0?null:'2026-11-02T23:00:00Z',room:n===1?'Ruang '+ 'panjang'.repeat(30):'Ruang A',room_id:id(40),can_act:audience==='admin'||n%2===1,score:null,pending:n%3===0?null:0});
   const monitor=()=>Array.from({length:listSize},(_,i)=>row(i+1));
   const help=()=>[{id:id(800),attempt_id:id(101),student:'Peserta 1',message:'Jaringan terputus '+ 'panjang '.repeat(30),created_at:'2026-11-02T01:00:00Z',resolved_at:states.get('help')?'2026-11-02T02:00:00Z':null,resolution:states.get('help')||null,can_resolve:true}];
@@ -92,6 +93,11 @@ try {
   const respond=async(r,status,data)=>{try{await r.respond({status,contentType:'application/json',body:JSON.stringify(status===200?{success:true,data}:{success:false,error:{message:status===409?'CONFLICT: Attempt berubah':'Layanan sementara gagal'}})});}catch{}};
   page.on('request',async r=>{
     const u=new URL(r.url());if(!u.pathname.startsWith('/api/'))return r.continue();
+    if(u.pathname==='/api/exam-integrity'){
+      if(r.method()==='GET')return respond(r,200,transfers);
+      const input=JSON.parse(r.postData());calls.push(input);
+      transfers=transfers.filter(row=>row.id!==input.id);return respond(r,200,{saved:true});
+    }
     if(u.pathname==='/api/operations/integrity'){
       if(r.method()==='GET')return respond(r,200,{open_groups:followups.some(f=>f.action==='resolve')?[]:[id(901)],events:[{event_id:id(902),group_id:id(901),kind:'visibility_hidden',countable:true,created_at:'2026-11-02T01:00:00Z',metadata:{duration_ms:22000,question_number:2}}],followups:[...followups].reverse()});
       const input=JSON.parse(r.postData());followups.push({id:input.request_id,group_id:input.group_id,action:input.action,message:input.message,actor:'Pengawas Uji',created_at:'2026-11-02T01:01:00Z'});return respond(r,200,{saved:true});
@@ -124,6 +130,11 @@ try {
   const choose=async n=>page.$eval(`input[aria-label^="Pilih Peserta ${n} "]`,e=>e.click());
   for(const width of (process.env.EDUTARA_MONITOR_FOCUSED?[390]:[320,390,768,1024,1440])){await page.setViewport({width,height:800});await go();await overflow('monitor '+width);await click('Kirim notifikasi');await fits();await close();await click('Riwayat pesan');await page.waitForFunction(()=>document.querySelector('[role=dialog]')?.textContent.includes('Pesan uji'));await fits();await close();}
   await page.setViewport({width:390,height:844,isMobile:true,hasTouch:true});await go();await page.addScriptTag({content:axe.source});let scan=await page.evaluate(()=>window.axe.run(document.querySelector('.monitor-page'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(scan.violations.map(v=>v.id),[]);await page.screenshot({path:'/tmp/monitor-mobile.png',fullPage:true});
+  await click('Setujui','details[aria-label="Permintaan pindah perangkat"]');
+  await page.waitForFunction(()=>[...document.querySelectorAll('.notice')].some(e=>e.textContent.includes('C0DE1234')));
+  await click('Konfirmasi','details[aria-label="Permintaan pindah perangkat"]');
+  await page.waitForFunction(()=>document.body.textContent.includes('Disetujui. Siswa dapat melanjutkan'));
+  assert(calls.some(x=>x.action==='approve'&&x.id===id(910)));
   await page.select('select[aria-label="Status"], .list-filters label select', 'integrity');
   await page.waitForFunction(()=>document.querySelectorAll('.monitor-page table tbody tr').length===1);
   await click('Riwayat');

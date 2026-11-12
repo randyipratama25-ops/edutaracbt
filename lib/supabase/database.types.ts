@@ -1000,6 +1000,7 @@ export type Database = {
       authoring_command: { Args: { input: Json }; Returns: Json };
       authoring_status: { Args: { exam_id: string }; Returns: string };
       consume_login_budget: { Args: { budget_key: string }; Returns: boolean };
+      exam_integrity_command: { Args: { input: Json }; Returns: Json };
       integrity_command: { Args: { input: Json }; Returns: Json };
       committee_command: { Args: { input: Json }; Returns: Json };
       has_supervisor_context: { Args: never; Returns: boolean };

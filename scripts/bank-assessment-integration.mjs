@@ -27,6 +27,12 @@ try{
  await actor(2);await denied(()=>bank({action:'list'}),/AUTH/);await denied(()=>assessment({action:'list'}),/AUTH/);
  await actor(1);const exams=[];for(let n=0;n<3;n++)exams.push((await rpc('authoring_command',{action:'exam',exam:{title:'Paket '+n,subject_id:subject,class_ids:[cid],starts_at:new Date(Date.now()+86400000).toISOString(),ends_at:new Date(Date.now()+90000000).toISOString(),duration_minutes:30,pin:'123456',passing_grade:70,status:'draft',bypass_period:false,shuffle_questions:true,shuffle_options:true,configs:['PG','PG_KOMPLEKS','BS','JODOH','Esai'].map(type=>({type,enabled:true,max_questions:0,option_count:2,default_points:1}))}})).id);
  await actor(5);const rules=[{type:'PG',count:1,points:2,cognitive:'C2'},{type:'Esai',count:1,points:10,cognitive:'C2'}];const composition=await bank({action:'preview',exam_ids:exams.slice(0,2),rules,request_id:randomUUID()});assert.ok(composition.every(x=>x.available===1));
+ const byIndicator=await bank({action:'preview',exam_ids:[exams[0]],rules:[
+   {...rules[0],indicator:'menjelaskan hubungan sosial'},
+   {...rules[0],indicator:'Indikator berbeda'},
+ ],request_id:randomUUID()});
+ assert.equal(byIndicator.find(x=>x.rule.indicator==='menjelaskan hubungan sosial').available,1);
+ assert.equal(byIndicator.find(x=>x.rule.indicator==='Indikator berbeda').available,0);
  const assemble={action:'assemble',exam_ids:exams.slice(0,2),rules,request_id:randomUUID()};assert.equal((await bank(assemble)).length,2);assert.equal((await bank(assemble)).length,2);await denied(()=>bank({...assemble,exam_ids:[exams[2]],rules:[{type:'PG',count:2,points:2}],request_id:randomUUID()}),/Kandidat/);
  await owner();assert.equal((await db.query('select count(*) n from public.questions where exam_id=$1',[exams[2]])).rows[0].n,0);assert.equal((await db.query('select count(*) n from private.bank_usage')).rows[0].n,4);
  const media=randomUUID();await db.query("insert into public.media_assets(id,organization_id,uploader_id,object_path,mime_type,byte_size) values($1,$2,$3,$4,'image/png',128)",[media,org,uid(5),uid(5)+'/bank.png']);await db.query("insert into storage.objects(bucket_id,name) values('exam-media',$1)",[uid(5)+'/bank.png']);

@@ -39,6 +39,7 @@ import {
 import { AttemptError } from "./queue";
 import { essayLength } from "../../lib/attempts/essay";
 import { command, useAnswerQueue } from "./queue";
+import { profiles } from "../../lib/operations/exam-policy";
 import { useIntegrity } from "./integrity";
 const Preview = dynamic(
   () => import("../authoring/preview").then((m) => m.QuestionPreview),
@@ -194,21 +195,25 @@ export function StudentPortal({ studentId }: { studentId: string }) {
       if (mounted.current) setBusy(false);
     }
   }
+  const strictTransfer = exams.find((exam) => exam.attempt?.id === takeover)?.integrity_policy?.approval_required
+    || message.startsWith("TRANSFER_");
+  const transferRequested = message.startsWith("TRANSFER_");
   const takeoverDialog = (
     <Dialog
       open={!!takeover}
       onOpenChange={(v) => {
         if (!v && !openLock.current) setTakeover("");
       }}
-      title="Gunakan perangkat ini?"
+      title={strictTransfer ? "Persetujuan pindah perangkat" : "Gunakan perangkat ini?"}
       description="Perangkat/tab sebelumnya tidak dapat menulis setelah Anda mengambil alih. Waktu ujian tidak bertambah. Draf offline tetap berada di perangkat asal."
     >
+      {strictTransfer && <p>Pengawas perlu menyetujui perangkat tujuan. Setelah disetujui, periksa persetujuan dari perangkat ini.</p>}
       <p>
         Jawaban dan cadangan draf yang sudah mencapai server dapat dipulihkan.
         Pastikan Anda tidak lagi mengerjakan pada perangkat sebelumnya.
       </p>
       <FeedbackMessage tone="error" role="alert">
-        {message}
+        {message.replace(/^TRANSFER_(PENDING|DENIED): /, "")}
       </FeedbackMessage>
       <div className="actions">
         <Button
@@ -228,7 +233,9 @@ export function StudentPortal({ studentId }: { studentId: string }) {
             )
           }
         >
-          {busy ? "Memeriksa sesi…" : "Gunakan perangkat ini"}
+          {busy ? "Memeriksa sesi…" : strictTransfer
+            ? transferRequested ? "Periksa persetujuan" : "Minta persetujuan"
+            : "Gunakan perangkat ini"}
         </Button>
       </div>
     </Dialog>
@@ -398,6 +405,19 @@ export function StudentPortal({ studentId }: { studentId: string }) {
                 <span className="muted">{e.duration_minutes} menit</span>
               </div>
               <h2>{e.title}</h2>
+              {e.integrity_policy && (
+                <div className="stack">
+                  <p>Integritas: <strong>{profiles[e.integrity_policy.integrity_mode as keyof typeof profiles] ?? "Standar"}</strong></p>
+                  <p className="muted">{e.integrity_policy.accommodated || e.integrity_policy.integrity_mode === "practice"
+                    ? "Perubahan fokus dicatat sebagai informasi."
+                    : `Kehilangan fokus selama ${(e.integrity_policy.tolerance_ms / 1000).toLocaleString("id-ID")} detik dapat ditinjau pengawas.`}
+                    {e.integrity_policy.fullscreen_review && !e.integrity_policy.accommodated && e.integrity_policy.integrity_mode !== "practice" && " Keluar dari layar penuh juga ditandai."}
+                    {e.integrity_policy.approval_required && " Pindah perangkat memerlukan persetujuan pengawas."}
+                    {e.integrity_policy.equivalent_packs && " Anda akan menerima satu paket soal."}
+                    {e.integrity_policy.watermark && " Kode sesi tampil pada soal."}
+                  </p>
+                </div>
+              )}
               <dl className="student-schedule">
                 <div>
                   <dt>Mulai</dt>
@@ -593,7 +613,7 @@ export function ExamPlayer({
     conversionLock.current = false;
     setConverting(false);
   }, [index]);
-  const warning = useIntegrity(writer, active, a.questions[index]?.id);
+  const warning = useIntegrity(writer, active, a.questions[index]?.id, a.policy);
   const [staffWarnings, setStaffWarnings] = useState(a.integrity_warnings ?? []);
   const [dismissedWarnings, setDismissedWarnings] = useState<string[]>([]);
   const currentWarning = staffWarnings.find((notice) => !dismissedWarnings.includes(notice.id));
@@ -1437,7 +1457,7 @@ export function ExamPlayer({
       <div className="player-grid">
         <div className="player-main">
           <section
-            className="panel stack question-reading"
+            className="panel stack question-reading relative"
             style={
               {
                 "--question-font-size": `${fontSize}px`,
@@ -1445,6 +1465,14 @@ export function ExamPlayer({
             }
           >
             <div className="question-heading">
+              {a.watermark_code && (
+                <>
+                  <span className="muted text-xs">Kode sesi {a.watermark_code}</span>
+                  <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 -rotate-12 select-none whitespace-nowrap font-mono text-[clamp(0.7rem,2vw,1.5rem)] opacity-15">
+                    {a.watermark_code}
+                  </span>
+                </>
+              )}
               <h2 ref={questionHeading} tabIndex={-1}>
                 Soal {index + 1}{" "}
                 <span className="muted">/ {a.questions.length}</span>

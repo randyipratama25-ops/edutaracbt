@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useState } from "react";
 import { z } from "zod";
+import type { StudentPolicy } from "../../lib/operations/exam-policy";
 import { integrityEvent } from "../../lib/attempts/validation";
 import { AttemptError, command } from "./queue";
 
@@ -23,9 +24,11 @@ export function useIntegrity(
   writer: { attempt_id: string; client_id: string; epoch: number },
   active: boolean,
   questionId?: string,
+  policy?: StudentPolicy,
 ) {
   const [warning, setWarning] = useState("");
   const currentQuestion = useEffectEvent(() => questionId);
+  const currentPolicy = useEffectEvent(() => policy);
 
   useEffect(() => {
     const key = `edutara:integrity:v1:${writer.attempt_id}:${writer.client_id}`;
@@ -146,7 +149,21 @@ export function useIntegrity(
       ].slice(-maxPending);
       persist();
       void flush();
-      if (["focus_loss", "visibility_hidden", "fullscreen_exit"].includes(kind))
+      const rules = currentPolicy();
+      const focusSignal =
+        (kind === "focus_loss" || kind === "visibility_hidden") &&
+        ending &&
+        interval &&
+        at - interval.at >= (rules?.tolerance_ms ?? 1500);
+      if (
+        rules?.integrity_mode !== "practice" &&
+        !rules?.accommodated &&
+        (focusSignal ||
+          (kind === "fullscreen_exit" && rules?.fullscreen_review)) &&
+        !(interval?.editing ?? editing()) &&
+        at >= graceUntil &&
+        (interval?.at ?? at) >= graceUntil - 3000
+      )
         setWarning("Perubahan fokus tercatat untuk peninjauan pengawas.");
     };
     const acquire = async () => {

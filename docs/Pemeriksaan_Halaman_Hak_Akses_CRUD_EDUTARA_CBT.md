@@ -3,6 +3,21 @@
 Tanggal pemeriksaan: 12 November 2026 (WIB). Versi dokumen: 1.41 — Panitia Ujian.
 
 
+
+## Kebijakan integritas, pindah perangkat, dan paket setara
+
+| Halaman / endpoint | Hak dan fungsi |
+|---|---|
+| `/dashboard/exams` → Soal ujian | Admin membaca dan menyimpan profil Latihan, Standar, atau Ketat selama ujian masih draf dan belum memiliki attempt. Admin memilih pengecualian penandaan fokus untuk peserta, paket setara, dan kode sesi. |
+| `/dashboard/bank` | Petugas bank soal yang berwenang dapat memakai indikator sebagai kriteria rakitan. Susun dua atau tiga paket untuk ujian yang sama, lalu Admin memilih paket di kebijakan integritas. |
+| `/student`, `/api/attempts` | Siswa membaca aturan sebelum mulai. Profil Ketat meminta persetujuan untuk perangkat tujuan. Setelah disetujui, perangkat baru melanjutkan attempt yang sama dengan paket, jawaban tersimpan, dan tenggat yang sama. Kode sesi ditampilkan pada soal jika diaktifkan. |
+| `/dashboard/monitor`, `/supervisor` | Admin organisasi dan pengawas efektif meninjau, menyetujui atau menolak permintaan yang sesuai penugasan. Cocokkan kode permintaan dengan perangkat siswa. Kode sesi soal dapat dicari pada monitor. |
+| `/api/exam-integrity` | R/U konfigurasi bagi Admin. R daftar permintaan dan U keputusan bagi Admin atau pengawas efektif, sesuai penugasan. Siswa mengajukan permintaan melalui RPC attempt miliknya. |
+
+Paket harus memiliki distribusi yang sama menurut tipe, indikator, tingkat kesulitan, tingkat kognitif, dan bobot. Server membagi paket berdasarkan hash ujian dan peserta. Versi soal dari paket terpilih dipakai saat membentuk snapshot attempt. Kode sesi mengidentifikasi attempt tanpa menampilkan nama atau nomor induk.
+
+Profil Latihan dan pengecualian aksesibilitas menyimpan sinyal fokus sebagai informasi. Secara bawaan Standar menandai mulai 1,5 detik dan Ketat mulai 1 detik. Admin dapat mengatur ambang fokus dan halaman tersembunyi serta memilih apakah keluar dari layar penuh ditandai. Persetujuan pindah perangkat berlaku lima menit untuk perangkat pemohon dan hanya dapat dikonsumsi sekali. Perangkat sebelumnya tetap menjadi penulis sampai perangkat tujuan melanjutkan. Migrasi: `20261112003026_exam_integrity_policy.sql`.
+
 ## Integritas ujian saat berlangsung
 
 | Halaman / endpoint | Hak dan fungsi |

@@ -18,6 +18,7 @@ export const ruleSchema = z.object({
   count: z.number().int().min(1).max(100),
   points: z.number().positive().max(10000),
   topic: z.string().max(200).optional(),
+  indicator: z.string().trim().max(500).optional(),
   difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   cognitive: z.enum(["C1", "C2", "C3", "C4", "C5", "C6"]).optional(),
 });
