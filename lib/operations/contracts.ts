@@ -7,7 +7,12 @@ const id = z.uuid(),
 export const operationOptionsSchema = z.object({
   admin: z.boolean(),
   organization_id: z.string().min(1),
-  exams: z.array(z.object({ id, title: z.string() })),
+  exams: z.array(z.object({
+    id,
+    title: z.string(),
+    pin_configured: z.boolean().optional(),
+    attendance_confirmed: z.boolean().optional(),
+  })),
   staff: z.array(z.object({ id, name: z.string(), role: z.string() })),
 });
 export const monitorRowSchema = z.object({
@@ -30,6 +35,7 @@ export const monitorRowSchema = z.object({
   room: z.string().nullable(),
   room_id: id.nullable(),
   can_act: z.boolean(),
+  can_view_history: z.boolean().optional(),
   score: z.number().nullable(),
   pending: count.nullable(),
 });

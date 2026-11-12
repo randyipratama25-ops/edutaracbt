@@ -27,6 +27,9 @@ insert into public.question_versions(question_id,version,payload) select '630000
 insert into public.exam_rooms(id,organization_id,exam_id,name,capacity) values('73000000-0000-4000-8000-000000000001','6e143c55-7be5-4e6e-9f1a-8f8db429956a','53000000-0000-4000-8000-000000000001','Attempt fixture room',30);
 insert into public.exam_room_students values('6e143c55-7be5-4e6e-9f1a-8f8db429956a','53000000-0000-4000-8000-000000000001','73000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000002');
 insert into public.supervisor_assignments(organization_id,exam_id,room_id,original_supervisor_id) values('6e143c55-7be5-4e6e-9f1a-8f8db429956a','53000000-0000-4000-8000-000000000001','73000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000004');
+insert into private.supervisor_attendance(organization_id,assignment_id,profile_id,confirmed_by)
+select organization_id,id,original_supervisor_id,'03000000-0000-4000-8000-000000000001'
+from public.supervisor_assignments where exam_id='53000000-0000-4000-8000-000000000001';
 create function pg_temp.assert_test(ok boolean,label text) returns void language plpgsql as $$begin if ok is distinct from true then raise exception 'FAIL %',label;end if;end$$;
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"03000000-0000-4000-8000-000000000002","session_id":"13000000-0000-4000-8000-000000000002","role":"authenticated"}',true);

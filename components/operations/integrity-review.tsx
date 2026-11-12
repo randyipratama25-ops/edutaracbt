@@ -34,9 +34,11 @@ type Action = keyof typeof actions;
 export function IntegrityReview({
   attempt,
   active,
+  canOperate,
 }: {
   attempt: string;
   active: boolean;
+  canOperate: boolean;
 }) {
   const [data, setData] = useState<IntegrityHistory>();
   const [readError, setReadError] = useState("");
@@ -91,7 +93,7 @@ export function IntegrityReview({
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!editing || writing.current) return;
+    if (!canOperate || !editing || writing.current) return;
     const input = {
       attempt_id: attempt,
       group_id: editing.group,
@@ -231,7 +233,7 @@ export function IntegrityReview({
                 </li>
               ))}
             </ol>
-            {!closed && (
+            {canOperate && !closed && (
               <div className="actions">
                 {(Object.keys(actions) as Action[])
                   .filter((action) => action !== "warn" || active)
@@ -251,7 +253,7 @@ export function IntegrityReview({
                   ))}
               </div>
             )}
-            {!closed && editing?.group === id && (
+            {canOperate && !closed && editing?.group === id && (
               <form className="stack" onSubmit={(event) => void save(event)}>
                 <label>
                   {actions[editing.action]}

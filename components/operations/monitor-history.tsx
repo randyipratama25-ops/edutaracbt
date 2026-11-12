@@ -14,10 +14,12 @@ export function MonitorHistory({
   value,
   attempt,
   active,
+  canOperate,
 }: {
   value: unknown;
   attempt: string;
   active: boolean;
+  canOperate: boolean;
 }) {
   const parsed = monitorHistorySchema.safeParse(value);
   if (!parsed.success)
@@ -30,7 +32,7 @@ export function MonitorHistory({
   const { overrides } = parsed.data;
   return (
     <div className="monitor-history stack">
-      <IntegrityReview key={attempt} attempt={attempt} active={active} />
+      <IntegrityReview key={attempt} attempt={attempt} active={active} canOperate={canOperate} />
       <section aria-label="Tindakan petugas">
         <h3>Tindakan petugas · {overrides.length}</h3>
         {!overrides.length && <p>Belum ada tindakan petugas.</p>}

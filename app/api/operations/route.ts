@@ -56,7 +56,9 @@ export async function GET(request: Request) {
       throw new HttpError(422, "Pilih ujian terlebih dahulu.");
     if (action === "history" && !input.id)
       throw new HttpError(422, "Attempt riwayat wajib.");
-    const r = await a.client.rpc("ops_command", { input });
+    const r = action === "options" && a.context === "supervisor"
+      ? await a.client.rpc("supervisor_options")
+      : await a.client.rpc("ops_command", { input });
     const data = resultData(r);
     const schema =
       action === "options"

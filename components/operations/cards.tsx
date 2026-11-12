@@ -25,7 +25,7 @@ const statusLabel = {
   ready: "Siap diunduh",
   failed: "Gagal",
 };
-export function CardsPanel({ enabled = true, subscribe = true }: { enabled?: boolean; subscribe?: boolean }) {
+export function CardsPanel({ enabled = true, subscribe = true, supervisor = false }: { enabled?: boolean; subscribe?: boolean; supervisor?: boolean }) {
   const enabledRef = useRef(enabled);
   useEffect(() => {
     enabledRef.current = enabled;
@@ -173,6 +173,16 @@ export function CardsPanel({ enabled = true, subscribe = true }: { enabled?: boo
   useEffect(() => {
     setPage((p) => Math.min(p, pages));
   }, [pages]);
+  const canCreate = !supervisor || options?.exams.some(
+    (option) => option.id === exam && option.attendance_confirmed === true,
+  ) === true;
+  useEffect(() => {
+    if (!supervisor || !enabled) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden && !writing.current) setOptionRetry((value) => value + 1);
+    }, 20000);
+    return () => window.clearInterval(timer);
+  }, [enabled, supervisor]);
   async function run(
     input:
       | {
@@ -184,7 +194,7 @@ export function CardsPanel({ enabled = true, subscribe = true }: { enabled?: boo
         }
       | { action: "retry"; job_id: string },
   ) {
-    if (writing.current || uncertain) return;
+    if (writing.current || uncertain || (input.action === "create" && !canCreate)) return;
     writing.current = true;
     setBusy(true);
     setMessage("");
@@ -315,10 +325,12 @@ export function CardsPanel({ enabled = true, subscribe = true }: { enabled?: boo
             onChange={changeSearch}
           />
           </div>
+          {exam && !canCreate && <p className="muted">Pembuatan kartu tersedia setelah kehadiran dikonfirmasi.</p>}
           <div className="actions">
           <Button
             disabled={
               !exam ||
+              !canCreate ||
               !selected.length ||
               over ||
               loading ||

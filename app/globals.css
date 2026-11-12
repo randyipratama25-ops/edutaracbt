@@ -860,3 +860,19 @@ button[data-loading=true]::before{
   .supervision-page .monitor-page .agenda-list>li{flex-wrap:wrap}
   .supervision-page .monitor-page .agenda-list>li>.actions{flex-basis:100%}
 }
+
+.supervision-exam-status{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+.supervision-exam-status p{flex-basis:100%;margin:.15rem 0 0;color:var(--muted-foreground)}
+.supervision-badge{display:inline-flex;padding:.35rem .7rem;border:1px solid var(--border);border-radius:999px;font-size:.85rem;font-weight:650;background:var(--background)}
+.supervision-badge[data-confirmed=true]{background:#e5f5ed;color:#15573d;border-color:#9fceba}
+.supervision-badge[data-confirmed=false]{background:#fff4df;color:#714606;border-color:#e4c58d}
+.supervision-dialog{padding:clamp(1rem,4vw,1.75rem);border:1px solid var(--border);border-radius:1rem}
+.supervision-dialog .dialog-title{margin:0;padding-inline-end:2.75rem;line-height:1.25}
+.supervision-dialog .dialog-description{margin:.5rem 0 1rem;padding-block-end:1rem;border-bottom:1px solid var(--border);line-height:1.5}
+.supervision-dialog .dialog-close{min-width:44px;min-height:44px}
+.supervision-dialog .actions{gap:.5rem;flex-wrap:wrap}
+.supervision-dialog-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:.65rem;padding:.9rem;background:var(--background);border:1px solid var(--border);border-radius:.65rem}
+.supervision-dialog-summary dt{font-size:.85rem;color:var(--muted-foreground)}
+.supervision-dialog-summary dd{margin:.2rem 0 0;font-weight:650;overflow-wrap:anywhere}
+@media(max-width:480px){.supervision-dialog .actions>.button{flex:1 1 9rem}}
+.supervision-dialog-actions{padding-top:1rem;border-top:1px solid var(--border)}

@@ -30,7 +30,7 @@ export default async function Supervisor() {
         </div>
         <div className="actions">
           <ContextHelp audience="supervisor" page="/supervisor" />
-          <MoreActions label="Akun"><LogoutButton /></MoreActions>
+          <MoreActions label="Akun"><LogoutButton dialogClassName="supervision-dialog" /></MoreActions>
         </div>
       </header>
       <StartHere page="/supervisor" />

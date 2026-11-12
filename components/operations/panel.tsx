@@ -350,8 +350,10 @@ export function OperationsPanel({
         setHistoryLoading(false);
     }
   }
+  const currentExam = options?.exams.find((item) => item.id === exam);
+  const canOperate = !supervisor || currentExam?.attendance_confirmed === true;
   function open(action: string, id = "") {
-    if (lock.current) return;
+    if (lock.current || (!canOperate && !["history", "sent"].includes(action))) return;
     invalidateRequests();
     setRefreshing(false);
     setListLoading(false);
@@ -469,7 +471,7 @@ export function OperationsPanel({
   }
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (lock.current || uncertain) return;
+    if (lock.current || uncertain || !canOperate) return;
     let input: object;
     try {
       if (dialog === "room_save")
@@ -593,7 +595,7 @@ export function OperationsPanel({
               <option value="">Pilih ujian</option>
               {options?.exams.map((e) => (
                 <option key={e.id} value={e.id}>
-                  {e.title}
+                  {e.title}{supervisor && e.pin_configured !== undefined ? (e.pin_configured ? " · PIN aktif" : " · PIN belum diatur") : ""}
                 </option>
               ))}
             </select>
@@ -606,6 +608,17 @@ export function OperationsPanel({
             Muat ulang
           </Button>
         </div>
+        {supervisor && currentExam && (
+          <div className="supervision-exam-status" role="status">
+            <span className="supervision-badge" data-confirmed={canOperate}>
+              {canOperate ? "Kehadiran dikonfirmasi" : "Menunggu konfirmasi kehadiran"}
+            </span>
+            {currentExam.pin_configured !== undefined && (
+              <span className="supervision-badge">PIN {currentExam.pin_configured ? "aktif" : "belum diatur"}</span>
+            )}
+            {!canOperate && <p>Admin atau panitia ujian perlu mengonfirmasi kehadiran Anda sebelum tindakan dapat digunakan.</p>}
+          </div>
+        )}
         <FeedbackMessage tone="info" role="status">
           {message}
         </FeedbackMessage>
@@ -660,12 +673,14 @@ export function OperationsPanel({
           )}
         {mode === "monitor" && exam && (
           <>
-            <DeviceTransfers key={`transfers:${exam}`} exam={exam} />
+            <DeviceTransfers key={`transfers:${exam}`} exam={exam} canOperate={canOperate} supervisor={supervisor} />
             <IncidentPanel
               key={exam}
               exam={exam}
               rows={listLoading || listError ? [] : rows}
               admin={!!options?.admin}
+              canOperate={canOperate}
+              supervisor={supervisor}
               onChanged={load}
               paused={busy || !!dialog || listLoading || !!listError}
               onDialogChange={(open) => {
@@ -746,7 +761,7 @@ export function OperationsPanel({
               aktif · {selected.length} / 500 dipilih. Pilihan dibersihkan saat
               filter berubah.
             </p>
-            {selected.length > 0 && !canReview(actionRows, "reset") && (
+            {selected.length > 0 && canOperate && !canReview(actionRows, "reset") && (
               <p className="muted">
                 Tindakan memerlukan 1–100 sesi ujian yang dapat Anda kelola.
                 Buka kunci hanya untuk diskualifikasi; diskualifikasi hanya
@@ -755,7 +770,7 @@ export function OperationsPanel({
             )}
             <div className="actions">
               <Button
-                disabled={listLoading || !!listError || uncertain}
+                disabled={!canOperate || listLoading || !!listError || uncertain}
                 onClick={() => open("broadcast")}
               >
                 Kirim notifikasi
@@ -768,7 +783,7 @@ export function OperationsPanel({
                     listLoading ||
                     !!listError ||
                     uncertain ||
-                    !canReview(actionRows, "unlock")
+                    !canOperate || !canReview(actionRows, "unlock")
                   }
                   onClick={() => open("unlock")}
                 >
@@ -781,7 +796,7 @@ export function OperationsPanel({
                     listLoading ||
                     !!listError ||
                     uncertain ||
-                    !canReview(actionRows, "reset")
+                    !canOperate || !canReview(actionRows, "reset")
                   }
                   onClick={() => open("reset")}
                 >
@@ -794,7 +809,7 @@ export function OperationsPanel({
                     listLoading ||
                     !!listError ||
                     uncertain ||
-                    !canReview(actionRows, "disqualify")
+                    !canOperate || !canReview(actionRows, "disqualify")
                   }
                   onClick={() => open("disqualify")}
                 >
@@ -935,7 +950,7 @@ export function OperationsPanel({
                       <td>
                         <Button
                           variant="outline"
-                          disabled={!r.attempt_id || !r.can_act}
+                          disabled={!r.attempt_id || !(r.can_view_history ?? r.can_act)}
                           onClick={() =>
                             void readHistory("history", r.attempt_id!)
                           }
@@ -1000,7 +1015,14 @@ export function OperationsPanel({
                       : "Pengaturan operasional")
         }
         className={mode === "rooms" ? "rooms-dialog" : supervisor ? "monitor-dialog supervision-dialog" : "monitor-dialog"}
-        description="Periksa sasaran dan rincian tindakan sebelum menyimpan."
+        description={{
+          reset: "Peserta dapat memulai percobaan baru dengan batas waktu ujian yang berlaku.",
+          unlock: "Buka kunci peserta yang didiskualifikasi agar sesi dapat dilanjutkan jika waktu masih tersedia.",
+          disqualify: "Akhiri percobaan aktif peserta terpilih. Alasan dicatat dalam riwayat.",
+          broadcast: "Pilih penerima dan tulis pesan yang akan muncul di notifikasi siswa.",
+          history: "Tinjau kronologi kejadian dan tindakan yang tercatat untuk peserta.",
+          sent: "Tinjau pesan terkirim dan status baca penerima.",
+        }[dialog] || "Periksa sasaran dan rincian tindakan sebelum menyimpan."}
       >
         {dialog === "sent" || dialog === "history" ? (
           <div className="stack" aria-busy={historyLoading}>
@@ -1018,14 +1040,19 @@ export function OperationsPanel({
             ) : dialog === "sent" ? (
               <SentNotifications value={history} />
             ) : (
-              <MonitorHistory value={history} attempt={target} active={rows.some((r) => r.attempt_id === target && r.status === "in_progress")} />
+              <MonitorHistory
+                value={history}
+                attempt={target}
+                active={rows.some((r) => r.attempt_id === target && r.status === "in_progress")}
+                canOperate={canOperate && rows.some((r) => r.attempt_id === target && r.can_act)}
+              />
             )}
           </div>
         ) : (
           <ValidatedForm className="stack" onSubmit={submit} aria-busy={busy}>
             <fieldset
               className="monitor-controls stack"
-              disabled={busy || uncertain}
+              disabled={busy || uncertain || !canOperate}
             >
               {mode === "rooms" && target && (
                 <p className="rooms-target">
@@ -1236,9 +1263,7 @@ export function OperationsPanel({
                       <option value="selected" disabled={!selected.length}>
                         Peserta dipilih ({selected.length})
                       </option>
-                      <option value="all">
-                        Semua peserta dalam cakupan saya
-                      </option>
+                      {!supervisor && <option value="all">Semua peserta dalam cakupan saya</option>}
                     </select>
                   </label>
                   <label>
@@ -1268,6 +1293,8 @@ export function OperationsPanel({
               <FeedbackMessage tone="info" role="status">
                 {message}
               </FeedbackMessage>
+              <div className={supervisor ? "actions supervision-dialog-actions" : undefined}>
+              {supervisor && <Button type="button" variant="outline" onClick={closeDialog} disabled={busy}>Batal</Button>}
               <Button
                 loading={busy}
                 disabled={
@@ -1279,8 +1306,14 @@ export function OperationsPanel({
                     !selected.length)
                 }
               >
-                {busy ? "Menyimpan…" : "Konfirmasi"}
+                {busy ? "Menyimpan…" : supervisor ? ({
+                  reset: "Reset percobaan",
+                  unlock: "Buka kunci",
+                  disqualify: "Diskualifikasi peserta",
+                  broadcast: "Kirim notifikasi",
+                }[dialog] || "Konfirmasi") : "Konfirmasi"}
               </Button>
+              </div>
             </fieldset>
             {uncertain && (
               <div role="alert">
