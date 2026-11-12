@@ -691,3 +691,8 @@ Pengawas asli atau pengganti harus dikonfirmasi Admin atau panitia yang berwenan
 ### Panduan terintegrasi di setiap halaman
 
 Satu tombol Bantuan membuka panduan halaman untuk publik, Admin, Guru, Panitia Ujian, Pengawas, dan Siswa. Modal memuat langkah awal, pencarian, cakupan sesuai peran, serta keterangan yang sebelumnya tersebar di panel. Validasi, status proses, dan batas isian yang diperlukan saat bekerja tetap tampil pada komponennya. Inventaris halaman dan hak CRUD tetap berlaku.
+
+
+## Penambahan akun siswa secara langsung (12 November 2026)
+
+Halaman `/dashboard/users` menyediakan field password 12 karakter untuk siswa, serta generator Web Crypto, lihat/sembunyikan dan salin. Admin membuat siswa langsung aktif (`Auth Admin createUser`, `email_confirm: true`) dan menempatkannya ke kelas; akun staf memakai undangan seperti semula. Pembuatan siswa kini hanya Admin. Impor TSV siswa oleh Admin menghasilkan password acak per baris dan menyertakannya dalam laporan unduh lokal, bukan audit atau respons API. Migrasi `20261112090000_student_password_uniqueness.sql` menambah tabel privat sidik password dan RPC service-role khusus, memeriksa Auth hash lama serta reservasi atomik. Keunikan berlaku pada saat penerbitan; perubahan password di semua jalur lain perlu dicakup agar keunikan tetap global di masa depan. Dokumentasi lebih lanjut: `docs/student-password-provisioning.md`.
