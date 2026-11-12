@@ -32,11 +32,13 @@ export function DeviceTransfers({ exam }: { exam: string }) {
       );
       if (!controller.signal.aborted) {
         setRows(data);
+        setTarget((current) => current && data.some((row) => row.id === current.row.id) ? current : undefined);
         setError("");
       }
     } catch (reason) {
       if (!controller.signal.aborted) {
         setRows(undefined);
+        setTarget(undefined);
         setError(
           reason instanceof Error
             ? reason.message
@@ -59,7 +61,9 @@ export function DeviceTransfers({ exam }: { exam: string }) {
     };
   }, [load]);
   async function decide() {
-    if (!target || writing.current) return;
+    if (!target || writing.current || !rows?.some((row) => row.id === target.row.id)) return;
+    reading.current?.abort();
+    reading.current = null;
     const controller = new AbortController();
     writing.current = controller;
     setBusy(true);
@@ -88,8 +92,6 @@ export function DeviceTransfers({ exam }: { exam: string }) {
     } finally {
       if (writing.current === controller) {
         writing.current = null;
-        reading.current?.abort();
-        reading.current = null;
         setBusy(false);
         setTarget(undefined);
         void load();
@@ -100,7 +102,7 @@ export function DeviceTransfers({ exam }: { exam: string }) {
     <details
       className="panel"
       aria-label="Permintaan pindah perangkat"
-      open={!!rows?.length || undefined}
+      open={!!(rows?.length || notice || error) || undefined}
     >
       <summary>
         Permintaan pindah perangkat{rows?.length ? ` (${rows.length})` : ""}

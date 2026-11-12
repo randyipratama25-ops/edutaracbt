@@ -48,6 +48,7 @@ export function useLive(
   load: () => Promise<void>,
   inbox = false,
   enabled = true,
+  subscribe = true,
 ) {
   const current = useRef(load);
   useEffect(() => {
@@ -68,20 +69,20 @@ export function useLive(
         running = false;
       }
     };
-    const source = new EventSource(
+    const source = subscribe ? new EventSource(
       "/api/operations/live" + (inbox ? "?inbox=1" : ""),
-    );
-    source.onmessage = () => void refresh();
+    ) : null;
+    if (source) source.onmessage = () => void refresh();
     const timer = setInterval(() => void refresh(), 5000);
     const focus = () => void refresh();
     window.addEventListener("online", focus);
     return () => {
       active = false;
       clearInterval(timer);
-      source.close();
+      source?.close();
       window.removeEventListener("online", focus);
     };
-  }, [inbox, enabled]);
+  }, [inbox, enabled, subscribe]);
 }
 export type Option = { id: string; title: string };
 export type Options = {

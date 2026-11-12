@@ -25,7 +25,7 @@ const statusLabel = {
   ready: "Siap diunduh",
   failed: "Gagal",
 };
-export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
+export function CardsPanel({ enabled = true, subscribe = true }: { enabled?: boolean; subscribe?: boolean }) {
   const enabledRef = useRef(enabled);
   useEffect(() => {
     enabledRef.current = enabled;
@@ -162,7 +162,7 @@ export function CardsPanel({ enabled = true }: { enabled?: boolean }) {
     void load();
     return invalidate;
   }, [exam, load, invalidate, enabled]);
-  useLive(load, false, enabled);
+  useLive(load, false, enabled, subscribe);
   const shown = rows.filter((r) =>
       matchesSearch(r.student + " " + r.username, search),
     ),

@@ -28,7 +28,7 @@ try {
   mkdirSync(route);
   writeFileSync(
     route + "/page.tsx",
-    `import {OperationsPanel} from '../../components/operations/panel';import {DashboardShell} from '../../components/layout/dashboard-shell';export default async function Page({searchParams}:{searchParams:Promise<Record<string,string>>}){const p=await searchParams;return <DashboardShell role={p.role==='teacher'?'teacher':'admin'} name="Pengguna Uji"><h1>Peninjauan ujian</h1><OperationsPanel mode={p.rooms?'rooms':'monitor'}/></DashboardShell>;}`,
+    `import {OperationsPanel} from '../../components/operations/panel';import {DashboardShell} from '../../components/layout/dashboard-shell';export default async function Page({searchParams}:{searchParams:Promise<Record<string,string>>}){const p=await searchParams;return <DashboardShell role={p.role==='teacher'?'teacher':'admin'} name="Pengguna Uji"><h1>Peninjauan ujian</h1><OperationsPanel supervisor={!!p.supervisor} mode={p.rooms?'rooms':'monitor'}/></DashboardShell>;}`,
   );
   const log = createWriteStream("/tmp/monitor-browser-dev.log");
   server = spawn(
@@ -83,6 +83,7 @@ try {
   const id=n=>`07000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
   let audience='admin',mode='ok',optionMode='ok',historyMode='ok',postMode='ok',held=null,heldPost=null,heldHistory=null,calls=[],listSize=51,examNow=id(80),activeReads=0,maxReads=0,reads=0;
   const revisions=new Map(),states=new Map(),followups=[];
+  let assignedOnly=false;
   let transfers=[{id:id(910),student:'Peserta 1',room:'Ruang A',code:'C0DE1234',created_at:'2026-11-02T01:00:00Z'}];
   const row=n=>({student_id:id(n),student:'Peserta '+n+' '+(n===1?'Nama'.repeat(30):''),username:'siswa-'+n,attempt_id:n%3===0?null:id(100+n),version:n%3===0?null:revisions.get(n)||1,status:states.get(n)||(n%3===0?'not_started':n%3===1?'in_progress':'disqualified'),logged_in:n%3!==0,answers:n%3===0?0:2,events:3,countable_events:0,open_integrity:n===1&&!followups.some(f=>f.action==='resolve')?1:0,session:n===1?'Sesi 1':null,last_seen_at:'2026-11-02T01:00:00Z',last_saved_at:'2026-11-02T00:59:00Z',deadline_at:n%3===0?null:'2026-11-02T23:00:00Z',room:n===1?'Ruang '+ 'panjang'.repeat(30):'Ruang A',room_id:id(40),can_act:audience==='admin'||n%2===1,score:null,pending:n%3===0?null:0});
   const monitor=()=>Array.from({length:listSize},(_,i)=>row(i+1));
@@ -105,7 +106,7 @@ try {
     if(u.pathname==='/api/operations/live')return r.respond({status:204});
     if(u.pathname==='/api/operations'&&r.method()==='GET'){
       const action=u.searchParams.get('action');
-      if(!action)return respond(r,optionMode==='fail'?503:200,optionMode==='malformed'?null:{admin:audience==='admin',organization_id:id(90),exams:[{id:id(80),title:'Ujian IPS'},{id:id(81),title:'Ujian Informatika '+ 'Nama'.repeat(25)}],staff:[{id:id(91),name:'Guru',role:'teacher'}]});
+      if(!action)return respond(r,optionMode==='fail'?503:200,optionMode==='malformed'?null:{admin:audience==='admin',organization_id:id(90),exams:[{id:id(80),title:'Ujian IPS'},{id:id(81),title:'Ujian Informatika '+ 'Nama'.repeat(25)}].slice(assignedOnly?1:0),staff:[{id:id(91),name:'Guru',role:'teacher'}]});
       if(action==='monitor'){reads++;activeReads++;maxReads=Math.max(maxReads,activeReads);if(mode==='hold'){held=r;return;}await sleep(15);activeReads--;if(mode==='error')return respond(r,503,null);if(mode==='malformed')return respond(r,200,{rows:null});examNow=u.searchParams.get('exam');return respond(r,200,monitor());}
       if(action==='history'||action==='sent'){if(historyMode==='hold'){heldHistory=r;return;}return respond(r,historyMode==='fail'?503:200,action==='sent'?sent():history());}
       if(action==='rooms')return respond(r,200,rooms);
@@ -123,7 +124,7 @@ try {
   const click=async(text,scope='')=>{await page.waitForFunction(({text,scope})=>{const root=scope?document.querySelector(scope):document;return !!root&&[...root.querySelectorAll('button')].some(b=>b.textContent.trim()===text&&!b.matches(':disabled'));},{timeout:15000},{text,scope});return page.evaluate(({text,scope})=>{const root=scope?document.querySelector(scope):document;const b=[...root.querySelectorAll('button')].find(b=>b.textContent.trim()===text&&!b.matches(':disabled'));if(!b)throw Error('Unavailable '+text);b.focus();b.click();},{text,scope});};
   const fill=async(selector,value)=>{const e=await page.$(selector);await e.focus();await page.keyboard.down('Control');await page.keyboard.press('A');await page.keyboard.up('Control');await e.press('Backspace');if(value)await e.type(value);};
   const ready=async()=>page.waitForFunction(()=>document.querySelector('.monitor-freshness')?.textContent.includes('Pembaruan terakhir:'));
-  const go=async(role='admin',room=false)=>{audience=role;mode='ok';postMode='ok';historyMode='ok';optionMode='ok';await page.goto(origin+path+'?role='+role+(room?'&rooms=1':''),{waitUntil:'networkidle0'});await ready();};
+  const go=async(role='admin',room=false,supervisor=false)=>{audience=role;mode='ok';postMode='ok';historyMode='ok';optionMode='ok';await page.goto(origin+path+'?role='+role+(room?'&rooms=1':'')+(supervisor?'&supervisor=1':''),{waitUntil:'networkidle0'});await ready();};
   const overflow=async label=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' overflow');
   const fits=async()=>assert(await page.$eval('[role=dialog]',e=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1&&r.top>=0&&r.bottom<=innerHeight+1&&e.scrollWidth<=e.clientWidth+1;}),'dialog bounds');
   const close=async()=>{await page.click('[aria-label="Tutup dialog"]');await page.waitForSelector('[role=dialog]',{hidden:true});await ready();};
@@ -135,6 +136,29 @@ try {
   await click('Konfirmasi','details[aria-label="Permintaan pindah perangkat"]');
   await page.waitForFunction(()=>document.body.textContent.includes('Disetujui. Siswa dapat melanjutkan'));
   assert(calls.some(x=>x.action==='approve'&&x.id===id(910)));
+  // The supervisor portal reconciles assignment changes without a page reload.
+  transfers=[{id:id(911),student:'Peserta 2',room:'Ruang A',code:'C0DE1235',created_at:'2026-11-02T01:00:00Z'}];
+  await go('teacher',false,true);
+  const transferPanel='details[aria-label="Permintaan pindah perangkat"]';
+  await click('Tolak',transferPanel);
+  const beforeExpiry=calls.length;
+  transfers=[];
+  await page.waitForFunction(scope=>document.querySelector(scope)?.textContent.includes('Belum ada permintaan menunggu.'),{},transferPanel);
+  assert.equal(await page.$(transferPanel+' .notice'),null);
+  assert.equal(calls.length,beforeExpiry);
+  assignedOnly=true;
+  await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.waitForFunction(value=>document.querySelector('.monitor-page > fieldset > .toolbar select')?.value===value,{},id(81));
+  await ready();
+  for(const [width,height] of [[320,720],[768,1024],[844,390],[1440,900]]){
+    await page.setViewport({width,height});
+    await overflow('supervisor '+width);
+    await click('Kirim notifikasi');
+    await fits();
+    await close();
+  }
+  assignedOnly=false;
+  await go();
   await page.select('select[aria-label="Status"], .list-filters label select', 'integrity');
   await page.waitForFunction(()=>document.querySelectorAll('.monitor-page table tbody tr').length===1);
   await click('Riwayat');

@@ -21,7 +21,7 @@ export default async function Supervisor() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="workspace supervisor-workspace"
+      className="workspace supervisor-workspace supervision-page"
     >
       <header className="student-portal-heading">
         <div>
@@ -35,8 +35,9 @@ export default async function Supervisor() {
       </header>
       <StartHere page="/supervisor" />
       <RoleActions role="supervisor" />
-      <section id="pelaksanaan" aria-label="Pelaksanaan ujian">
-        <OperationsPanel />
+      <section id="pelaksanaan" aria-labelledby="supervision-heading">
+        <h2 id="supervision-heading">Pelaksanaan ujian</h2>
+        <OperationsPanel supervisor />
       </section>
       <SupervisorCards />
     </main>
