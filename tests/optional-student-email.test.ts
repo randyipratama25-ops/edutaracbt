@@ -14,7 +14,7 @@ describe("optional student email", () => {
   it("accepts missing, empty, and valid real email for students", () => {
     for (const input of [{ ...fields }, { ...fields, email: "" }, { ...fields, email: "siswa@example.test" }]) {
       const parsed = userCreateSchema.parse(input);
-      expect(parsed.email).toBe(input.email ?? "");
+      expect(parsed.email).toBe("email" in input ? input.email : "");
       expect(userCommand.safeParse({ operation: "create", ...input }).success).toBe(true);
     }
   });
