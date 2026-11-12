@@ -51,6 +51,8 @@ export const committeeData = z.object({
   ),
 });
 
+export const committeeResponse = committeeData.extend({ server_now: instant });
+
 const target = z.object({ id: z.uuid() });
 const candidate = z.object({ profile_id: z.uuid() });
 const supervisorTarget = target.extend({

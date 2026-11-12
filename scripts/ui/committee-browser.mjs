@@ -126,6 +126,7 @@ try {
     date,
     today,
     expires_at,
+    server_now: new Date().toISOString(),
     timezone: "Asia/Jakarta",
     status: portal && pending ? "pending" : "confirmed",
     candidates: portal ? [] : people,
@@ -338,6 +339,10 @@ try {
   empty = false;
 
   portal = true;
+  await page.evaluateOnNewDocument(() => {
+    const clock = Date.now.bind(Date);
+    Date.now = () => clock() + 24 * 60 * 60 * 1000;
+  });
   await page.goto(origin + path + "?portal=1", { waitUntil: "networkidle0" });
   await waitText("Menunggu konfirmasi Admin");
   pending = false;
@@ -357,6 +362,16 @@ try {
   await click("Konfirmasi hadir");
   await waitText("Dikonfirmasi");
   await click("Tunjuk pengganti");
+  await page.waitForSelector('[role="dialog"] select');
+  pending = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await waitText("Menunggu konfirmasi Admin");
+  await page.waitForSelector('[role="dialog"]', { hidden: true });
+  assert.equal(await page.$(".committee-card"), null);
+  pending = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await waitText("Kehadiran panitia terkonfirmasi");
+  await click("Tunjuk pengganti");
   await page.select('[role="dialog"] select', id(501));
   await click("Simpan pengganti", '[role="dialog"]');
   await waitText("Pengawas awal hadir");
@@ -367,6 +382,25 @@ try {
       .substitution_id,
     id(990),
   );
+  schedule.push({ ...schedule[0], id: id(802), room: "Ruang Barat" });
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll(".committee-page select option")].some(
+      (option) => option.value === "Ruang Barat",
+    ),
+  );
+  await page.select(
+    ".committee-page select:has(option[value='Ruang Barat'])",
+    "Ruang Barat",
+  );
+  await waitText("1 hasil");
+  assert.equal(
+    await page.$$eval(".committee-card", (cards) => cards.length),
+    1,
+  );
+  await click("Reset filter");
+  await waitText("2 hasil");
+  await fits();
   await page.addScriptTag({ content: axe.source });
   const scan = await page.evaluate(() =>
     window.axe.run(document.querySelector(".committee-page"), {

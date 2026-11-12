@@ -9,7 +9,7 @@ import {
 } from "react";
 import { clientRequest } from "../../lib/client/request";
 import {
-  committeeData,
+  committeeResponse,
   committeeDate,
   committeeReceipt,
   type CommitteeData,
@@ -38,6 +38,15 @@ type Change = {
     | Omit<Extract<Replace, { action: "replace_committee" }>, "profile_id">
     | Omit<Extract<Replace, { action: "replace_supervisor" }>, "profile_id">;
 };
+
+function supervisorCandidates(
+  data: CommitteeData,
+  item: CommitteeData["schedule"][number],
+) {
+  return data.supervisors.filter(
+    ({ id }) => id !== item.original_id && id !== item.supervisor_id,
+  );
+}
 
 function PersonForm({
   label,
@@ -91,6 +100,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
     date: string;
     revision: number;
     data?: CommitteeData;
+    deadline?: number;
     error?: string;
   }>();
   const [notice, setNotice] = useState<{ text: string; error?: boolean }>();
@@ -98,6 +108,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
   const [change, setChange] = useState<Change>();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
+  const [room, setRoom] = useState("");
   const [page, setPage] = useState(1);
   const mutation = useRef<AbortController | null>(null);
   const current = loaded?.date === date ? loaded : undefined;
@@ -109,14 +120,52 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
     const controller = new AbortController();
     let currentRequest = true;
     const query = date ? "?date=" + encodeURIComponent(date) : "";
-    void clientRequest(endpoint + query, undefined, committeeData, controller, {
-      timeoutMs: 15000,
-    })
+    void clientRequest(
+      endpoint + query,
+      undefined,
+      committeeResponse,
+      controller,
+      {
+        timeoutMs: 15000,
+      },
+    )
       .then((data) => {
-        if (currentRequest) setLoaded({ date, revision, data });
+        if (!currentRequest) return;
+        setLoaded({
+          date,
+          revision,
+          data,
+          deadline: admin
+            ? undefined
+            : Date.now() +
+              Date.parse(data.expires_at) -
+              Date.parse(data.server_now),
+        });
+        if (!admin)
+          setChange((previous) => {
+            if (
+              !previous ||
+              data.status !== "confirmed" ||
+              previous.input.action !== "replace_supervisor"
+            )
+              return undefined;
+            const target = previous.input;
+            const row = data.schedule.find(
+              (item) =>
+                item.id === target.id &&
+                item.substitution_id === target.substitution_id &&
+                item.can_replace,
+            );
+            if (!row) return undefined;
+            const people = supervisorCandidates(data, row);
+            return people.length
+              ? { ...previous, label: row.supervisor_name, people }
+              : undefined;
+          });
       })
       .catch((error: unknown) => {
-        if (currentRequest)
+        if (currentRequest) {
+          if (!admin) setChange(undefined);
           setLoaded({
             date,
             revision,
@@ -125,12 +174,13 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
                 ? error.message
                 : "Jadwal belum dapat dimuat.",
           });
+        }
       });
     return () => {
       currentRequest = false;
       controller.abort();
     };
-  }, [date, revision]);
+  }, [admin, date, revision]);
   useEffect(
     () => () => {
       const active = mutation.current;
@@ -141,7 +191,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
   );
 
   const refresh = useEffectEvent(() => {
-    if (!document.hidden && !mutation.current && !loading && !change)
+    if (!document.hidden && !mutation.current && !loading)
       setRevision((value) => value + 1);
   });
   useEffect(() => {
@@ -158,23 +208,29 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
       window.removeEventListener("online", visible);
     };
   }, [admin]);
-  const expiresAt = data?.expires_at;
+  const deadline = current?.deadline;
   useEffect(() => {
-    if (admin || !expiresAt) return;
-    const timeout = window.setTimeout(
-      () => {
-        setLoaded(undefined);
-        setChange(undefined);
-        setRevision((value) => value + 1);
-      },
-      Math.max(1000, Date.parse(expiresAt) - Date.now()),
-    );
-    return () => window.clearTimeout(timeout);
-  }, [admin, expiresAt]);
+    if (deadline === undefined) return;
+    const expire = () => {
+      setLoaded(undefined);
+      setChange(undefined);
+      setRevision((value) => value + 1);
+    };
+    const visible = () => {
+      if (!document.hidden && Date.now() >= deadline) expire();
+    };
+    const timer = window.setTimeout(expire, Math.max(0, deadline - Date.now()));
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [deadline]);
 
   function resetFilters() {
     setSearch("");
     setFilter("");
+    setRoom("");
     setPage(1);
   }
   function chooseDate(value: string) {
@@ -185,7 +241,16 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
     setDate(value);
   }
   async function save(input: CommitteeMutation) {
-    if (disabled || mutation.current || !data) return;
+    if (
+      disabled ||
+      mutation.current ||
+      !data ||
+      (!admin &&
+        (data.status !== "confirmed" ||
+          deadline === undefined ||
+          Date.now() >= deadline))
+    )
+      return;
     const controller = new AbortController();
     mutation.current = controller;
     setBusy(true);
@@ -238,8 +303,14 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
         d.replaced_at ? "replaced" : d.confirmed_at ? "present" : "pending",
       ) && matchesSearch([d.name, d.replaces].join(" "), search),
   );
+  const rooms = [...new Set(schedule.map((item) => item.room))].sort((a, b) =>
+    a.localeCompare(b, "id"),
+  );
+  const selectedRoom = rooms.includes(room) ? room : "";
+  const present = schedule.filter((item) => item.confirmed_at).length;
   const matchingSchedule = schedule.filter(
     (s) =>
+      (!selectedRoom || s.room === selectedRoom) &&
       matchesStatus(s.confirmed_at ? "present" : "pending") &&
       matchesSearch(
         [s.exam, s.room, s.session, s.supervisor_name, s.original_name].join(
@@ -264,7 +335,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
       className="committee-page stack"
       aria-label={admin ? "Penugasan panitia" : "Tugas hari ini"}
     >
-      <div className="panel committee-toolbar">
+      <div className="panel committee-toolbar" aria-busy={loading}>
         {admin && (
           <label>
             Tanggal tugas
@@ -326,7 +397,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
           {current.error}
         </p>
       )}
-      {data && (
+      {data && admin && (
         <p className="muted">
           {dayFormat.format(new Date(data.date))} · {data.timezone}
         </p>
@@ -349,6 +420,39 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
             <p>
               Belum ada petugas yang tersedia untuk ditugaskan pada tanggal ini.
             </p>
+          )}
+        </div>
+      )}
+      {data && !admin && (
+        <div className="panel stack committee-day">
+          <div className="committee-day-heading">
+            <div>
+              <h2>Tugas hari ini</h2>
+              <p className="muted">
+                {dayFormat.format(new Date(data.date))} · {data.timezone}
+              </p>
+            </div>
+            {data.status === "confirmed" && (
+              <span className="committee-status">
+                Kehadiran panitia terkonfirmasi
+              </span>
+            )}
+          </div>
+          {data.status === "confirmed" && (
+            <dl className="committee-summary">
+              <div>
+                <dt>Penugasan pengawas</dt>
+                <dd>{schedule.length}</dd>
+              </div>
+              <div>
+                <dt>Hadir</dt>
+                <dd>{present}</dd>
+              </div>
+              <div>
+                <dt>Menunggu konfirmasi</dt>
+                <dd>{schedule.length - present}</dd>
+              </div>
+            </dl>
           )}
         </div>
       )}
@@ -376,6 +480,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
               active={[
                 ...(search ? ["Pencarian"] : []),
                 ...(filter ? ["Kehadiran"] : []),
+                ...(selectedRoom ? ["Ruang"] : []),
               ]}
               onReset={resetFilters}
             >
@@ -406,6 +511,25 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
                   {admin && <option value="replaced">Digantikan</option>}
                 </select>
               </label>
+              {!admin && rooms.length > 1 && (
+                <label>
+                  Ruang
+                  <select
+                    value={selectedRoom}
+                    onChange={(event) => {
+                      setRoom(event.target.value);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="">Semua ruang</option>
+                    {rooms.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </ListFilters>
           )}
           {!rowCount && (
@@ -478,10 +602,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
                     id: item.id,
                     substitution_id: item.substitution_id,
                   };
-                  const people = data.supervisors.filter(
-                    ({ id }) =>
-                      id !== item.original_id && id !== item.supervisor_id,
-                  );
+                  const people = supervisorCandidates(data, item);
                   return (
                     <article
                       className="panel stack committee-card"
@@ -493,10 +614,12 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
                         {item.session ? ` · ${item.session}` : ""}
                       </p>
                       <p>
-                        {clock?.formatRange(
-                          new Date(item.starts_at),
-                          new Date(item.ends_at),
-                        )}
+                        {clock?.formatRange
+                          ? clock.formatRange(
+                              new Date(item.starts_at),
+                              new Date(item.ends_at),
+                            )
+                          : `${clock?.format(new Date(item.starts_at))} – ${clock?.format(new Date(item.ends_at))}`}
                       </p>
                       <p>
                         <strong>{item.supervisor_name}</strong>
@@ -523,6 +646,7 @@ export function CommitteePanel({ admin }: { admin: boolean }) {
                           <Button
                             type="button"
                             disabled={disabled}
+                            aria-label={`Konfirmasi hadir: ${item.supervisor_name} · ${item.room}`}
                             onClick={() =>
                               void save({
                                 action: "confirm_supervisor",
