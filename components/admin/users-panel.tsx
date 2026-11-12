@@ -8,7 +8,8 @@ import { TaskTabs } from "../ui/task-tabs";
 import { MoreActions } from "../ui/more-actions";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
-import { parseUserImport, userSchema } from "../../lib/domain/validation";
+import { parseUserImport, userCreateSchema } from "../../lib/domain/validation";
+import { generateStudentPassword } from "../../lib/users/student-password";
 import { userRequest, UserRequestError } from "../../lib/users/request";
 import {
   userListSchema,
@@ -58,6 +59,8 @@ export function UsersPanel() {
     [open, setOpen] = useState(false),
     [editing, setEditing] = useState<UserRow | null>(null),
     [chosenRole, setChosenRole] = useState("student"),
+    [studentPassword, setStudentPassword] = useState(""),
+    [passwordVisible, setPasswordVisible] = useState(false),
     [formMessage, setFormMessage] = useState<Feedback>(null),
     [formUncertain, setFormUncertain] = useState(false),
     [fieldError, setFieldError] = useState("");
@@ -262,6 +265,8 @@ export function UsersPanel() {
     if (busy || !listReady) return;
     setEditing(row);
     setChosenRole("student");
+    setStudentPassword("");
+    setPasswordVisible(false);
     setFormMessage(null);
     setFormUncertain(false);
     setFieldError("");
@@ -282,11 +287,12 @@ export function UsersPanel() {
               .max(150),
           })
           .safeParse({ full_name: f.get("full_name") })
-      : userSchema.safeParse({
+      : userCreateSchema.safeParse({
           username: f.get("username"),
           full_name: f.get("full_name"),
           email: f.get("email"),
           role: canManage ? chosenRole : "student",
+          ...((canManage ? chosenRole : "student") === "student" ? { password: studentPassword } : {}),
           ...(f.get("class_id") ? { class_id: f.get("class_id") } : {}),
         });
     if (!result.success) {
@@ -301,6 +307,7 @@ export function UsersPanel() {
               full_name: "Nama lengkap wajib diisi, maksimal 150 karakter.",
               email: "Masukkan alamat email yang valid.",
               class_id: "Pilih kelas aktif yang tersedia.",
+              password: "Password siswa wajib sesuai ketentuan 12 karakter. Gunakan Generate password atau isi manual.",
             } as Record<string, string>
           )[name] || issue.message,
       });
@@ -343,11 +350,12 @@ export function UsersPanel() {
       if (seq !== life.current) return;
       focusListAfterClose.current = true;
       setOpen(false);
+      setStudentPassword("");
       setMessage({
         kind: "success",
         text: editing
           ? "Nama pengguna berhasil diperbarui."
-          : "Akun dibuat; undangan aktivasi diterima layanan email.",
+          : chosenRole === "student" ? "Akun siswa berhasil dibuat dan langsung aktif. Serahkan password yang sudah disalin kepada siswa secara aman." : "Akun dibuat; undangan aktivasi diterima layanan email.",
       });
       refreshList();
     } catch (e) {
@@ -960,7 +968,7 @@ export function UsersPanel() {
         description={
           editing
             ? "Perbarui nama tanpa mengubah identitas akun lainnya."
-            : "Akun diaktifkan melalui tautan undangan email."
+            : chosenRole === "student" ? "Admin membuat password siswa. Akun siswa langsung aktif tanpa undangan email." : "Akun diaktifkan melalui tautan undangan email."
         }
         className="users-dialog"
       >
@@ -1009,7 +1017,7 @@ export function UsersPanel() {
                   hubung. Huruf disimpan sebagai huruf kecil.
                 </p>
                 <label>
-                  Email aktivasi
+                  {chosenRole === "student" ? "Email akun siswa" : "Email aktivasi"}
                   <input
                     name="email"
                     type="email"
@@ -1026,7 +1034,7 @@ export function UsersPanel() {
                     name="role"
                     value={canManage ? chosenRole : "student"}
                     disabled={!canManage || busy || formUncertain}
-                    onChange={(e) => setChosenRole(e.target.value)}
+                    onChange={(e) => { setChosenRole(e.target.value); setStudentPassword(""); setPasswordVisible(false); }}
                   >
                     {(canManage
                       ? ["student", "teacher", "supervisor", "committee", "admin"]
@@ -1038,6 +1046,46 @@ export function UsersPanel() {
                     ))}
                   </select>
                 </label>
+                {chosenRole === "student" && (
+                  <div className="stack">
+                    <label>
+                      Password siswa
+                      <input
+                        name="password"
+                        type={passwordVisible ? "text" : "password"}
+                        value={studentPassword}
+                        onChange={(e) => { setStudentPassword(e.target.value); setFieldError(""); }}
+                        minLength={12}
+                        maxLength={12}
+                        required
+                        autoComplete="new-password"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        aria-invalid={fieldError === "password" || undefined}
+                        aria-describedby="student-password-hint user-form-feedback"
+                      />
+                    </label>
+                    <p id="student-password-hint" className="muted">
+                      Tepat 12 karakter: huruf kapital dan angka tanpa O, I, S, 0, 1, 5; hanya satu simbol !@#$*? di karakter terakhir.
+                    </p>
+                    <div className="actions">
+                      <Button type="button" variant="outline" disabled={busy} onClick={() => { setStudentPassword(generateStudentPassword()); setFieldError(""); }}>
+                        Generate password
+                      </Button>
+                      <Button type="button" variant="outline" disabled={!studentPassword || busy} onClick={() => setPasswordVisible((v) => !v)}>
+                        {passwordVisible ? "Sembunyikan" : "Lihat password"}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={!studentPassword || busy} onClick={() => {
+                        void navigator.clipboard.writeText(studentPassword).then(
+                          () => setFormMessage({ kind: "info", text: "Password disalin. Simpan dan bagikan secara aman sebelum menyimpan akun." }),
+                          () => setFormMessage({ kind: "error", text: "Tidak dapat menyalin otomatis. Gunakan tombol Lihat password untuk menyalin manual." }),
+                        );
+                      }}>
+                        Salin password
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {(chosenRole === "student" || !canManage) && (
                   <>
                     <label>
