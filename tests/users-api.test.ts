@@ -154,6 +154,17 @@ describe("users API compatibility and guards", () => {
     expect((await post({ operation: "archive", id })).status).toBe(401);
     expect(gateway).not.toHaveBeenCalled();
   });
+  it("accepts blank student email, but rejects blank email for other roles", async () => {
+    vi.mocked(gateway).mockResolvedValue({ id, username: "siswa-baru" });
+    const data = {
+      operation: "create", username: "Siswa-Baru", full_name: "Siswa Baru",
+      role: "student", class_id: id, password: "ABCDEFG2346!",
+    };
+    const res = await post({ ...data, email: "" });
+    expect(res.status).toBe(200);
+    expect(gateway).toHaveBeenCalledWith({ ...data, username: "siswa-baru", email: "", action: "manage_user" }, "token");
+    expect((await post({ ...data, role: "teacher", password: undefined, email: "" })).status).toBe(422);
+  });
   it("disallows teacher student creation even when password is supplied", async () => {
     vi.mocked(actor).mockResolvedValue(asActor("teacher"));
     vi.mocked(gateway).mockResolvedValue({ id, username: "siswa-baru" });
