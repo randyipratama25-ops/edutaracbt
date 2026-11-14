@@ -884,17 +884,45 @@ button[data-loading=true]::before{
 }
 .dialog-content.essay-keyboard-dialog {
   display: grid;
+  background: rgb(255 255 255 / var(--essay-keyboard-opacity, .9));
   width: min(46rem, calc(100vw - 16px));
   max-height: calc(100dvh - 12px);
   gap: .45rem;
   padding: .75rem clamp(.625rem, 2vw, 1.25rem);
 }
-.essay-keyboard-dialog > .dialog-title {
+.essay-keyboard-dialog > .dialog-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: .25rem .75rem;
   min-height: 40px;
+  padding-right: 48px;
+}
+.essay-keyboard-dialog .dialog-title {
+  flex: 1 0 auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
   margin: 0;
-  padding-right: 52px;
+  padding: 0;
+}
+.essay-keyboard-transparency {
+  flex: 0 1 11rem;
+  gap: 0;
+  padding: .2rem .45rem;
+  border-radius: .5rem;
+  background: var(--surface-subtle);
+  font-size: .75rem;
+}
+.essay-keyboard-transparency span {
+  display: flex;
+  justify-content: space-between;
+  gap: .4rem;
+}
+.essay-keyboard-transparency input[type="range"] {
+  margin: 0;
+  height: 24px;
+  accent-color: var(--primary);
 }
 .essay-keyboard-dialog > .dialog-description {
   margin: 0;

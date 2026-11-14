@@ -2,7 +2,7 @@
 import {ConnectionNotice} from "../feedback/provider";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { useCallback, useLayoutEffect, useRef, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 export function Dialog({
   open,
   onOpenChange,
@@ -13,9 +13,13 @@ export function Dialog({
   onCloseAutoFocus,
   dismissible = true,
   draggable = false,
+  headerControls,
+  contentStyle,
 }: {
   dismissible?: boolean;
   draggable?: boolean;
+  headerControls?: ReactNode;
+  contentStyle?: CSSProperties;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -77,11 +81,21 @@ export function Dialog({
     const focused = document.activeElement;
     opener.current = focused instanceof HTMLElement && focused !== document.body && !content.current?.contains(focused) ? focused : null;
   }, [open]);
+  const heading = (
+    <DialogPrimitive.Title
+      className={draggable ? "dialog-title dialog-drag-handle" : "dialog-title"}
+      onPointerDown={draggable ? startDrag : undefined}
+      onPointerMove={draggable ? moveDrag : undefined}
+      onLostPointerCapture={draggable ? () => { drag.current = null; } : undefined}
+    >
+      {title}
+    </DialogPrimitive.Title>
+  );
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (next || dismissible) onOpenChange(next); }}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="dialog-overlay" />
-        <DialogPrimitive.Content ref={attachContent} className={`dialog-content ${className}`}
+        <DialogPrimitive.Content ref={attachContent} style={contentStyle} className={`dialog-content ${className}`}
           onEscapeKeyDown={event => { if (!dismissible) event.preventDefault(); }}
           onInteractOutside={event => { if (!dismissible) event.preventDefault(); }}
           onOpenAutoFocus={event => {
@@ -95,14 +109,9 @@ export function Dialog({
               if (target) { event.preventDefault(); target.focus(); }
             }
           }}>
-          <DialogPrimitive.Title
-            className={draggable ? "dialog-title dialog-drag-handle" : "dialog-title"}
-            onPointerDown={draggable ? startDrag : undefined}
-            onPointerMove={draggable ? moveDrag : undefined}
-            onLostPointerCapture={draggable ? () => { drag.current = null; } : undefined}
-          >
-            {title}
-          </DialogPrimitive.Title>
+          {headerControls ? (
+            <div className="dialog-header">{heading}{headerControls}</div>
+          ) : heading}
           <DialogPrimitive.Description className="dialog-description">
             {description}
           </DialogPrimitive.Description>
