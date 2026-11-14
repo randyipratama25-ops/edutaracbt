@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useId, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { useMobileDevice } from "../../lib/device/use-landscape";
 import { essayLength } from "../../lib/attempts/essay";
 import { Button } from "../ui/button";
 import { Dialog } from "../ui/dialog";
@@ -38,6 +39,7 @@ export function EssayKeyboard({
   onChange: (value: string) => void;
 }) {
   const id = useId();
+  const mobile = useMobileDevice();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<(typeof modes)[number]>(direction === "rtl" ? "Arab" : "ABC");
   const [shift, setShift] = useState<"off" | "once" | "caps">("off");
@@ -95,13 +97,50 @@ export function EssayKeyboard({
   const keyProps = { type: "button", onMouseDown: (event: MouseEvent) => event.preventDefault() } as const;
   const rows = mode === "Matematika" ? [] : mode === "Arab" && marks ? arabicMarks : layouts[mode];
 
-  return (
+  const answerField = (
     <>
       <label>
         Jawaban esai
-        <textarea aria-describedby={id} dir={direction} rows={5} value={value} readOnly inputMode="none" />
+        <textarea
+          aria-describedby={id}
+          dir={direction}
+          rows={mobile ? 5 : 8}
+          maxLength={100000}
+          disabled={disabled}
+          value={value}
+          readOnly={mobile}
+          inputMode={mobile ? "none" : undefined}
+          onChange={mobile ? undefined : (event) => onChange(event.target.value)}
+        />
       </label>
       <p id={id}>{essayLength(value)} karakter · minimum {minChars}</p>
+    </>
+  );
+
+  if (!mobile) {
+    return (
+      <>
+        {answerField}
+        <div className="actions">
+          {["<b>teks</b>", "<i>teks</i>", "$\\frac{a}{b}$", "أ ب ت ث", "≤ ≥ ≠ √"].map((snippet) => (
+            <Button
+              key={snippet}
+              type="button"
+              disabled={disabled || value.length + snippet.length + 1 > 100000}
+              variant="outline"
+              onClick={() => onChange(value + " " + snippet)}
+            >
+              {snippet}
+            </Button>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {answerField}
       <div className="actions">
         <Button type="button" variant="outline" disabled={disabled} onClick={() => setOpen(true)}>
           Buka keyboard esai
