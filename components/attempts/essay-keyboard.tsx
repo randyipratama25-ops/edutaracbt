@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { useMobileDevice } from "../../lib/device/use-landscape";
 import { essayLength } from "../../lib/attempts/essay";
 import { Button } from "../ui/button";
@@ -25,6 +25,14 @@ const arabicMarks = [
 const modes = ["ABC", "123", "#+=", "Arab", "Matematika"] as const;
 const mathCategories = Object.keys(mathKeys) as (keyof typeof mathKeys)[];
 
+const minTransparency = 10;
+const maxTransparency = 90;
+const transparencyKey = "edutara:essay-keyboard-transparency";
+
+function clampTransparency(value: number) {
+  return Math.min(maxTransparency, Math.max(minTransparency, value));
+}
+
 export function EssayKeyboard({
   value,
   direction,
@@ -41,6 +49,7 @@ export function EssayKeyboard({
   const id = useId();
   const mobile = useMobileDevice();
   const [open, setOpen] = useState(false);
+  const [transparency, setTransparency] = useState(minTransparency);
   const [mode, setMode] = useState<(typeof modes)[number]>(direction === "rtl" ? "Arab" : "ABC");
   const [shift, setShift] = useState<"off" | "once" | "caps">("off");
   const [marks, setMarks] = useState(false);
@@ -59,6 +68,28 @@ export function EssayKeyboard({
       nextCaret.current = null;
     }
   }, [value]);
+
+  function openKeyboard() {
+    try {
+      const saved = localStorage.getItem(transparencyKey);
+      if (saved !== null && Number.isFinite(Number(saved))) {
+        setTransparency(clampTransparency(Math.round(Number(saved))));
+      }
+    } catch {
+      // Keep the in-memory setting if device storage is unavailable.
+    }
+    setOpen(true);
+  }
+
+  function changeTransparency(value: number) {
+    const next = clampTransparency(value);
+    setTransparency(next);
+    try {
+      localStorage.setItem(transparencyKey, String(next));
+    } catch {
+      // The slider still works while the current question is open.
+    }
+  }
 
   function edit(insert: string) {
     const field = editor.current;
@@ -142,7 +173,7 @@ export function EssayKeyboard({
     <>
       {answerField}
       <div className="actions">
-        <Button type="button" variant="outline" disabled={disabled} onClick={() => setOpen(true)}>
+        <Button type="button" variant="outline" disabled={disabled} onClick={openKeyboard}>
           Buka keyboard esai
         </Button>
       </div>
@@ -152,6 +183,21 @@ export function EssayKeyboard({
         draggable
         className="essay-keyboard-dialog"
         title="Keyboard esai"
+        contentStyle={{ "--essay-keyboard-opacity": (100 - transparency) / 100 } as CSSProperties}
+        headerControls={
+          <label className="essay-keyboard-transparency">
+            <span>Transparansi <strong>{transparency}%</strong></span>
+            <input
+              type="range"
+              aria-label="Transparansi modal keyboard"
+              aria-valuetext={`${transparency}% transparan`}
+              min={minTransparency}
+              max={maxTransparency}
+              value={transparency}
+              onChange={(event) => changeTransparency(event.currentTarget.valueAsNumber)}
+            />
+          </label>
+        }
         description="Geser judul untuk memindahkan keyboard. Ketuk tombol di layar untuk menulis."
       >
         <label className="essay-keyboard-answer">
