@@ -1,6 +1,6 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import { requiresLandscape } from "./orientation";
+import { isMobileDevice, requiresLandscape } from "./orientation";
 
 function subscribe(update: () => void) {
   const orientation = window.screen?.orientation;
@@ -15,4 +15,13 @@ function subscribe(update: () => void) {
 }
 export function useLandscapeRequired() {
   return useSyncExternalStore(subscribe, requiresLandscape, () => false);
+}
+
+// Device identity stays fixed while the viewport resizes or rotates.
+function subscribeToDevice() {
+  return () => {};
+}
+
+export function useMobileDevice() {
+  return useSyncExternalStore(subscribeToDevice, isMobileDevice, () => false);
 }

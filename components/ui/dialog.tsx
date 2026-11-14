@@ -2,7 +2,7 @@
 import {ConnectionNotice} from "../feedback/provider";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, type PointerEvent, type ReactNode } from "react";
 export function Dialog({
   open,
   onOpenChange,
@@ -12,8 +12,10 @@ export function Dialog({
   className = "",
   onCloseAutoFocus,
   dismissible = true,
+  draggable = false,
 }: {
   dismissible?: boolean;
+  draggable?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -24,6 +26,51 @@ export function Dialog({
 }) {
   const opener = useRef<HTMLElement | null>(null);
   const content = useRef<HTMLDivElement | null>(null);
+  const drag = useRef<{ pointer: number; x: number; y: number; left: number; top: number } | null>(null);
+
+  function startDrag(event: PointerEvent<HTMLHeadingElement>) {
+    const popup = content.current;
+    if (!popup || event.button !== 0 || !event.isPrimary) return;
+    const rect = popup.getBoundingClientRect();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = {
+      pointer: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      left: rect.left,
+      top: rect.top,
+    };
+  }
+
+  function moveDrag(event: PointerEvent<HTMLHeadingElement>) {
+    const popup = content.current;
+    const start = drag.current;
+    if (!popup || !start || start.pointer !== event.pointerId) return;
+    const left = start.left + event.clientX - start.x;
+    const top = start.top + event.clientY - start.y;
+    // Clamp against the popup's live dimensions, including after viewport changes.
+    popup.style.left = `clamp(0px, ${left}px, 100vw - var(--dialog-drag-width))`;
+    popup.style.top = `clamp(0px, ${top}px, 100dvh - var(--dialog-drag-height))`;
+    popup.style.setProperty("--dialog-drag-height", `${popup.offsetHeight}px`);
+    popup.style.setProperty("--dialog-drag-width", `${popup.offsetWidth}px`);
+    popup.style.transform = "none";
+  }
+
+  const attachContent = useCallback((popup: HTMLDivElement | null) => {
+    content.current = popup;
+    if (!popup || !draggable) return;
+    const observer = new ResizeObserver(() => {
+      popup.style.setProperty("--dialog-drag-height", `${popup.offsetHeight}px`);
+      popup.style.setProperty("--dialog-drag-width", `${popup.offsetWidth}px`);
+    });
+    observer.observe(popup);
+    return () => {
+      observer.disconnect();
+      content.current = null;
+      drag.current = null;
+    };
+  }, [draggable]);
+
   // Capture before the portal moves focus; an autofocus callback may already see body.
   useLayoutEffect(() => {
     if (!open) return;
@@ -34,7 +81,7 @@ export function Dialog({
     <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (next || dismissible) onOpenChange(next); }}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="dialog-overlay" />
-        <DialogPrimitive.Content ref={content} className={`dialog-content ${className}`}
+        <DialogPrimitive.Content ref={attachContent} className={`dialog-content ${className}`}
           onEscapeKeyDown={event => { if (!dismissible) event.preventDefault(); }}
           onInteractOutside={event => { if (!dismissible) event.preventDefault(); }}
           onOpenAutoFocus={event => {
@@ -48,7 +95,14 @@ export function Dialog({
               if (target) { event.preventDefault(); target.focus(); }
             }
           }}>
-          <DialogPrimitive.Title className="dialog-title">{title}</DialogPrimitive.Title>
+          <DialogPrimitive.Title
+            className={draggable ? "dialog-title dialog-drag-handle" : "dialog-title"}
+            onPointerDown={draggable ? startDrag : undefined}
+            onPointerMove={draggable ? moveDrag : undefined}
+            onLostPointerCapture={draggable ? () => { drag.current = null; } : undefined}
+          >
+            {title}
+          </DialogPrimitive.Title>
           <DialogPrimitive.Description className="dialog-description">
             {description}
           </DialogPrimitive.Description>

@@ -36,7 +36,7 @@ import {
   type AnswerValue,
 } from "../../lib/attempts/recovery";
 import { AttemptError } from "./queue";
-import { essayLength } from "../../lib/attempts/essay";
+import { EssayKeyboard } from "./essay-keyboard";
 import { command, useAnswerQueue } from "./queue";
 import { profiles } from "../../lib/operations/exam-policy";
 import { useIntegrity } from "./integrity";
@@ -1552,47 +1552,20 @@ export function ExamPlayer({
               </fieldset>
             ) : (
               <>
-                <label>
-                  Jawaban esai
-                  <textarea
-                    aria-describedby={`essay-length-${item.id}`}
-                    dir={q.direction}
-                    rows={8}
-                    maxLength={100000}
-                    disabled={disabled}
-                    value={record.text || ""}
-                    onChange={(e) =>
-                      queue.change(item.id, { ...record, text: e.target.value })
-                    }
-                  />
-                </label>
-                <p id={`essay-length-${item.id}`}>
-                  {essayLength(record.text || "")} karakter · minimum{" "}
-                  {q.minChars}
-                </p>
-                <div className="actions">
-                  {[
-                    "<b>teks</b>",
-                    "<i>teks</i>",
-                    "$\\frac{a}{b}$",
-                    "أ ب ت ث",
-                    "≤ ≥ ≠ √",
-                  ].map((s) => (
-                    <Button
-                      disabled={disabled}
-                      variant="outline"
-                      key={s}
-                      onClick={() =>
-                        queue.change(item.id, {
-                          ...record,
-                          text: (record.text || "") + " " + s,
-                        })
-                      }
-                    >
-                      {s}
-                    </Button>
-                  ))}
-                </div>
+                <EssayKeyboard
+                  key={item.id}
+                  value={record.text || ""}
+                  direction={q.direction}
+                  minChars={q.minChars}
+                  disabled={disabled || portrait}
+                  onChange={(value) => {
+                    const latest = queue.getValue(item.id);
+                    queue.change(item.id, {
+                      ...(latest && !Array.isArray(latest) ? latest : {}),
+                      text: value,
+                    });
+                  }}
+                />
                 <details>
                   <summary>Pratinjau tulisan</summary>
                   <Preview
