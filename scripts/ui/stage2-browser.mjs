@@ -95,11 +95,11 @@ try{
  await waitUntil(async()=>await page.$eval('.exam-status',el=>el.textContent.includes('Semua perubahan tersimpan')),10000);
  for(const width of [320,768,1440]){await goto('player',width,900);await overflow(`player ${width}`);}
  await page.screenshot({path:`${shots}/player-desktop.png`,fullPage:true});
- await goto('student');await page.waitForSelector('.empty-state');assert.ok(await page.$eval('.empty-state',el=>el.textContent.includes('Belum ada ujian')));
+ await goto('student');await page.waitForSelector('.state-card.state-empty');assert.ok(await page.$eval('.state-card.state-empty',el=>el.textContent.includes('Belum ada ujian')));
  listFailure=true;await clickText('Periksa lagi');await waitUntil(async()=>await page.evaluate(()=>document.body.textContent.includes('Daftar ujian belum dapat dimuat')),10000);listFailure=false;
  await clickText('Coba muat ulang');await waitUntil(async()=>await page.evaluate(()=>document.body.textContent.includes('Belum ada ujian')),10000);
  await page.goto(origin+'/login',{waitUntil:'networkidle0'});await page.setViewport({width:390,height:844});await overflow('login');
  await page.type('input[name="password"]','test-password');await page.click('[aria-label="Tampilkan password"]');assert.equal(await page.$eval('input[name="password"]',el=>el.type),'text');
  await page.screenshot({path:`${shots}/login-mobile.png`,fullPage:true});
- assert.deepEqual(errors,[]);console.log(JSON.stringify({status:'PASS',viewports:[320,390,768,1440],checks:['responsive overflow','table scrolling','navigation dialog focus trap and Escape','mobile form','saved and partial answer statuses','question map and unobscured keyboard focus','font size','sticky timer','submission summary','student loading/error/empty/retry','password visibility'],screenshots:shots}));
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({status:'PASS',viewports:[320,390,768,1440],checks:['responsive overflow','table scrolling','navigation dialog focus trap and Escape','mobile form','saved and partial answer statuses','question map and unobscured keyboard focus','font size','essay keyboard and autosave','sticky timer','submission summary','student loading/error/empty/retry','password visibility'],screenshots:shots}));
 }finally{if(browser)await browser.close();if(server){try{process.kill(-server.pid,'SIGTERM');}catch{/* Server already stopped. */}}log.end();rmSync(route,{recursive:true,force:true});rmSync(dist,{recursive:true,force:true});for(const [path,content] of Object.entries(originals)){if(content===null)rmSync(path,{force:true});else writeFileSync(path,content);}}
