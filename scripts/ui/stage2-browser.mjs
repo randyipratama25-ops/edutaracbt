@@ -44,7 +44,7 @@ try{
  await goto('dashboard');await overflow('mobile dashboard');await page.click('[aria-label="Buka navigasi"]');await page.waitForSelector('[role="dialog"]');
  for(let i=0;i<6;i++)await page.keyboard.press('Tab');assert.ok(await page.evaluate(()=>!!document.activeElement.closest('[role="dialog"]')),'modal must trap keyboard focus');
  await page.screenshot({path:`${shots}/mobile-navigation.png`});await page.keyboard.press('Escape');await page.waitForSelector('[role="dialog"]',{hidden:true});
- assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Buka navigasi');
+ await page.waitForFunction(()=>document.activeElement.getAttribute('aria-label')==='Buka navigasi');
  await clickText('Tambah pengguna');await page.waitForSelector('[role="dialog"]');await overflow('mobile form');await page.screenshot({path:`${shots}/mobile-form.png`});await page.keyboard.press('Escape');
  for(const width of [320,768]){await goto('dashboard',width,900);await overflow(`dashboard ${width}`);}
  await goto('player',390,844);await overflow('mobile player');
