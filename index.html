@@ -6631,34 +6631,33 @@
   }
   .ck-preview-box.hidden { display: none; }
 
-  /* Close button */
-  .ck-close-btn {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(0,0,0,0.12);
-    color: #475569;
-    font-size: 11px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-    transition: background 0.15s;
+  .swal2-popup.ck-popup {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    padding: 0 0 12px;
   }
-  .ck-close-btn:hover { background: rgba(0,0,0,0.22); color: #dc2626; }
-
-  /* Textarea saat custom keyboard aktif */
-  textarea.ck-active-ta {
-    border-radius: 12px 12px 0 0 !important;
-    border-bottom-color: #3b82f6 !important;
-    outline: none !important;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.15) inset !important;
+  .ck-popup .swal2-title {
+    padding: 12px 52px 8px;
+    font-size: 1rem;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
   }
+  .ck-popup.swal2-dragging .swal2-title { cursor: grabbing; }
+  .ck-popup .swal2-html-container {
+    margin: 0;
+    padding: 0 12px 4px;
+    overflow: auto;
+    min-height: 0;
+  }
+  .ck-popup .ck-wrapper { border-radius: 12px; border-top: 1px solid #c8d0da; }
+  .ck-popup .ck-row { flex-wrap: wrap; }
+  .ck-popup .essay-text-area {
+    max-height: min(28dvh, 10rem);
+    overflow: auto;
+  }
+  .ck-popup .essay-ta-drag-handle { display: none; }
+  .ck-popup .essay-ta-wrap { margin-bottom: 8px; text-align: start; }
 
   /* ── Essay textarea: auto-grow + manual resize ── */
   .essay-text-area {
@@ -6712,17 +6711,6 @@
   .essay-ta-drag-handle.dragging span {
     background: #3b82f6;
   }
-  /* Saat keyboard terbuka: border-radius atas textarea menjadi square */
-  .essay-ta-wrap.kb-open .essay-text-area {
-    border-radius: 12px 12px 0 0 !important;
-    border-bottom-color: #3b82f6 !important;
-  }
-  /* Drag handle ikut berubah border saat keyboard terbuka */
-  .essay-ta-wrap.kb-open .essay-ta-drag-handle {
-    border-color: #93c5fd;
-    background: #dbeafe;
-  }
-
   /* Responsive: layar sempit */
   @media (max-width: 380px) {
     .ck-key { min-width: 26px; height: 38px; font-size: 13px; padding: 0 3px; }
@@ -26342,6 +26330,7 @@ function initStudentExam(examData) {
 function renderQuestion(index) {
   if (!questions || !questions[index]) return;
 
+  _ckHide();
   currentQIndex = index;
   const q = questions[index];
   if (!answers[q.id]) {
@@ -26726,6 +26715,7 @@ function renderQuestion(index) {
                          'text-sm text-slate-700 leading-relaxed shadow-inner bg-slate-50 focus:bg-white resize-none';
     textArea.placeholder = 'Ketuk di sini untuk mulai mengetik...';
     textArea.setAttribute('data-essay-input', 'true');
+    textArea.setAttribute('aria-label', 'Jawaban esai');
     // Opsi B: cegah keyboard sistem muncul — custom keyboard yang dipakai
     textArea.setAttribute('inputmode', 'none');
     textArea.setAttribute('readonly', 'true');
@@ -26747,31 +26737,16 @@ function renderQuestion(index) {
     const charCounterDiv = document.createElement('div');
     charCounterDiv.id        = `essay-char-counter-${q.id}`;
     charCounterDiv.className = 'hidden text-right text-xs mt-1 transition-colors';
-    textArea.addEventListener('focus', () => {
-      isKeyboardSafeMode = true;
-      window._essayKeyboardActive = true;
-      // Tampilkan custom keyboard
-      _ckShow(q.id);
-    });
-    // Juga handle tap/click langsung (beberapa browser tidak trigger focus pada readonly)
-    textArea.addEventListener('click', () => {
-      isKeyboardSafeMode = true;
-      window._essayKeyboardActive = true;
-      _ckShow(q.id);
-    });
-    textArea.addEventListener('touchend', () => {
-      isKeyboardSafeMode = true;
-      window._essayKeyboardActive = true;
-      _ckShow(q.id);
-    });
-    textArea.addEventListener('blur', function() {
-      saveAnswer(q.id, this.value);
-      clearTimeout(window._essayKeyboardTimer);
-      window._essayKeyboardTimer = setTimeout(() => {
-        window._essayKeyboardActive = false;
-        isKeyboardSafeMode = false;
-      }, 3000);
-    });
+    textArea.addEventListener('click', () => _ckShow(q.id, textArea));
+
+    const keyboardButton = document.createElement('button');
+    keyboardButton.type = 'button';
+    keyboardButton.className = 'w-fit rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700';
+    keyboardButton.textContent = 'Buka keyboard esai';
+    keyboardButton.setAttribute('aria-haspopup', 'dialog');
+    keyboardButton.dataset.essayKeyboard = '';
+    keyboardButton.hidden = isCanvasAns;
+    keyboardButton.addEventListener('click', () => _ckShow(q.id, keyboardButton));
 
     const canvasWrapper = document.createElement('div');
     canvasWrapper.id        = `essay-canvas-wrapper-${q.id}`;
@@ -26893,6 +26868,7 @@ function renderQuestion(index) {
     taWrap.appendChild(dragHandle);
 
     esaiWrapper.appendChild(taWrap);
+    esaiWrapper.appendChild(keyboardButton);
     esaiWrapper.appendChild(canvasWrapper);
 
     if (!canvasEnabled) {
@@ -28543,6 +28519,7 @@ function editQuestion(qStr) {
 }
 
 function executeSubmission(forced, statusLabel) {
+  _ckHide();
     if (typeof _syncTimer !== 'undefined') clearTimeout(_syncTimer);
 
     disableAntiCheat(); 
@@ -36184,12 +36161,6 @@ function _ckBuild(qId) {
   wrapper.className = 'ck-wrapper';
   wrapper.id = `ck-wrapper-${qId}`;
 
-  // Tombol tutup
-  const closeBtn = _ckMakeKey('✕', 'ck-close-btn', () => _ckHide(qId), 'Tutup keyboard');
-  closeBtn.className = 'ck-close-btn';
-  closeBtn.querySelector('span').textContent = '✕';
-  wrapper.appendChild(closeBtn);
-
   // Tab bar
   const tabBar = document.createElement('div');
   tabBar.className = 'ck-tab-bar';
@@ -36311,65 +36282,121 @@ function _ckAttachDragHandle(handle, ta) {
 
 // ── Show / Hide ──────────────────────────────────────────────────────
 
-function _ckShow(qId) {
-  _ckState.activeQId  = qId;
-  _ckState.shiftOn    = false;
-  _ckState.capsOn     = false;
-  // Tab default: desktop → 'math', mobile → 'abc'
-  const _ckIsDesktop = !('ontouchstart' in window) && !(navigator.maxTouchPoints > 0);
-  _ckState.currentTab = _ckIsDesktop ? 'math' : 'abc';
+function _ckMakeDraggable(popup) {
+  const title = popup.querySelector('.swal2-title');
+  let drag;
 
-  const ta = document.getElementById(`essay-text-${qId}`);
-  if (!ta) return;
-
-  // Lepas readonly agar _ckInsert bisa menulis ke ta.value
-  ta.removeAttribute('readonly');
-  // Pertahankan inputmode=none agar keyboard sistem tidak muncul
-  ta.setAttribute('inputmode', 'none');
-
-  // Styling aktif
-  ta.classList.add('ck-active-ta');
-  // Tandai ta-wrap agar drag handle ikut berubah warna
-  const taWrapEl = document.getElementById(`essay-ta-wrap-${qId}`);
-  if (taWrapEl) taWrapEl.classList.add('kb-open');
-
-  // Cek apakah wrapper sudah ada (soal yg sama dibuka ulang)
-  let wrapper = document.getElementById(`ck-wrapper-${qId}`);
-  if (!wrapper) {
-    wrapper = _ckBuild(qId);
-    // Sisipkan langsung setelah essay-wrapper (parent dari textarea)
-    const essayWrapper = ta.closest('.essay-wrapper');
-    if (essayWrapper && essayWrapper.parentNode) {
-      essayWrapper.parentNode.insertBefore(wrapper, essayWrapper.nextSibling);
-    }
-  }
-  wrapper.style.display = '';
-
-  // Scroll agar keyboard terlihat
-  setTimeout(() => {
-    wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 80);
+  title.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0) return;
+    const rect = popup.getBoundingClientRect();
+    drag = {
+      x: event.clientX, y: event.clientY,
+      left: parseFloat(popup.style.left) || 0,
+      top: parseFloat(popup.style.top) || 0,
+      rect
+    };
+    title.setPointerCapture(event.pointerId);
+    popup.classList.add('swal2-dragging');
+    event.preventDefault();
+  });
+  title.addEventListener('pointermove', event => {
+    if (!drag || !title.hasPointerCapture(event.pointerId)) return;
+    const { x, y, left, top, rect } = drag;
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    popup.style.left = left + clamp(event.clientX - x, 8 - rect.left, window.innerWidth - 8 - rect.right) + 'px';
+    popup.style.top = top + clamp(event.clientY - y, 8 - rect.top, window.innerHeight - 8 - rect.bottom) + 'px';
+  });
+  title.addEventListener('lostpointercapture', () => {
+    drag = null;
+    popup.classList.remove('swal2-dragging');
+  });
+  const resetPosition = () => {
+    drag = null;
+    popup.classList.remove('swal2-dragging');
+    popup.style.left = '';
+    popup.style.top = '';
+  };
+  window.addEventListener('resize', resetPosition);
+  return () => window.removeEventListener('resize', resetPosition);
 }
 
-function _ckHide(qId) {
+function _ckShow(qId, trigger) {
+  if (_ckState.activeQId || Swal.isVisible()) return;
   const ta = document.getElementById(`essay-text-${qId}`);
-  if (ta) {
-    ta.classList.remove('ck-active-ta');
-    // Lepas kb-open dari ta-wrap
-    const taWrapEl = document.getElementById(`essay-ta-wrap-${qId}`);
-    if (taWrapEl) taWrapEl.classList.remove('kb-open');
-    // Lepas readonly agar nilai tetap bisa dibaca
-    ta.removeAttribute('readonly');
-  }
-  const wrapper = document.getElementById(`ck-wrapper-${qId}`);
-  if (wrapper) wrapper.style.display = 'none';
+  if (!ta || ta.style.display === 'none') return;
 
-  // Grace period agar anti-cheat tidak terpicu
+  const taWrap = ta.closest('.essay-ta-wrap');
+  const anchor = document.createComment('essay answer position');
+  taWrap.before(anchor);
+  const initialHeight = ta.style.height;
+  const desktop = !('ontouchstart' in window) && !(navigator.maxTouchPoints > 0);
+  _ckState.activeQId = qId;
+  _ckState.shiftOn = false;
+  _ckState.capsOn = false;
+  _ckState.arabShiftOn = false;
+  _ckState.currentTab = desktop ? 'math' : 'abc';
+
   clearTimeout(window._essayKeyboardTimer);
-  window._essayKeyboardTimer = setTimeout(() => {
-    window._essayKeyboardActive = false;
-    isKeyboardSafeMode = false;
-  }, 3000);
+  window._essayKeyboardActive = true;
+  isKeyboardSafeMode = true;
+
+  const content = document.createElement('div');
+  content.append(taWrap, _ckBuild(qId));
+  const onInput = event => {
+    if (!event.isTrusted) return;
+    saveAnswer(qId, ta.value);
+    _ckAutoResize(ta);
+    _ckSchedulePreview();
+  };
+  let stopDrag;
+  let restored = false;
+  function restore() {
+    if (restored) return;
+    restored = true;
+    stopDrag?.();
+    ta.removeEventListener('input', onInput);
+    ta.readOnly = true;
+    ta.style.height = initialHeight;
+    anchor.replaceWith(taWrap);
+    _ckAutoResize(ta);
+    _ckState.activeQId = null;
+    window._essayKeyboardTimer = setTimeout(() => {
+      window._essayKeyboardActive = false;
+      isKeyboardSafeMode = false;
+    }, 3000);
+  }
+
+  Swal.fire({
+    target: document.getElementById('page-exam'),
+    titleText: 'Keyboard Esai · Seret untuk memindahkan',
+    html: content,
+    width: '42rem',
+    customClass: { popup: 'ck-popup' },
+    showCloseButton: true,
+    closeButtonAriaLabel: 'Tutup keyboard esai',
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    returnFocus: false,
+    willOpen: () => {
+      ta.readOnly = !desktop;
+      if (desktop) ta.addEventListener('input', onInput);
+    },
+    didOpen: popup => {
+      stopDrag = _ckMakeDraggable(popup);
+      ta.focus({ preventScroll: true });
+      _ckAutoResize(ta);
+      _ckSchedulePreview();
+    },
+    willClose: restore,
+    didDestroy: restore,
+    didClose: () => {
+      if (!Swal.isVisible() && trigger?.isConnected) trigger.focus({ preventScroll: true });
+    }
+  });
+}
+
+function _ckHide() {
+  if (window.Swal?.getPopup()?.classList.contains('ck-popup')) Swal.close();
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -36457,22 +36484,19 @@ function switchEssayMode(qId, mode, btnEl) {
   const canvasWrap    = document.getElementById(`essay-canvas-wrapper-${qId}`);
   const mathToolsWrap = document.getElementById(`math-tools-wrap-${qId}`);
   const wrapper       = btnEl ? btnEl.closest('.essay-wrapper') : null;
+  const keyboardButton = wrapper?.querySelector('[data-essay-keyboard]');
+  if (keyboardButton) keyboardButton.hidden = mode !== 'text';
 
   if (mode === 'text') {
     if (textArea)      textArea.style.display      = '';
     if (canvasWrap)    canvasWrap.style.display     = 'none';
     // mathToolsWrap tidak ditampilkan — digantikan custom keyboard
     if (mathToolsWrap) mathToolsWrap.style.display  = 'none';
-    // Tampilkan kembali custom keyboard jika ada
-    const ckW = document.getElementById(`ck-wrapper-${qId}`);
-    if (ckW) ckW.style.display = '';
   } else {
     if (textArea)      textArea.style.display      = 'none';
     if (canvasWrap)    canvasWrap.style.display     = '';
     if (mathToolsWrap) mathToolsWrap.style.display  = 'none';
-    // Sembunyikan custom keyboard saat mode canvas
-    const ckW = document.getElementById(`ck-wrapper-${qId}`);
-    if (ckW) ckW.style.display = 'none';
+    _ckHide();
     if (typeof initEssayCanvas === 'function') {
       requestAnimationFrame(() => initEssayCanvas(qId, null));
     }
@@ -38173,6 +38197,7 @@ function applyConfigToLogin(title, subtitle, logo) {
 }
 
 function switchPage(pid) {
+    if (pid !== 'page-exam') _ckHide();
     document.querySelectorAll('#app > div').forEach(d => {
         // Skip overlays and floating UI (command palette, notification modal, toast container)
         // so their display isn't forced to none by page transitions.
